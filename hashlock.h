@@ -1,0 +1,34 @@
+#define BUF_SIZE			2048
+
+#define HL_BPRM_SET_CREDS		1
+
+#define HL_FILE_OPEN			2
+
+#define HL_SOCKET_CREATE		3
+#define HL_SOCKET_BIND			4
+#define HL_SOCKET_CONNECT		5
+#define HL_SOCKET_LISTEN		6
+#define HL_SOCKET_ACCEPT		7
+#define HL_SOCKET_SETSOCKOPT		8
+
+#define HL_TASK_SIGNAL			9
+
+#define HL_INODE_CREATE			10
+#define HL_INODE_INIT_SEC		11
+#define HL_INODE_LINK			12
+#define HL_INODE_UNLINK			13
+#define HL_INODE_SYMLINK		14
+#define HL_INODE_MKDIR			15
+
+#define HL_PATH_LINK			16
+#define HL_PATH_RENAME			17
+#define HL_PATH_CHMOD			18
+#define HL_PATH_CHOWN			19
+#define HL_PATH_SYMLINK			20
+#define HL_PATH_TRUNCATE		21
+#define HL_PATH_MKNOD			22
+#define HL_PATH_RMDIR			23
+#define HL_PATH_MKDIR			24
+#define HL_PATH_UNLINK			25
+
+#define HL_DENTRY_INIT_SEC		160
