@@ -71,7 +71,7 @@
 #include <crypto/algapi.h>
 #include "files.h"
 #include "regex.h"
-#include "hashlock.h"
+#include "honeybest.h"
 
 struct proc_dir_entry *hb_proc_file_entry;
 hb_file_ll hb_file_list_head;

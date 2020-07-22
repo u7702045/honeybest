@@ -1,5 +1,5 @@
-config SECURITY_HASHLOCK
-	tristate "Hash lock to parent process"
+config SECURITY_HONEYBEST
+	tristate "New implementation of Linux security module"
 	depends on SECURITY
 	help
 	  Any files read through the kernel file reading interface
@@ -10,10 +10,10 @@ config SECURITY_HASHLOCK
 	  have a root filesystem backed by a read-only device such as
 	  dm-verity or a CDROM.
 
-config SECURITY_HASHLOCK_ENABLED
-	bool "Enforce HashLock at boot"
-	depends on SECURITY_HASHLOCK
+config SECURITY_HONEYBEST_ENABLED
+	bool "Enforce HoneyBest at boot"
+	depends on SECURITY_HONEYBEST
 	help
-	  If selected, HashLock will enforce pinning at boot. If not
+	  If selected, HoneyBest will enforce pinning at boot. If not
 	  selected, it can be enabled at boot with the kernel parameter
-	  "hashlock.enabled=1".
+	  "honeybest.enabled=1".

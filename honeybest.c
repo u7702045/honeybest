@@ -86,7 +86,7 @@
 #include <crypto/hash.h>
 #include <crypto/sha.h>
 #include <crypto/algapi.h>
-#include "hashlock.h"
+#include "honeybest.h"
 #include "creds.h"
 #include "files.h"
 #include "socket.h"
@@ -94,8 +94,8 @@
 #include "inode.h"
 #include "path.h"
 
-#ifdef CONFIG_SECURITY_HASHLOCK
-static int enabled = IS_ENABLED(CONFIG_SECURITY_HASHLOCK_ENABLED);
+#ifdef CONFIG_SECURITY_HONEYBEST
+static int enabled = IS_ENABLED(CONFIG_SECURITY_HONEYBEST_ENABLED);
 static int locking = 0;
 static int level = 1;
 static unsigned long task_seq = 0;
@@ -416,7 +416,7 @@ static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 {
 	int err = 0;
        	const struct task_struct *task = current;
-	char digest[SHA1_HASHLOCK_DIGEST_SIZE];
+	char digest[SHA1_HONEYBEST_DIGEST_SIZE];
 	hb_binprm_ll *record = NULL;
 	char *pathname;
 
@@ -434,7 +434,7 @@ static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 	}
 
 	// logic of xattr need to validate?
-	memset(digest, '\0', SHA1_HASHLOCK_DIGEST_SIZE);
+	memset(digest, '\0', SHA1_HONEYBEST_DIGEST_SIZE);
 	lookup_binprm_digest(bprm->file, digest);
 
 	record = search_binprm_record(HL_BPRM_SET_CREDS, task->cred->uid.val, pathname, digest);
@@ -2465,4 +2465,4 @@ module_param(enabled, int, 0);
 module_param(locking, int, 0);
 MODULE_PARM_DESC(enabled, "HoneyBest module/firmware loading (default: true)");
 
-#endif /* CONFIG_SECURITY_HASHLOCK */
+#endif /* CONFIG_SECURITY_HONEYBEST */

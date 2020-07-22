@@ -70,7 +70,7 @@
 #include <crypto/sha.h>
 #include <crypto/algapi.h>
 #include "socket.h"
-#include "hashlock.h"
+#include "honeybest.h"
 
 struct proc_dir_entry *hb_proc_socket_entry;
 hb_socket_ll hb_socket_list_head;

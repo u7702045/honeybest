@@ -70,7 +70,7 @@
 #include <crypto/sha.h>
 #include <crypto/algapi.h>
 #include "inode.h"
-#include "hashlock.h"
+#include "honeybest.h"
 
 struct proc_dir_entry *hb_proc_inode_entry;
 hb_inode_ll hb_inode_list_head;

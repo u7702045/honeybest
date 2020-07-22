@@ -70,7 +70,7 @@
 #include <crypto/sha.h>
 #include <crypto/algapi.h>
 #include "regex.h"
-#include "hashlock.h"
+#include "honeybest.h"
 
 // support only last *, example /home/files.* or /home/*
 int compare_regex(char *str1, char *str2, int len)

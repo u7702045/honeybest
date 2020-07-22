@@ -1,9 +1,9 @@
 
-#define SHA1_HASHLOCK_DIGEST_SIZE (SHA1_DIGEST_SIZE * 2)+1	// leave '\0' at the end
+#define SHA1_HONEYBEST_DIGEST_SIZE (SHA1_DIGEST_SIZE * 2)+1	// leave '\0' at the end
 typedef struct hb_binprm_ll_t {
 	uid_t uid;
 	unsigned int fid;	// security hook function binprm by program
-	char digest[SHA1_HASHLOCK_DIGEST_SIZE];	// exec program xattr hash
+	char digest[SHA1_HONEYBEST_DIGEST_SIZE];	// exec program xattr hash
 	char *pathname;	// open file path
 	struct list_head list;
 } hb_binprm_ll;

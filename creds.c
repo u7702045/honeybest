@@ -71,7 +71,7 @@
 #include <crypto/algapi.h>
 #include "creds.h"
 #include "regex.h"
-#include "hashlock.h"
+#include "honeybest.h"
 
 struct proc_dir_entry *hb_proc_binprm_entry;
 hb_binprm_ll hb_binprm_list_head;
@@ -82,7 +82,7 @@ hb_binprm_ll *search_binprm_record(unsigned int fid, uid_t uid, char *pathname, 
 
 	list_for_each(pos, &hb_binprm_list_head.list) {
 		tmp = list_entry(pos, hb_binprm_ll, list);
-		if ((tmp->fid == HL_BPRM_SET_CREDS) && !memcmp(tmp->digest, digest, SHA1_HASHLOCK_DIGEST_SIZE-1) && (uid == tmp->uid) && !compare_regex(tmp->pathname, pathname, strlen(pathname))) {
+		if ((tmp->fid == HL_BPRM_SET_CREDS) && !memcmp(tmp->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE-1) && (uid == tmp->uid) && !compare_regex(tmp->pathname, pathname, strlen(pathname))) {
 			/* we find the record */
 			printk(KERN_INFO "Found binprm set record !!!!\n");
 			return tmp;
@@ -255,7 +255,7 @@ ssize_t write_binprm_record(struct file *file, const char __user *buffer, size_t
 		while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
 			uid_t uid = 0;
 			unsigned int fid = 0;
-			char digest[SHA1_HASHLOCK_DIGEST_SIZE];
+			char digest[SHA1_HONEYBEST_DIGEST_SIZE];
 			char pathname[BUF_SIZE];
 
 			sscanf(token, "%u %u %s %s", &fid, &uid, digest, pathname);

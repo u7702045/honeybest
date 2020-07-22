@@ -71,7 +71,7 @@
 #include <linux/path.h>
 #include "path.h"
 #include "regex.h"
-#include "hashlock.h"
+#include "honeybest.h"
 
 struct proc_dir_entry *hb_proc_path_entry;
 hb_path_ll hb_path_list_head;

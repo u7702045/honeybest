@@ -70,7 +70,7 @@
 #include <crypto/sha.h>
 #include <crypto/algapi.h>
 #include "tasks.h"
-#include "hashlock.h"
+#include "honeybest.h"
 
 struct proc_dir_entry *hb_proc_task_entry;
 hb_task_ll hb_task_list_head;
