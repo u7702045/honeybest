@@ -184,7 +184,7 @@ int inject_honeybest_tracker(const struct task_struct *task, unsigned int fid)
 			cred->security = (hb_track_info *)sec;
 		}
 		else {
-			printk(KERN_ERR "honeybest security malloc failure\n");
+			printk(KERN_WARNING "honeybest security malloc failure\n");
 			err = -ENOMEM;
 		}
 	}
@@ -195,7 +195,7 @@ int inject_honeybest_tracker(const struct task_struct *task, unsigned int fid)
 			sec->prev_fid = sec->curr_fid;
 			sec->curr_fid = fid;
 		}
-	       	;//printk(KERN_ERR "%s, prev %lu, curr %lu\n", __FUNCTION__, sec->prev_fid, sec->curr_fid);
+	       	printk(KERN_DEBUG "%s, prev %u, curr %u\n", __FUNCTION__, sec->prev_fid, sec->curr_fid);
 	}
 	return err;
 }
@@ -364,12 +364,22 @@ static int honeybest_binder_transfer_file(struct task_struct *from,
 static int honeybest_ptrace_access_check(struct task_struct *child,
                                      unsigned int mode)
 {
-	return 0;
+	int err = 0;
+
+	if (!enabled)
+		err = -EOPNOTSUPP;
+
+	return err;
 }
 
 static int honeybest_ptrace_traceme(struct task_struct *parent)
 {
-	return 0;
+	int err = 0;
+
+	if (!enabled)
+		err = -EOPNOTSUPP;
+
+	return err;
 }
 
 static int honeybest_capget(struct task_struct *target, kernel_cap_t *effective,
@@ -2455,7 +2465,7 @@ static struct security_hook_list honeybest_hooks[] = {
 
 void __init honeybest_add_hooks(void)
 {
-	printk(KERN_ERR "ready to honeybest (currently %sabled)\n", enabled ? "en" : "dis");
+	printk(KERN_INFO "ready to honeybest (currently %sabled)\n", enabled ? "en" : "dis");
 	security_add_hooks(honeybest_hooks, ARRAY_SIZE(honeybest_hooks));
 	honeybest_init_sysctl();
 }
