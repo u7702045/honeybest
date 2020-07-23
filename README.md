@@ -13,14 +13,24 @@ HoneyBest is the new implementation of Linux Security Module project.
 ###### The complete security policies should treat super user (root) as normal root. Root are not allow to change others policies but its own. Penetration to root user might corrupt whole policies wall you made. In our design, policies update or change should bind tightly with secure boot process, more precisely, with hardware Root of Trust.
 ##### Condition D – Interaction in real time instead of post rules applied
 ###### Real time interaction feedback mechanism are more easy way for developers to understand what going. Instead of rules, pop out dialogue asking permission to add rule is an effective way to make progress. For the fine-grain advanced user, our design also consider to fulfill such needs.
-##### Condition E – I want my program to be protected from other process, user or even root.
+##### Condition E – Different perspective of software protection
 ###### In some privacy scenario, system designer not only require the task to have restriction from accessing resources, but also restriction from other resources to access the task. Here are the 2 examples, I want to protect my private libraries/program from piracy, however, still allow certain program to use; I want only “upgradefirmware” command to be able upgrade system firmware, not “dd” command, and the integrity of “upgradefirmware” command is concerned. 
 ### Design
 ###### Our core design is to focus on capturing the kernel activities triggered by user space program. Activities which is tracking will later turn into list data structure for security module to detect an unexpected occur event. The size of list data structure is tightly depends on level of granularity. The more precise restriction or control to be chosen, the higher space requirement for data structure to be saved. Above the surface of such design, here is the approach to apply secure module. Unfreeze the box in your security environment, run all activities as you can to create a model, then freeze the box. Once you freeze the box, all activities are restrict to previous model. You might consider fine-grain the model because some activities are not able to perform in your security environment. Either user editor to edit the model or turn on interaction mode, developers are able to selectively set policies in real world situation. Below figure show how the lifecycle go:
-1.	Product finish development
-2.	Turn on unfreeze mode / Turn off interaction mode
-3.	1st End to End System Integration Test 
-4.	Turn off unfreeze mode / Turn on interaction mode
-5.	2nd End to End System Integration Test or Manually edit model
-6.	Turn off interaction mode.
+1.	###### Product finish development
+2.	###### Turn on unfreeze mode / Turn off interaction mode
+3.	###### 1st End to End System Integration Test 
+4.	###### Turn off unfreeze mode / Turn on interaction mode
+5.	###### 2nd End to End System Integration Test or Manually edit model
+6.	###### Turn off interaction mode.
+### Compiling
+###### Similar to SELinux/Apparmor design, HoneyBest security module is hooked on Linux Security Module layer. Clone the source code into Linux kernel source and follow instruction below:
+1.	###### Create a new directory called honeybest under [KERNEL SOURCE]/security directory.
+2.	###### Clone Honeybest source code into honeybest directory.
+3.	###### If you are Debian/Ubuntu environment, install necessary packages to compile new kernel (apt-get install build-essential libncurses-dev bison flex libssl-dev libelf-dev bc).
+4.	###### Change directory to honeybest and run the Kconfig.patch & Makefile.path
+5.	###### Copy original kernel configuration to [KERNEL SOURCE/.config (cat /boot/config-4.9.X > [KERNEL SOURCE/.config]
+6.	###### Select HoneyBest security module (make menuconfig)
+7.	###### Compiling kernel under [KERNEL SOURCE] (make modules bzImage)
+8.	###### Install new kernel & modules (make install)
 
