@@ -35,3 +35,5 @@
 #define HL_PATH_UNLINK			28
 
 #define HL_DENTRY_INIT_SEC		160
+
+#define HL_NOTIFY_ADD			500

@@ -93,11 +93,13 @@
 #include "tasks.h"
 #include "inode.h"
 #include "path.h"
+#include "notify.h"
 
 #ifdef CONFIG_SECURITY_HONEYBEST
 static int enabled = IS_ENABLED(CONFIG_SECURITY_HONEYBEST_ENABLED);
-static int locking = 0;
-static int level = 1;
+static int locking = 0;		// detect mode
+static int interact = 0;	// interaction mode
+static int level = 1;		// fine grain granularity
 static unsigned long task_seq = 0;
 
 extern hb_binprm_ll hb_binprm_list_head;
@@ -106,6 +108,7 @@ extern hb_socket_ll hb_socket_list_head;
 extern hb_task_ll hb_task_list_head;
 extern hb_inode_ll hb_inode_list_head;
 extern hb_path_ll hb_path_list_head;
+extern hb_notify_ll hb_notify_list_head;
 
 extern struct proc_dir_entry *hb_proc_file_entry;
 extern struct proc_dir_entry *hb_proc_task_entry;
@@ -113,6 +116,8 @@ extern struct proc_dir_entry *hb_proc_socket_entry;
 extern struct proc_dir_entry *hb_proc_binprm_entry;
 extern struct proc_dir_entry *hb_proc_inode_entry;
 extern struct proc_dir_entry *hb_proc_path_entry;
+extern struct proc_dir_entry *hb_proc_notify_entry;
+
 
 /* attach to each trigger function so that we can trace all system activity */
 typedef struct hb_track_t { 
@@ -149,6 +154,15 @@ static struct ctl_table honeybest_sysctl_table[] = {
 	{
 		.procname       = "locking",
 		.data           = &locking,
+		.maxlen         = sizeof(int),
+		.mode           = 0644,
+		.proc_handler   = proc_dointvec_minmax,
+		.extra1         = &zero,
+		.extra2         = &one,
+	},
+	{
+		.procname       = "interact",
+		.data           = &interact,
 		.maxlen         = sizeof(int),
 		.mode           = 0644,
 		.proc_handler   = proc_dointvec_minmax,
@@ -199,6 +213,19 @@ int inject_honeybest_tracker(const struct task_struct *task, unsigned int fid)
 	}
 	return err;
 }
+
+static int open_notify_proc(struct inode *inode, struct  file *file) {
+	  return single_open(file, read_notify_record, NULL);
+}
+
+static const struct file_operations hb_proc_notify_fops = {
+	.open  = open_notify_proc,
+	.read  = seq_read,
+	.write  = write_file_record,
+	.llseek  = seq_lseek,
+	.release = single_release,
+};
+
 
 static int open_file_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_file_record, NULL);
@@ -281,6 +308,9 @@ static void __init honeybest_init_sysctl(void)
 		panic("HoneyBest: sysctl registration failed.\n");
 #endif
 
+	/* notification event linked list */
+	INIT_LIST_HEAD(&hb_notify_list_head.list);
+
 	/* binary execution tracing */
 	INIT_LIST_HEAD(&hb_binprm_list_head.list);
 
@@ -298,6 +328,12 @@ static void __init honeybest_init_sysctl(void)
 
 	/* path tracing */
 	INIT_LIST_HEAD(&hb_path_list_head.list);
+
+	/* prepare notify proc entry */
+	hb_proc_notify_entry = proc_create("files", 0666, honeybest_dir, &hb_proc_notify_fops);
+	if (!hb_proc_notify_entry) {
+		printk(KERN_INFO "Error creating honeybest file notify entry");
+	}
 
 	/* prepare file proc entry */
 	hb_proc_file_entry = proc_create("files", 0666, honeybest_dir, &hb_proc_file_fops);
@@ -609,7 +645,7 @@ static int honeybest_path_unlink(const struct path *dir, struct dentry *dentry)
 	}
 
 	/* filter unwant pathname */
-	if (allow_file_whitelist) {
+	if (allow_file_whitelist(source_pathname)) {
 		return err;
 	}
 
@@ -660,7 +696,7 @@ static int honeybest_path_mkdir(const struct path *dir, struct dentry *dentry,
 		goto out;
 	}
 
-	if (allow_file_whitelist) {
+	if (allow_file_whitelist(source_pathname)) {
 		return err;
 	}
 
@@ -755,7 +791,7 @@ static int honeybest_path_mknod(const struct path *dir, struct dentry *dentry,
 		goto out;
 	}
 
-	if (allow_file_whitelist) {
+	if (allow_file_whitelist(source_pathname)) {
 		return err;
 	}
 
@@ -801,7 +837,7 @@ static int honeybest_path_truncate(const struct path *path)
 		goto out;
 	}
 
-	if (allow_file_whitelist) {
+	if (allow_file_whitelist(source_pathname)) {
 		return err;
 	}
 
@@ -906,7 +942,7 @@ static int honeybest_path_link(struct dentry *old_dentry, const struct path *new
 		goto out;
 	}
 
-	if (allow_file_whitelist) {
+	if (allow_file_whitelist(source_pathname)) {
 		return err;
 	}
 
@@ -1503,7 +1539,7 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 	sec = cred->security;
 	sec->pathname = kstrdup_quotable_file(file, GFP_KERNEL);
 
-	if (allow_file_whitelist) {
+	if (allow_file_whitelist(sec->pathname)) {
 		return err;
 	}
 
@@ -2379,7 +2415,6 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(file_set_fowner, honeybest_file_set_fowner),
         LSM_HOOK_INIT(file_send_sigiotask, honeybest_file_send_sigiotask),
         LSM_HOOK_INIT(file_receive, honeybest_file_receive),
-
         LSM_HOOK_INIT(file_open, honeybest_file_open),
 
         LSM_HOOK_INIT(task_create, honeybest_task_create),
@@ -2441,7 +2476,8 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(secid_to_secctx, honeybest_secid_to_secctx),
         LSM_HOOK_INIT(secctx_to_secid, honeybest_secctx_to_secid),
         LSM_HOOK_INIT(release_secctx, honeybest_release_secctx),
-        LSM_HOOK_INIT(inode_invalidate_secctx, honeybest_inode_invalidate_secctx),        LSM_HOOK_INIT(inode_notifysecctx, honeybest_inode_notifysecctx),
+        LSM_HOOK_INIT(inode_invalidate_secctx, honeybest_inode_invalidate_secctx),
+	LSM_HOOK_INIT(inode_notifysecctx, honeybest_inode_notifysecctx),
         LSM_HOOK_INIT(inode_setsecctx, honeybest_inode_setsecctx),
         LSM_HOOK_INIT(inode_getsecctx, honeybest_inode_getsecctx),
 
