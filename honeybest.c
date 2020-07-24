@@ -474,8 +474,7 @@ static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 
 	pathname = kstrdup_quotable_file(bprm->file, GFP_KERNEL);
 
-	/* filter unwant pathname */
-	if (!strncmp(pathname, "/proc/", 6) || (!strncmp(pathname, "/sys/", 5))) {
+	if (allow_file_whitelist(pathname)) {
 		return err;
 	}
 
