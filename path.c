@@ -146,7 +146,7 @@ int add_path_record(unsigned int fid, uid_t uid, umode_t mode, char *source_path
 			goto out;
 		}
 		if (tmp->target_pathname == NULL) {
-			kfree(source_pathname);
+			kfree(tmp->source_pathname);
 			err = -EOPNOTSUPP;
 			goto out;
 		}
@@ -235,6 +235,8 @@ ssize_t write_path_record(struct file *file, const char __user *buffer, size_t c
 		list_for_each_safe(pos, q, &hb_path_list_head.list) {
 			tmp = list_entry(pos, hb_path_ll, list);
 			list_del(pos);
+			kfree(tmp->source_pathname);
+			kfree(tmp->target_pathname);
 			kfree(tmp);
 			tmp = NULL;
 		}
