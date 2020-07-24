@@ -180,3 +180,12 @@ ssize_t write_file_record(struct file *file, const char __user *buffer, size_t c
 	}
 	return count;
 }
+
+// true if match
+int allow_file_whitelist(char *path)
+{
+	if (!strncmp(path, "/proc/sys/kernel/honeybest/", 27) || (!strncmp(path, "/proc/honeybest/", 16))) {
+		return 1;
+	}
+	return 0;
+}

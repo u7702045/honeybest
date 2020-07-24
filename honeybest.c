@@ -609,7 +609,7 @@ static int honeybest_path_unlink(const struct path *dir, struct dentry *dentry)
 	}
 
 	/* filter unwant pathname */
-	if (!strncmp(source_pathname, "/proc/", 6) || (!strncmp(source_pathname, "/sys/", 5))) {
+	if (allow_file_whitelist) {
 		return err;
 	}
 
@@ -660,8 +660,7 @@ static int honeybest_path_mkdir(const struct path *dir, struct dentry *dentry,
 		goto out;
 	}
 
-	/* filter unwant pathname */
-	if (!strncmp(source_pathname, "/proc/", 6) || (!strncmp(source_pathname, "/sys/", 5))) {
+	if (allow_file_whitelist) {
 		return err;
 	}
 
@@ -756,8 +755,7 @@ static int honeybest_path_mknod(const struct path *dir, struct dentry *dentry,
 		goto out;
 	}
 
-	/* filter unwant pathname */
-	if (!strncmp(source_pathname, "/proc/", 6) || (!strncmp(source_pathname, "/sys/", 5))) {
+	if (allow_file_whitelist) {
 		return err;
 	}
 
@@ -803,8 +801,7 @@ static int honeybest_path_truncate(const struct path *path)
 		goto out;
 	}
 
-	/* filter unwant pathname */
-	if (!strncmp(source_pathname, "/proc/", 6) || (!strncmp(source_pathname, "/sys/", 5))) {
+	if (allow_file_whitelist) {
 		return err;
 	}
 
@@ -909,8 +906,7 @@ static int honeybest_path_link(struct dentry *old_dentry, const struct path *new
 		goto out;
 	}
 
-	/* filter unwant pathname */
-	if (!strncmp(source_pathname, "/proc/", 6) || (!strncmp(source_pathname, "/sys/", 5))) {
+	if (allow_file_whitelist) {
 		return err;
 	}
 
@@ -1507,8 +1503,7 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 	sec = cred->security;
 	sec->pathname = kstrdup_quotable_file(file, GFP_KERNEL);
 
-	/* filter unwant pathname */
-	if (!strncmp(sec->pathname, "/proc/", 6) || (!strncmp(sec->pathname, "/sys/", 5))) {
+	if (allow_file_whitelist) {
 		return err;
 	}
 

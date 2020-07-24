@@ -11,3 +11,4 @@ int add_file_record(unsigned int fid, uid_t uid, char *pathname);
 
 int read_file_record(struct seq_file *m, void *v);
 ssize_t write_file_record(struct file *file, const char __user *buffer, size_t count, loff_t *pos);
+int allow_file_whitelist(char *path);
