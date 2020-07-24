@@ -48,5 +48,7 @@ HoneyBest is the new implementation of Linux Security Module project.
 * ###### socket – Tracking TCP/UDP/ICMP socket activity, including port number.
 * ###### task – Tracking activity between process, such as signal exchanging.
 * ###### notify – Notification between security module and user space application. In interactive mode, unexpected event is detected, notify to user space program later. Dialogue pop up to acquiring security expertise allow or ignore such activities.
+##### Locking option – on mode or off mode
+###### Locking option only take effective once enablement option mode turn on (default locking option mode is turn off). Once turn on, only expect activities is allow to behave.
 ##### Interactive option - manual mode vs auto mode
-###### Interactive & auto mode only take effectively when enablement mode turn into true. The default interactive option is switch to auto mode, all activities occur in kernel are immediately tracking after enablement option turn into true.
+###### Interactive & auto mode only take effectively when enablement mode turn into true. The default interactive option is switch to auto mode, all activities occur in kernel are immediately tracking after enablement option turn into true. Selecting manual mode are mandatory to install libhoneybest-notify package (still in developing progress).
