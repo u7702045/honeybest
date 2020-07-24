@@ -1284,12 +1284,31 @@ static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
 {
 	int err = 0;
        	const struct task_struct *task = current;
+	const struct qstr *d_name = &dentry->d_name;
+	const unsigned char *dname = d_name->name;
+	hb_inode_ll *record;
 
 	if (!enabled)
 		return err;
 
-	if (inject_honeybest_tracker(task, 0))
+	if (inject_honeybest_tracker(task, HL_INODE_SETXATTR))
 	       	err = -ENOMEM;
+
+	record = search_inode_record(HL_INODE_SETXATTR, task->cred->uid.val, (char *)name, (char *)dname, 0);
+
+	if (record) {
+		printk(KERN_INFO "Found inode setxattr name %s, dname %s\n", name, dname);
+	}
+	else {
+
+		if (locking == 0) 
+			err = add_inode_record(HL_INODE_SETXATTR, task->cred->uid.val, (char *)name, (char *)dname, 0);
+
+		if (locking == 1) {
+			/* detect mode */
+			err = -EOPNOTSUPP;
+		}
+	}
 
         return err;
 }
@@ -1305,16 +1324,34 @@ static int honeybest_inode_getxattr(struct dentry *dentry, const char *name)
 {
 	int err = 0;
        	const struct task_struct *task = current;
+	const struct qstr *d_name = &dentry->d_name;
+	const unsigned char *dname = d_name->name;
+	hb_inode_ll *record;
 
 	if (!enabled)
 		return err;
 
-	if (inject_honeybest_tracker(task, 0))
+	if (inject_honeybest_tracker(task, HL_INODE_GETXATTR))
 	       	err = -ENOMEM;
+
+	record = search_inode_record(HL_INODE_GETXATTR, task->cred->uid.val, (char *)name, (char *)dname, 0);
+
+	if (record) {
+		printk(KERN_INFO "Found inode getxattr name %s, dname %s\n", name, dname);
+	}
+	else {
+
+		if (locking == 0) 
+			err = add_inode_record(HL_INODE_GETXATTR, task->cred->uid.val, (char *)name, (char *)dname, 0);
+
+		if (locking == 1) {
+			/* detect mode */
+			err = -EOPNOTSUPP;
+		}
+	}
 
         return err;
 }
-
 static int honeybest_inode_listxattr(struct dentry *dentry)
 {
 	int err = 0;
@@ -1333,15 +1370,35 @@ static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
 {
 	int err = 0;
        	const struct task_struct *task = current;
+	const struct qstr *d_name = &dentry->d_name;
+	const unsigned char *dname = d_name->name;
+	hb_inode_ll *record;
 
 	if (!enabled)
 		return err;
 
-	if (inject_honeybest_tracker(task, 0))
+	if (inject_honeybest_tracker(task, HL_INODE_REMOVEXATTR))
 	       	err = -ENOMEM;
+
+	record = search_inode_record(HL_INODE_REMOVEXATTR, task->cred->uid.val, (char *)name, (char *)dname, 0);
+
+	if (record) {
+		printk(KERN_INFO "Found inode removexattr name %s, dname %s\n", name, dname);
+	}
+	else {
+
+		if (locking == 0) 
+			err = add_inode_record(HL_INODE_REMOVEXATTR, task->cred->uid.val, (char *)name, (char *)dname, 0);
+
+		if (locking == 1) {
+			/* detect mode */
+			err = -EOPNOTSUPP;
+		}
+	}
 
         return err;
 }
+
 
 static int honeybest_inode_getsecurity(struct inode *inode, const char *name, void **buffer, bool alloc)
 {

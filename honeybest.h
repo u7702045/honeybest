@@ -19,16 +19,19 @@
 #define HL_INODE_UNLINK			13
 #define HL_INODE_SYMLINK		14
 #define HL_INODE_MKDIR			15
+#define HL_INODE_SETXATTR		16
+#define HL_INODE_GETXATTR		17
+#define HL_INODE_REMOVEXATTR		18
 
-#define HL_PATH_LINK			16
-#define HL_PATH_RENAME			17
-#define HL_PATH_CHMOD			18
-#define HL_PATH_CHOWN			19
-#define HL_PATH_SYMLINK			20
-#define HL_PATH_TRUNCATE		21
-#define HL_PATH_MKNOD			22
-#define HL_PATH_RMDIR			23
-#define HL_PATH_MKDIR			24
-#define HL_PATH_UNLINK			25
+#define HL_PATH_LINK			19
+#define HL_PATH_RENAME			20
+#define HL_PATH_CHMOD			21
+#define HL_PATH_CHOWN			22
+#define HL_PATH_SYMLINK			23
+#define HL_PATH_TRUNCATE		24
+#define HL_PATH_MKNOD			25
+#define HL_PATH_RMDIR			26
+#define HL_PATH_MKDIR			27
+#define HL_PATH_UNLINK			28
 
 #define HL_DENTRY_INIT_SEC		160

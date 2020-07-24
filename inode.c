@@ -70,21 +70,23 @@
 #include <crypto/sha.h>
 #include <crypto/algapi.h>
 #include "inode.h"
+#include "regex.h"
 #include "honeybest.h"
 
 struct proc_dir_entry *hb_proc_inode_entry;
 hb_inode_ll hb_inode_list_head;
-hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *pathname, umode_t mode)
+hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *name, char *dname, umode_t mode)
 {
 	hb_inode_ll *tmp = NULL;
 	struct list_head *pos = NULL;
-	int err = 0;
 
 	list_for_each(pos, &hb_inode_list_head.list) {
 		tmp = list_entry(pos, hb_inode_ll, list);
 		switch (fid) {
-			case HL_INODE_CREATE:
-				if ((!strcmp(tmp->pathname, pathname)) &&(uid == tmp->uid) && (tmp->mode == mode)) {
+			case HL_INODE_REMOVEXATTR:
+			case HL_INODE_GETXATTR:
+			case HL_INODE_SETXATTR:
+				if ((fid == tmp->fid) && (uid == tmp->uid) && (tmp->mode == mode) && !compare_regex(tmp->name, name, strlen(name)) && !compare_regex(tmp->dname, dname, strlen(dname))) {
 					/* we find the record */
 					printk(KERN_INFO "Found inode open record !!!!\n");
 					return tmp;
@@ -97,46 +99,69 @@ hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *pathname, um
 	return NULL;
 }
 
-int add_inode_record(unsigned int fid, uid_t uid, char *pathname, umode_t mode)
+int add_inode_record(unsigned int fid, uid_t uid, char *name, char *dname, umode_t mode)
 {
 	int err = 0;
-#if 0
 	hb_inode_ll *tmp = NULL;
 
 	tmp = (hb_inode_ll *)kmalloc(sizeof(hb_inode_ll), GFP_KERNEL);
 	if (tmp) {
 		tmp->fid = fid;
 		tmp->uid = uid;
-		tmp->sig = sig;
-		tmp->si_signo = si_signo;
-		tmp->si_errno = si_errno;
-		tmp->secid = secid;
+		tmp->name = kmalloc(strlen(name)+1, GFP_KERNEL);
+	       	tmp->dname = kmalloc(strlen(dname)+1, GFP_KERNEL);
+		if (tmp->name == NULL) {
+			err = -EOPNOTSUPP;
+			goto out;
+		}
+		if (tmp->dname == NULL) {
+			kfree(tmp->name);
+			err = -EOPNOTSUPP;
+			goto out;
+		}
+
+		switch (fid) {
+			case HL_INODE_REMOVEXATTR:
+			case HL_INODE_GETXATTR:
+			case HL_INODE_SETXATTR:
+				strcpy(tmp->name, name);
+				strcpy(tmp->dname, dname);
+				break;
+			default:
+				break;
+		}
 		list_add(&(tmp->list), &(hb_inode_list_head.list));
 	}
 	else
 		err = -EOPNOTSUPP;
-#endif
+
+out:
 	return err;
 }
 
 int read_inode_record(struct seq_file *m, void *v)
 {
-#if 0
 	hb_inode_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
+	seq_printf(m, "ID\tFUNC\tUID\tMODE\tNAME\t\t\tDENTRY NAME\n");
+
+	if (list_empty(&hb_inode_list_head.list)) {
+		printk(KERN_WARNING "List is empty!!\n");
+		return 0;
+	}
+
 	list_for_each(pos, &hb_inode_list_head.list) {
 		tmp = list_entry(pos, hb_inode_ll, list);
-		seq_printf(m, "%lu %u %d %d %d %u\n", total++, tmp->uid, tmp->sig, tmp->si_signo, tmp->si_errno, tmp->secid);
+		seq_printf(m, "%lu\t%u\t%u\t%u\t%s\t%s\n", total++, tmp->fid, tmp->uid, tmp->mode, tmp->name, tmp->dname);
 	}
-#endif
+
 	return 0;
 }
 
 ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
 {
-#if 0
 	char rules[BUF_SIZE];
 	char *delim = "\n";
 	char *token, *cur = rules;
@@ -144,8 +169,11 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 	struct list_head *pos = NULL;
 	struct list_head *q = NULL;
 
+	if (list_empty(&hb_inode_list_head.list))
+		return 0;
+
 	if(*ppos > 0 || count > BUF_SIZE) {
-		printk(KERN_ERR "Write size is too big!\n");
+		printk(KERN_WARNING "Write size is too big!\n");
 	       	return -EFAULT;
 	}
 
@@ -158,6 +186,8 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 		list_for_each_safe(pos, q, &hb_inode_list_head.list) {
 			tmp = list_entry(pos, hb_inode_ll, list);
 			list_del(pos);
+			kfree(tmp->name);
+			kfree(tmp->dname);
 			kfree(tmp);
 			tmp = NULL;
 		}
@@ -165,18 +195,16 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 		/* add rules */
 		while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
 			uid_t uid = 0;
-			int sig = 0;
-			int si_signo = 0;
-			int si_errno = 0;
-			u32 secid = 0;
+			unsigned int fid = 0;
+			umode_t mode = 0;
+			char name[PATH_MAX];
+			char dname[PATH_MAX];
 
-			sscanf(token, "%u %d %d %d %u", &uid, &sig, &si_signo, &si_errno, &secid);
-		       	if (add_inode_record(HL_TASK_SIGNAL, uid, sig, si_signo, si_errno, secid) != 0) {
-				printk(KERN_ERR "Failure to add inode record %u, %d\n", uid, sig);
+			sscanf(token, "%u %u %hd %s %s", &fid, &uid, &mode, name, dname);
+		       	if (add_inode_record(fid, uid, name, dname, mode) != 0) {
+				printk(KERN_WARNING "Failure to add inode record %u, %s, %s\n", uid, name, dname);
 			}
 		}
 	}
-#endif
 	return count;
 }
-
