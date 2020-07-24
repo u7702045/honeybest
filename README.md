@@ -34,14 +34,21 @@ HoneyBest is the new implementation of Linux Security Module project.
 7.	###### Compiling kernel under [KERNEL SOURCE] (`make modules bzImage`)
 8.	###### Install new kernel & modules (`make install`)
 ### __Usage__
+##### Enablement option – on mode or off mode
 ###### HoneyBest security module stay in deactivate mode / non-interactive mode as default. It provides 2 activation options, below: 
-1.	###### Add string hashlock.enable=1 into GRUB parameter.
+1.	###### Add string hashlock.enabled=1 into GRUB parameter.
 2.	###### Enable at initrd-ramfs stage (`echo 1 > /proc/sys/kernel/honeybest/enabled`)
 ##### **__There is no deactivate after activate for security reason, update GRUB/initrd image must design tightly with secure boot verification process.__**
-###### Once you activate HoneyBest, kernel tracking activities start to record into different files under directory /proc/honeybest. User can monitor the tracking progress via read file application such as tail/cat/head. We will explain each single file corresponding information below:
+###### Once you activate HoneyBest, kernel tracking activities start to record into different files under directory /proc/honeybest. User can monitor the tracking progress via read file application such as tail/cat/head. We will explain each single file corresponding on next section.
+##### Files
 * ###### binprm – Tracking all executable file path name, process UID belong to and most importantly, calculate file context into HASH to protect the integrity.
 * ###### files – Tracking ordinary file behavior, such as open/read/write/delete/rename.
-* ###### inode – Tracking inode operation, such as create/delete/read/update.
+* ###### inode – Tracking inode operation, such as create/delete/read/update/setxattr/getxattr.
 * ###### path – Tracking behavior of all type of file such as device node, hard/soft symbolic, directory, pipe, unix socket.
 * ###### socket – Tracking TCP/UDP/ICMP socket activity, including port number.
 * ###### task – Tracking activity between process, such as signal exchanging.
+* ###### notify – Notification between security module and user space application. In interactive mode, unexpected event is detected, notify to user space program later. Dialogue pop up to acquiring security expertise allow or ignore such activities.
+##### Locking option – on mode or off mode
+###### Locking option only take effective once enablement option mode turn on (default locking option mode is turn off). Once turn on, only expect activities is allow to behave.
+##### Interactive option - manual mode vs auto mode
+###### Interactive & auto mode only take effectively when enablement mode turn into true. The default interactive option is switch to auto mode, all activities occur in kernel are immediately tracking after enablement option turn into true. Selecting manual mode are mandatory to install libhoneybest-notify package (still in developing progress).
