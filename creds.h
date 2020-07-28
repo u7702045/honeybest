@@ -1,5 +1,6 @@
 
 #define SHA1_HONEYBEST_DIGEST_SIZE (SHA1_DIGEST_SIZE * 2)+1	// leave '\0' at the end
+#define HB_BINPRM_DATA 
 typedef struct hb_binprm_ll_t {
 	uid_t uid;
 	unsigned int fid;	// security hook function binprm by program
@@ -9,7 +10,7 @@ typedef struct hb_binprm_ll_t {
 } hb_binprm_ll;
 
 hb_binprm_ll *search_binprm_record(unsigned int fid, uid_t uid, char *pathname, char *digest);
-int add_binprm_record(unsigned int fid, uid_t uid, char *pathname, char *digest);
+int add_binprm_record(unsigned int fid, uid_t uid, char *pathname, char *digest, int interact);
 int lookup_binprm_digest(struct file *file, char *digest);
 
 int read_binprm_record(struct seq_file *m, void *v);

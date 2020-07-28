@@ -71,6 +71,7 @@
 #include <crypto/algapi.h>
 #include "inode.h"
 #include "regex.h"
+#include "notify.h"
 #include "honeybest.h"
 
 struct proc_dir_entry *hb_proc_inode_entry;
@@ -99,7 +100,7 @@ hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *name, char *
 	return NULL;
 }
 
-int add_inode_record(unsigned int fid, uid_t uid, char *name, char *dname, umode_t mode)
+int add_inode_record(unsigned int fid, uid_t uid, char *name, char *dname, umode_t mode, int interact)
 {
 	int err = 0;
 	hb_inode_ll *tmp = NULL;
@@ -130,7 +131,12 @@ int add_inode_record(unsigned int fid, uid_t uid, char *name, char *dname, umode
 			default:
 				break;
 		}
-		list_add(&(tmp->list), &(hb_inode_list_head.list));
+
+		if ((err == 0) && (interact == 0))
+		       	list_add(&(tmp->list), &(hb_inode_list_head.list));
+
+		if ((err == 0) && (interact == 1))
+			add_notify_record(fid, tmp);
 	}
 	else
 		err = -EOPNOTSUPP;
@@ -198,7 +204,7 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 			char dname[PATH_MAX];
 
 			sscanf(token, "%u %u %hd %s %s", &fid, &uid, &mode, name, dname);
-		       	if (add_inode_record(fid, uid, name, dname, mode) != 0) {
+		       	if (add_inode_record(fid, uid, name, dname, mode, 0) != 0) {
 				printk(KERN_WARNING "Failure to add inode record %u, %s, %s\n", uid, name, dname);
 			}
 		}

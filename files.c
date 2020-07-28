@@ -71,6 +71,7 @@
 #include <crypto/algapi.h>
 #include "files.h"
 #include "regex.h"
+#include "notify.h"
 #include "honeybest.h"
 
 struct proc_dir_entry *hb_proc_file_entry;
@@ -92,8 +93,7 @@ hb_file_ll *search_file_record(unsigned int fid, uid_t uid, char *pathname)
 	return NULL;
 }
 
-
-int add_file_record(unsigned int fid, uid_t uid, char *pathname)
+int add_file_record(unsigned int fid, uid_t uid, char *pathname, int interact)
 {
 	int err = 0;
 	hb_file_ll *tmp = NULL;
@@ -115,8 +115,12 @@ int add_file_record(unsigned int fid, uid_t uid, char *pathname)
 			default:
 			       	break;
 		}
-		if (err == 0)
+
+		if ((err == 0) && (interact == 0))
 		       	list_add(&(tmp->list), &(hb_file_list_head.list));
+
+		if ((err == 0) && (interact == 1))
+			add_notify_record(fid, tmp);
 	}
 	else
 		err = -EOPNOTSUPP;
@@ -174,7 +178,7 @@ ssize_t write_file_record(struct file *file, const char __user *buffer, size_t c
 			char pathname[BUF_SIZE];
 
 			sscanf(token, "%u %u %s", &fid, &uid, pathname);
-		       	if (add_file_record(HL_FILE_OPEN, uid, pathname) != 0) {
+		       	if (add_file_record(HL_FILE_OPEN, uid, pathname, 0) != 0) {
 				printk(KERN_WARNING "Failure to add file record %u, %s\n", uid, pathname);
 			}
 		}

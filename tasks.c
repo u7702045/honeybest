@@ -70,6 +70,7 @@
 #include <crypto/sha.h>
 #include <crypto/algapi.h>
 #include "tasks.h"
+#include "notify.h"
 #include "honeybest.h"
 
 struct proc_dir_entry *hb_proc_task_entry;
@@ -91,7 +92,7 @@ hb_task_ll *search_task_record(unsigned int fid, uid_t uid, struct siginfo *info
 	return NULL;
 }
 
-int add_task_record(unsigned int fid, uid_t uid, int sig, int si_signo, int si_errno, u32 secid)
+int add_task_record(unsigned int fid, uid_t uid, int sig, int si_signo, int si_errno, u32 secid, int interact)
 {
 	int err = 0;
 	hb_task_ll *tmp = NULL;
@@ -111,7 +112,11 @@ int add_task_record(unsigned int fid, uid_t uid, int sig, int si_signo, int si_e
 			default:
 				break;
 		}
-		list_add(&(tmp->list), &(hb_task_list_head.list));
+		if ((err == 0) && (interact == 0))
+		       	list_add(&(tmp->list), &(hb_task_list_head.list));
+
+		if ((err == 0) && (interact == 1))
+			add_notify_record(fid, tmp);
 	}
 	else
 		err = -EOPNOTSUPP;
@@ -171,7 +176,7 @@ ssize_t write_task_record(struct file *file, const char __user *buffer, size_t c
 			u32 secid = 0;
 
 			sscanf(token, "%u %u %d %d %d %u", &fid, &uid, &sig, &si_signo, &si_errno, &secid);
-		       	if (add_task_record(HL_TASK_SIGNAL, uid, sig, si_signo, si_errno, secid) != 0) {
+		       	if (add_task_record(HL_TASK_SIGNAL, uid, sig, si_signo, si_errno, secid, 0) != 0) {
 				printk(KERN_WARNING "Failure to add task record %u, %d\n", uid, sig);
 			}
 		}

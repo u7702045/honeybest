@@ -71,6 +71,7 @@
 #include <crypto/algapi.h>
 #include "creds.h"
 #include "regex.h"
+#include "notify.h"
 #include "honeybest.h"
 
 struct proc_dir_entry *hb_proc_binprm_entry;
@@ -92,7 +93,7 @@ hb_binprm_ll *search_binprm_record(unsigned int fid, uid_t uid, char *pathname, 
 	return NULL;
 }
 
-int add_binprm_record(unsigned int fid, uid_t uid, char *pathname, char *digest)
+int add_binprm_record(unsigned int fid, uid_t uid, char *pathname, char *digest, int interact)
 {
 	int err = 0;
 	hb_binprm_ll *tmp = NULL;
@@ -110,13 +111,16 @@ int add_binprm_record(unsigned int fid, uid_t uid, char *pathname, char *digest)
 				if (tmp->pathname == NULL)
 					err = -EOPNOTSUPP;
 				else
-				       	strcpy(tmp->pathname, pathname);
+					strcpy(tmp->pathname, pathname);
 			       	break;
 			default:
 				break;
 		}
-		if (err == 0)
+		if ((err == 0) && (interact == 0))
 		       	list_add(&(tmp->list), &(hb_binprm_list_head.list));
+
+		if ((err == 0) && (interact == 1))
+			add_notify_record(fid, tmp);
 	}
 	else
 		err = -EOPNOTSUPP;
@@ -259,7 +263,7 @@ ssize_t write_binprm_record(struct file *file, const char __user *buffer, size_t
 			char pathname[BUF_SIZE];
 
 			sscanf(token, "%u %u %s %s", &fid, &uid, digest, pathname);
-		       	if (add_binprm_record(HL_BPRM_SET_CREDS, uid, pathname, digest) != 0) {
+		       	if (add_binprm_record(HL_BPRM_SET_CREDS, uid, pathname, digest, 0) != 0) {
 				printk(KERN_WARNING "Failure to add binprm record %u, %s, %s\n", uid, pathname, digest);
 			}
 		}

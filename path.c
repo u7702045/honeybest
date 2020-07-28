@@ -71,6 +71,7 @@
 #include <linux/path.h>
 #include "path.h"
 #include "regex.h"
+#include "notify.h"
 #include "honeybest.h"
 
 struct proc_dir_entry *hb_proc_path_entry;
@@ -125,7 +126,8 @@ hb_path_ll *search_path_record(unsigned int fid, uid_t uid, umode_t mode, char *
 	return NULL;
 }
 
-int add_path_record(unsigned int fid, uid_t uid, umode_t mode, char *source_pathname, char *target_pathname, uid_t suid, uid_t sgid, unsigned int dev)
+int add_path_record(unsigned int fid, uid_t uid, umode_t mode, char *source_pathname, char *target_pathname, \
+		uid_t suid, uid_t sgid, unsigned int dev, int interact)
 {
 	int err = 0;
 	hb_path_ll *tmp = NULL;
@@ -178,7 +180,12 @@ int add_path_record(unsigned int fid, uid_t uid, umode_t mode, char *source_path
 			default:
 				break;
 		}
-		list_add(&(tmp->list), &(hb_path_list_head.list));
+
+		if ((err == 0) && (interact == 0))
+		       	list_add(&(tmp->list), &(hb_path_list_head.list));
+
+		if ((err == 0) && (interact == 1))
+			add_notify_record(fid, tmp);
 	}
 	else
 		err = -EOPNOTSUPP;
@@ -250,7 +257,7 @@ ssize_t write_path_record(struct file *file, const char __user *buffer, size_t c
 			char target_pathname[PATH_MAX];
 
 			sscanf(token, "%u %u %hd %u %u %u %s %s", &fid, &uid, &mode, &suid, &sgid, &dev, source_pathname, target_pathname);
-		       	if (add_path_record(fid, uid, mode, source_pathname, target_pathname, suid, sgid, dev) != 0) {
+		       	if (add_path_record(fid, uid, mode, source_pathname, target_pathname, suid, sgid, dev, 0) != 0) {
 				printk(KERN_WARNING "Failure to add path record %u, %s, %s\n", uid, source_pathname, target_pathname);
 			}
 		}

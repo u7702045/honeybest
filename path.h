@@ -12,7 +12,7 @@ typedef struct hb_path_ll_t {
 } hb_path_ll;
 
 hb_path_ll *search_path_record(unsigned int fid, uid_t uid, umode_t mode, char *source_pathname, char *target_pathname, uid_t suid, uid_t sgid, unsigned int dev);
-int add_path_record(unsigned int fid, uid_t uid, umode_t mode, char *source_pathname, char *target_pathname, uid_t suid, uid_t sgid, unsigned int dev);
+int add_path_record(unsigned int fid, uid_t uid, umode_t mode, char *source_pathname, char *target_pathname, uid_t suid, uid_t sgid, unsigned int dev, int interact);
 
 int read_path_record(struct seq_file *m, void *v);
 ssize_t write_path_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos);

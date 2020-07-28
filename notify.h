@@ -1,12 +1,11 @@
-
+#include "honeybest.h"
 typedef struct hb_notify_ll_t {
-	unsigned int fid;	// security hook function run notify by program
-	uid_t uid;
-	int sig;
+	unsigned int fid;		// security hook function binprm by program
+	char proc[HL_PROC_FSIZE];	//name of /proc/honeybest/*
+	void *data;			// pointer to different type of struct
 	struct list_head list;
 } hb_notify_ll;
 
-int add_notify_record(unsigned int fid, uid_t uid, int sig);
+int add_notify_record(unsigned int fid, void *data);
 int read_notify_record(struct seq_file *m, void *v);
-ssize_t write_notify_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos);
 

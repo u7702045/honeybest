@@ -37,3 +37,12 @@
 #define HL_DENTRY_INIT_SEC		160
 
 #define HL_NOTIFY_ADD			500
+
+
+#define HL_PROC_FSIZE			10
+#define HL_CREDS_PROC			"binprm"
+#define HL_FILE_PROC			"files"
+#define HL_TASK_PROC			"tasks"
+#define HL_INODE_PROC			"inode"
+#define HL_PATH_PROC			"path"
+#define HL_SOCKET_PROC			"socket"

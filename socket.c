@@ -70,6 +70,7 @@
 #include <crypto/sha.h>
 #include <crypto/algapi.h>
 #include "socket.h"
+#include "notify.h"
 #include "honeybest.h"
 
 struct proc_dir_entry *hb_proc_socket_entry;
@@ -163,7 +164,7 @@ int read_socket_record(struct seq_file *m, void *v)
 
 int add_socket_record(unsigned int fid, uid_t uid, int family, int type,
 		int protocol, int kern, int port, int backlog, int level, int optname,
-	       	struct socket *sock, struct sockaddr *address, int addrlen)
+	       	struct socket *sock, struct sockaddr *address, int addrlen, int interact)
 {
 	int err = 0;
 	hb_socket_ll *tmp = NULL;
@@ -191,7 +192,11 @@ int add_socket_record(unsigned int fid, uid_t uid, int family, int type,
 			default:
 				break;
 		}
-	       	list_add(&(tmp->list), &(hb_socket_list_head.list));
+		if ((err == 0) && (interact == 0))
+			list_add(&(tmp->list), &(hb_socket_list_head.list));
+
+		if ((err == 0) && (interact == 1))
+			add_notify_record(fid, tmp);
 	}
 	else
 		err = -EOPNOTSUPP;
@@ -242,7 +247,7 @@ ssize_t write_socket_record(struct file *file, const char __user *buffer, size_t
 			sscanf(token, "%u %u %d %d %d %d %d %d %d %d", &fid, &uid, &family, &type, &protocol,
 					&kern, &port, &backlog, &level, &optname);
 		       	if (add_socket_record(fid, uid, family, type, protocol, kern,
-						port, backlog, level, optname, NULL, NULL, 0) != 0) {
+						port, backlog, level, optname, NULL, NULL, 0, 0) != 0) {
 				printk(KERN_WARNING "Failure to add socket record %u, %d, %d, %d\n", uid, family, type, protocol);
 			}
 		}

@@ -70,29 +70,105 @@
 #include <crypto/sha.h>
 #include <crypto/algapi.h>
 #include "notify.h"
+#include "creds.h"
+#include "files.h"
+#include "tasks.h"
+#include "socket.h"
+#include "path.h"
+#include "inode.h"
 #include "honeybest.h"
 
 struct proc_dir_entry *hb_proc_notify_entry;
 hb_notify_ll hb_notify_list_head;
-
-int add_notify_record(unsigned int fid, uid_t uid, int sig)
+int add_notify_record(unsigned int fid, void *data)
 {
 	int err = 0;
 	hb_notify_ll *tmp = NULL;
-
 	tmp = (hb_notify_ll *)kmalloc(sizeof(hb_notify_ll), GFP_KERNEL);
 	if (tmp) {
 		memset(tmp, 0, sizeof(hb_notify_ll));
 		tmp->fid = fid;
-		tmp->uid = uid;
 		switch (fid) {
-			case HL_NOTIFY_ADD:
-				tmp->sig = sig;
+			case HL_BPRM_SET_CREDS:
+				tmp->data = (void *)kmalloc(sizeof(hb_binprm_ll), GFP_KERNEL);
+				strncpy(tmp->proc, HL_CREDS_PROC, strlen(HL_CREDS_PROC));
+				if (tmp->data == NULL) {
+					printk(KERN_ERR "unable to add binprm notify linked list\n");
+					err = -EOPNOTSUPP;
+				}
+				else
+					tmp->data = data;
+				break;
+			case HL_FILE_OPEN:
+				tmp->data = (void *)kmalloc(sizeof(hb_file_ll), GFP_KERNEL);
+				strncpy(tmp->proc, HL_FILE_PROC, strlen(HL_FILE_PROC));
+				if (tmp->data == NULL) {
+					printk(KERN_ERR "unable to add file notify linked list\n");
+					err = -EOPNOTSUPP;
+				}
+				else
+					tmp->data = data;
+				break;
+			case HL_TASK_SIGNAL:
+				tmp->data = (void *)kmalloc(sizeof(hb_task_ll), GFP_KERNEL);
+				strncpy(tmp->proc, HL_TASK_PROC, strlen(HL_TASK_PROC));
+				if (tmp->data == NULL) {
+					printk(KERN_ERR "unable to add task notify linked list\n");
+					err = -EOPNOTSUPP;
+				}
+				else
+					tmp->data = data;
+				break;
+			case HL_SOCKET_CREATE:
+			case HL_SOCKET_CONNECT:
+			case HL_SOCKET_BIND:
+			case HL_SOCKET_SETSOCKOPT:
+				tmp->data = (void *)kmalloc(sizeof(hb_socket_ll), GFP_KERNEL);
+				strncpy(tmp->proc, HL_SOCKET_PROC, strlen(HL_SOCKET_PROC));
+				if (tmp->data == NULL) {
+					printk(KERN_ERR "unable to add socket notify linked list\n");
+					err = -EOPNOTSUPP;
+				}
+				else
+					tmp->data = data;
+				break;
+			case HL_PATH_RENAME:
+			case HL_PATH_SYMLINK:
+			case HL_PATH_RMDIR:
+			case HL_PATH_TRUNCATE:
+			case HL_PATH_LINK:
+			case HL_PATH_UNLINK:
+			case HL_PATH_CHOWN:
+			case HL_PATH_MKNOD:
+			case HL_PATH_MKDIR:
+			case HL_PATH_CHMOD:
+				tmp->data = (void *)kmalloc(sizeof(hb_path_ll), GFP_KERNEL);
+				strncpy(tmp->proc, HL_PATH_PROC, strlen(HL_PATH_PROC));
+				if (tmp->data == NULL) {
+					printk(KERN_ERR "unable to add path notify linked list\n");
+					err = -EOPNOTSUPP;
+				}
+				else
+					tmp->data = data;
+				break;
+			case HL_INODE_REMOVEXATTR:
+			case HL_INODE_GETXATTR:
+			case HL_INODE_SETXATTR:
+				tmp->data = (void *)kmalloc(sizeof(hb_inode_ll), GFP_KERNEL);
+				strncpy(tmp->proc, HL_INODE_PROC, strlen(HL_INODE_PROC));
+				if (tmp->data == NULL) {
+					printk(KERN_ERR "unable to add inode notify linked list\n");
+					err = -EOPNOTSUPP;
+				}
+				else
+					tmp->data = data;
 				break;
 			default:
 				break;
 		}
-		list_add(&(tmp->list), &(hb_notify_list_head.list));
+
+		if (err == 0)
+		       	list_add(&(tmp->list), &(hb_notify_list_head.list));
 	}
 	else
 		err = -EOPNOTSUPP;
@@ -105,54 +181,65 @@ int read_notify_record(struct seq_file *m, void *v)
 	hb_notify_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
+       	hb_binprm_ll *binprm = NULL;
+       	hb_file_ll *files = NULL;
+       	hb_task_ll *tasks = NULL;
+       	hb_socket_ll *sockets = NULL;
+       	hb_path_ll *paths = NULL;
+       	hb_inode_ll *inodes = NULL;
 
-	seq_printf(m, "ID\tFUNC\tUID\tSIGNAL\n");
+	seq_printf(m, "ID\tFILE\tFUNC\tUID\tDATA\n");
 	list_for_each(pos, &hb_notify_list_head.list) {
 		tmp = list_entry(pos, hb_notify_ll, list);
-		seq_printf(m, "%lu\t%u\t%u\t%d\n", total++, tmp->fid, tmp->uid, tmp->sig);
+		switch (tmp->fid) {
+			case HL_BPRM_SET_CREDS:
+				binprm = (hb_binprm_ll *)tmp->data;
+				seq_printf(m, "%lu\t%s\t%u\t%d\t%s\t%s\n", total++, tmp->proc, binprm->fid, binprm->uid, binprm->digest, binprm->pathname);
+				break;
+			case HL_FILE_OPEN:
+				files = (hb_file_ll *)tmp->data;
+				seq_printf(m, "%lu\t%s\t%u\t%d\t%s\n", total++, tmp->proc, files->fid, files->uid, files->pathname);
+				break;
+			case HL_TASK_SIGNAL:
+				tasks = (hb_task_ll *)tmp->data;
+				seq_printf(m, "%lu\t%s\t%u\t%d\t%d\t%d\t%d\t%u\n", total++, tmp->proc, tasks->fid\
+						, tasks->uid, tasks->sig, tasks->si_signo, tasks->si_errno\
+						, tasks->secid);
+				break;
+			case HL_SOCKET_CREATE:
+			case HL_SOCKET_CONNECT:
+			case HL_SOCKET_BIND:
+			case HL_SOCKET_SETSOCKOPT:
+				sockets = (hb_socket_ll *)tmp->data;
+				seq_printf(m, "%lu\t%s\t%u\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", total++, tmp->proc, sockets->fid, sockets->uid, sockets->family, sockets->type, sockets->protocol, sockets->kern, sockets->port, sockets->backlog, sockets->level, sockets->optname);
+				break;
+			case HL_PATH_RENAME:
+			case HL_PATH_SYMLINK:
+			case HL_PATH_RMDIR:
+			case HL_PATH_TRUNCATE:
+			case HL_PATH_LINK:
+			case HL_PATH_UNLINK:
+			case HL_PATH_CHOWN:
+			case HL_PATH_MKNOD:
+			case HL_PATH_MKDIR:
+			case HL_PATH_CHMOD:
+				paths = (hb_path_ll *)tmp->data;
+				seq_printf(m, "%lu\t%s\t%u\t%d\t%u\t%u\t%u\t%u\t%s\t\t%s\n", total++, tmp->proc, paths->fid\
+						, paths->uid, paths->mode, paths->suid, paths->sgid \
+						, paths->dev, paths->source_pathname, paths->target_pathname);
+				break;
+			case HL_INODE_REMOVEXATTR:
+			case HL_INODE_GETXATTR:
+			case HL_INODE_SETXATTR:
+				inodes = (hb_inode_ll *)tmp->data;
+				seq_printf(m, "%lu\t%s\t%u\t%u\t%u\t%s\t%s\n", total++, tmp->proc, inodes->fid\
+						, inodes->uid, inodes->mode, inodes->name, inodes->dname);
+				break;
+			default:
+				break;
+		}
 	}
 
 	return 0;
 }
 
-ssize_t write_notify_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
-{
-	char rules[BUF_SIZE];
-	char *delim = "\n";
-	char *token, *cur = rules;
-	hb_notify_ll *tmp = NULL;
-	struct list_head *pos = NULL;
-	struct list_head *q = NULL;
-
-	if(*ppos > 0 || count > BUF_SIZE) {
-		printk(KERN_WARNING "Write size is too big!\n");
-	       	return -EFAULT;
-	}
-
-	memset(rules, '\0', BUF_SIZE);
-	if (count > 0) {
-		if(copy_from_user(rules, buffer, count))
-			    return -EFAULT;
-
-		/* clean all rules */
-		list_for_each_safe(pos, q, &hb_notify_list_head.list) {
-			tmp = list_entry(pos, hb_notify_ll, list);
-			list_del(pos);
-			kfree(tmp);
-			tmp = NULL;
-		}
-
-		/* add rules */
-		while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
-			uid_t uid = 0;
-			unsigned int fid = 0;
-			int sig = 0;
-
-			sscanf(token, "%u %u %d", &fid, &uid, &sig);
-		       	if (add_notify_record(HL_NOTIFY_ADD, uid, sig) != 0) {
-				printk(KERN_WARNING "Failure to add notify record %u, %d\n", uid, sig);
-			}
-		}
-	}
-	return count;
-}
