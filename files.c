@@ -162,6 +162,7 @@ ssize_t write_file_record(struct file *file, const char __user *buffer, size_t c
 		list_for_each_safe(pos, q, &hb_file_list_head.list) {
 			tmp = list_entry(pos, hb_file_ll, list);
 			list_del(pos);
+			kfree(tmp->pathname);
 			kfree(tmp);
 			tmp = NULL;
 		}

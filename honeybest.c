@@ -125,7 +125,6 @@ typedef struct hb_track_t {
 	unsigned long tsid;	// task sequence id
 	unsigned int prev_fid;	// previous track clue across function
 	unsigned int curr_fid;	// current track clue across function
-	char *pathname;		// manipulate file
 } hb_track_info;
 
 MODULE_LICENSE("GPL");
@@ -182,6 +181,18 @@ static struct ctl_table honeybest_sysctl_table[] = {
 };
 #endif
 
+int free_honeybest_tracker(const struct task_struct *task)
+{
+	int err = 0;
+	hb_track_info *sec = NULL;
+
+	return err;
+	if (task->cred->security != NULL) {
+		sec = task->cred->security;
+		kfree(sec);
+	}
+}
+
 int inject_honeybest_tracker(const struct task_struct *task, unsigned int fid)
 {
 	int err = 0;
@@ -198,7 +209,7 @@ int inject_honeybest_tracker(const struct task_struct *task, unsigned int fid)
 			cred->security = (hb_track_info *)sec;
 		}
 		else {
-			printk(KERN_WARNING "honeybest security malloc failure\n");
+			//printk(KERN_WARNING "honeybest security malloc failure\n");
 			err = -ENOMEM;
 		}
 	}
@@ -209,7 +220,7 @@ int inject_honeybest_tracker(const struct task_struct *task, unsigned int fid)
 			sec->prev_fid = sec->curr_fid;
 			sec->curr_fid = fid;
 		}
-	       	printk(KERN_DEBUG "%s, prev %u, curr %u\n", __FUNCTION__, sec->prev_fid, sec->curr_fid);
+	       	//printk(KERN_DEBUG "%s, prev %u, curr %u\n", __FUNCTION__, sec->prev_fid, sec->curr_fid);
 	}
 	return err;
 }
@@ -330,7 +341,7 @@ static void __init honeybest_init_sysctl(void)
 	INIT_LIST_HEAD(&hb_path_list_head.list);
 
 	/* prepare notify proc entry */
-	hb_proc_notify_entry = proc_create("files", 0666, honeybest_dir, &hb_proc_notify_fops);
+	hb_proc_notify_entry = proc_create("notify", 0666, honeybest_dir, &hb_proc_notify_fops);
 	if (!hb_proc_notify_entry) {
 		printk(KERN_INFO "Error creating honeybest file notify entry");
 	}
@@ -343,7 +354,7 @@ static void __init honeybest_init_sysctl(void)
 
 	/* prepare task proc entry */
 	hb_proc_task_entry = proc_create("tasks", 0666, honeybest_dir, &hb_proc_task_fops);
-	if (!hb_proc_file_entry) {
+	if (!hb_proc_task_entry) {
 		printk(KERN_INFO "Error creating honeybest task proc entry");
 	}
 
@@ -469,9 +480,6 @@ static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 	if (!enabled)
 		return err;
 
-	if (inject_honeybest_tracker(task, HL_BPRM_SET_CREDS))
-	       	err = -ENOMEM;
-
 	pathname = kstrdup_quotable_file(bprm->file, GFP_KERNEL);
 
 	if (allow_file_whitelist(pathname)) {
@@ -489,8 +497,11 @@ static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 	}
 	else {
 
-		if (locking == 0) 
+		if ((locking == 0) && (interact == 0)) 
 			err = add_binprm_record(HL_BPRM_SET_CREDS, task->cred->uid.val , pathname, digest);
+
+		if ((locking == 0) && (interact == 1)) 
+			err = add_notify_record(HL_BPRM_SET_CREDS, task->cred->uid.val, 0);
 
 		if (locking == 1) {
 			/* detect mode */
@@ -505,13 +516,9 @@ static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 static int honeybest_bprm_secureexec(struct linux_binprm *bprm)
 {
 	int err = 0;
-       	const struct task_struct *task = current;
 
 	if (!enabled)
 		return err;
-
-	if (inject_honeybest_tracker(task, 0))
-	       	err = -ENOMEM;
 
 	return err;
 }
@@ -534,12 +541,27 @@ static void honeybest_bprm_committed_creds(struct linux_binprm *bprm)
 
 static int honeybest_sb_alloc_security(struct super_block *sb)
 {
-	return 0;
+	int err = 0;
+       	const struct task_struct *task = current;
+
+	if (!enabled)
+		return err;
+
+	if (inject_honeybest_tracker(task, 0))
+	       	err = -ENOMEM;
+
+	return err;
 }
 
 static void honeybest_sb_free_security(struct super_block *sb)
 {
-	return;
+       	const struct task_struct *task = current;
+
+	if (!enabled)
+		return;
+
+	if (!free_honeybest_tracker(task))
+		return;
 }
 	
 static int honeybest_sb_copy_data(char *orig, char *copy)
@@ -597,7 +619,7 @@ static void honeybest_inode_free_security(struct inode *inode)
 	if (!enabled)
 		return;
 
-	if (inject_honeybest_tracker(task, 0))
+	if (!free_honeybest_tracker(task))
 		return;
 }
 
@@ -643,7 +665,6 @@ static int honeybest_path_unlink(const struct path *dir, struct dentry *dentry)
 		goto out;
 	}
 
-	/* filter unwant pathname */
 	if (allow_file_whitelist(source_pathname)) {
 		return err;
 	}
@@ -654,7 +675,7 @@ static int honeybest_path_unlink(const struct path *dir, struct dentry *dentry)
 	       	printk(KERN_INFO "Found path unlink record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (interact == 0)) 
 			err = add_path_record(HL_PATH_UNLINK, task->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
 
 		if (locking == 1)
@@ -705,7 +726,7 @@ static int honeybest_path_mkdir(const struct path *dir, struct dentry *dentry,
 	       	printk(KERN_INFO "Found path mkdir record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (interact == 0)) 
 			err = add_path_record(HL_PATH_MKDIR, task->cred->uid.val, mode, source_pathname, target_pathname, 0, 0, 0);
 
 		if (locking == 1)
@@ -750,7 +771,7 @@ static int honeybest_path_rmdir(const struct path *dir, struct dentry *dentry)
 	       	printk(KERN_INFO "Found path rmdir record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (interact == 0)) 
 			err = add_path_record(HL_PATH_RMDIR, task->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
 
 		if (locking == 1)
@@ -800,7 +821,7 @@ static int honeybest_path_mknod(const struct path *dir, struct dentry *dentry,
 	       	printk(KERN_INFO "Found path mknod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (interact == 0)) 
 			err = add_path_record(HL_PATH_MKNOD, task->cred->uid.val, mode, source_pathname, target_pathname, 0, 0, dev);
 
 		if (locking == 1)
@@ -846,7 +867,7 @@ static int honeybest_path_truncate(const struct path *path)
 	       	printk(KERN_INFO "Found path truncate record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (interact == 0)) 
 			err = add_path_record(HL_PATH_TRUNCATE, task->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
 
 		if (locking == 1)
@@ -892,7 +913,7 @@ static int honeybest_path_symlink(const struct path *dir, struct dentry *dentry,
 	       	printk(KERN_INFO "Found path symlink record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (interact == 0)) 
 			err = add_path_record(HL_PATH_SYMLINK, task->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
 
 		if (locking == 1)
@@ -951,7 +972,7 @@ static int honeybest_path_link(struct dentry *old_dentry, const struct path *new
 	       	printk(KERN_INFO "Found path link record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (interact == 0)) 
 			err = add_path_record(HL_PATH_LINK, task->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
 
 		if (locking == 1)
@@ -1006,7 +1027,7 @@ static int honeybest_path_rename(const struct path *old_dir, struct dentry *old_
 	       	printk(KERN_INFO "Found path rename record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (interact == 0)) 
 			err = add_path_record(HL_PATH_RENAME, task->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
 
 		if (locking == 1)
@@ -1050,9 +1071,8 @@ static int honeybest_path_chmod(const struct path *path, umode_t mode)
 	       	printk(KERN_INFO "Found path chmod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
 	}
 	else {
-		if (locking == 0) {
+		if ((locking == 0) && (interact == 0)) 
 			err = add_path_record(HL_PATH_CHMOD, task->cred->uid.val, mode, source_pathname, target_pathname, 0, 0, 0);
-		}
 
 		if (locking == 1)
 			err = -EOPNOTSUPP;
@@ -1094,9 +1114,8 @@ static int honeybest_path_chown(const struct path *path, kuid_t uid, kgid_t gid)
 	       	printk(KERN_INFO "Found path chmod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
 	}
 	else {
-		if (locking == 0) {
+		if ((locking == 0) && (interact == 0)) 
 			err = add_path_record(HL_PATH_CHOWN, task->cred->uid.val, 0, source_pathname, target_pathname, uid.val, gid.val, 0);
-		}
 
 		if (locking == 1)
 			err = -EOPNOTSUPP;
@@ -1332,7 +1351,7 @@ static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
 	}
 	else {
 
-		if (locking == 0) 
+		if ((locking == 0) && (interact == 0)) 
 			err = add_inode_record(HL_INODE_SETXATTR, task->cred->uid.val, (char *)name, (char *)dname, 0);
 
 		if (locking == 1) {
@@ -1372,7 +1391,7 @@ static int honeybest_inode_getxattr(struct dentry *dentry, const char *name)
 	}
 	else {
 
-		if (locking == 0) 
+		if ((locking == 0) && (interact == 0)) 
 			err = add_inode_record(HL_INODE_GETXATTR, task->cred->uid.val, (char *)name, (char *)dname, 0);
 
 		if (locking == 1) {
@@ -1418,7 +1437,7 @@ static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
 	}
 	else {
 
-		if (locking == 0) 
+		if ((locking == 0) && (interact == 0)) 
 			err = add_inode_record(HL_INODE_REMOVEXATTR, task->cred->uid.val, (char *)name, (char *)dname, 0);
 
 		if (locking == 1) {
@@ -1461,12 +1480,24 @@ static int honeybest_file_permission(struct file *file, int mask)
 
 static int honeybest_file_alloc_security(struct file *file)
 {
-	return 0;
+	int err = 0;
+       	const struct task_struct *task = current;
+
+	if (inject_honeybest_tracker(task, 0))
+	       	err = -ENOMEM;
+
+	return err;
 }
 
 static void honeybest_file_free_security(struct file *file)
 {
-	return ;
+       	const struct task_struct *task = current;
+
+	if (!enabled)
+		return;
+
+	if (!free_honeybest_tracker(task))
+		return;
 }
 
 static int honeybest_file_ioctl(struct file *file, unsigned int cmd,
@@ -1523,9 +1554,8 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 {
 	int err = 0;
        	const struct task_struct *task = current;
-	hb_file_ll *record;
-	const struct cred *cred_real = NULL;
-	hb_track_info *sec = NULL;
+	hb_file_ll *record = NULL;
+	char *pathname = NULL;
 
 	if (!enabled) {
 		return err;
@@ -1534,29 +1564,30 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 	if (inject_honeybest_tracker(task, HL_FILE_OPEN))
 	       	err = -ENOMEM;
 
-	cred_real = task->cred;
-	sec = cred->security;
-	sec->pathname = kstrdup_quotable_file(file, GFP_KERNEL);
+	pathname = kstrdup_quotable_file(file, GFP_KERNEL);
 
-	if (allow_file_whitelist(sec->pathname)) {
+	if (allow_file_whitelist(pathname)) {
 		return err;
 	}
 
-	record = search_file_record(HL_FILE_OPEN, task->cred->uid.val, sec->pathname);
+	record = search_file_record(HL_FILE_OPEN, task->cred->uid.val, pathname);
 
 	if (record) {
 	       	printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->pathname);
 	}
 	else {
 
-		if (locking == 0) 
-			err = add_file_record(HL_FILE_OPEN, task->cred->uid.val , sec->pathname);
+		if ((locking == 0) && (interact == 0)) 
+			err = add_file_record(HL_FILE_OPEN, task->cred->uid.val , pathname);
 
 		if (locking == 1) {
 			/* detect mode */
 			err = -EOPNOTSUPP;
 		}
 	}
+
+	if (pathname)
+		kfree(pathname);
 
         return err;
 
@@ -1579,12 +1610,26 @@ static int honeybest_task_create(unsigned long clone_flags)
 
 static int honeybest_cred_alloc_blank(struct cred *cred, gfp_t gfp)
 {
-        return 0;
+	int err = 0;
+       	const struct task_struct *task = current;
+
+	if (inject_honeybest_tracker(task, 0))
+	       	err = -ENOMEM;
+
+        return err;
 }
 
 static void honeybest_cred_free(struct cred *cred)
 {
+       	const struct task_struct *task = current;
+
+	if (!enabled)
+		return;
+
+	if (!free_honeybest_tracker(task))
+		return;
 }
+
 
 static int honeybest_cred_prepare(struct cred *new, const struct cred *old,
                                 gfp_t gfp)
@@ -1693,7 +1738,7 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 	}
 	else {
 
-		if (locking == 0) 
+		if ((locking == 0) && (interact == 0)) 
 			err = add_task_record(HL_TASK_SIGNAL, task->cred->uid.val, info->si_signo, info->si_errno, sig, secid);
 
 		if (locking == 1) {
@@ -1740,7 +1785,7 @@ static int honeybest_socket_create(int family, int type,
 	}
 	else {
 
-		if (locking == 0) 
+		if ((locking == 0) && (interact == 0)) 
 			err = add_socket_record(HL_SOCKET_CREATE, task->cred->uid.val, family, type, protocol, kern, 0, 0, 0, 0, NULL, NULL, 0);
 
 		if (locking == 1)
@@ -1775,7 +1820,7 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 	}
 	else {
 
-		if (locking == 0) 
+		if ((locking == 0) && (interact == 0)) 
 			err = add_socket_record(HL_SOCKET_BIND, task->cred->uid.val, 0, 0, 0, 0, 0, 0, 0, 0, sock, address, addrlen);
 
 		if (locking == 1) {
@@ -1806,7 +1851,7 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 	}
 	else {
 
-		if (locking == 0) 
+		if ((locking == 0) && (interact == 0)) 
 			err = add_socket_record(HL_SOCKET_CONNECT, task->cred->uid.val, 0, 0, 0, 0, 0, 0, 0, 0, sock, address, addrlen);
 
 		if (locking == 1) {
@@ -1879,7 +1924,7 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 	}
 	else {
 
-		if (locking == 0) 
+		if ((locking == 0) && (interact == 0)) 
 			err = add_socket_record(HL_SOCKET_SETSOCKOPT, task->cred->uid.val, 0, 0, 0, 0, 0, 0, level, optname, NULL, NULL, 0);
 
 		if (locking == 1)
@@ -1932,11 +1977,23 @@ static int honeybest_socket_getpeersec_dgram(struct socket *sock, struct sk_buff
 
 static int honeybest_sk_alloc_security(struct sock *sk, int family, gfp_t priority)
 {
-	return 0;
+	int err = 0;
+       	const struct task_struct *task = current;
+
+	if (inject_honeybest_tracker(task, 0))
+	       	err = -ENOMEM;
+	return err;
 }
 
 static void honeybest_sk_free_security(struct sock *sk)
 {
+       	const struct task_struct *task = current;
+
+	if (!enabled)
+		return;
+
+	if (!free_honeybest_tracker(task))
+		return;
 }
 
 static void honeybest_sk_clone_security(const struct sock *sk, struct sock *newsk)
@@ -1986,12 +2043,18 @@ static void honeybest_req_classify_flow(const struct request_sock *req,
 
 static int honeybest_tun_dev_alloc_security(void **security)
 {
-        return 0;
+	int err = 0;
+       	const struct task_struct *task = current;
+
+	if (inject_honeybest_tracker(task, 0))
+	       	err = -ENOMEM;
+	return err;
 }
 
 static void honeybest_tun_dev_free_security(void *security)
 {
-        kfree(security);
+	if (security != NULL)
+	       	kfree(security);
 }
 
 static int honeybest_tun_dev_create(void)
@@ -2027,7 +2090,12 @@ int honeybest_xfrm_policy_alloc(struct xfrm_sec_ctx **ctxp,
                               struct xfrm_user_sec_ctx *uctx,
                               gfp_t gfp)
 {
-        return 0;
+	int err = 0;
+       	const struct task_struct *task = current;
+
+	if (inject_honeybest_tracker(task, 0))
+	       	err = -ENOMEM;
+	return err;
 }
 
 int honeybest_xfrm_policy_clone(struct xfrm_sec_ctx *old_ctx,
@@ -2049,13 +2117,23 @@ int honeybest_xfrm_policy_delete(struct xfrm_sec_ctx *ctx)
 int honeybest_xfrm_state_alloc(struct xfrm_state *x,
                              struct xfrm_user_sec_ctx *uctx)
 {
-        return 0;
+	int err = 0;
+       	const struct task_struct *task = current;
+
+	if (inject_honeybest_tracker(task, 0))
+	       	err = -ENOMEM;
+	return err;
 }
 
 int honeybest_xfrm_state_alloc_acquire(struct xfrm_state *x,
                                      struct xfrm_sec_ctx *polsec, u32 secid)
 {
-	return 0;
+	int err = 0;
+       	const struct task_struct *task = current;
+
+	if (inject_honeybest_tracker(task, 0))
+	       	err = -ENOMEM;
+	return err;
 }
 
 void honeybest_xfrm_state_free(struct xfrm_state *x)
@@ -2094,20 +2172,48 @@ static int honeybest_netlink_send(struct sock *sk, struct sk_buff *skb)
 
 static int honeybest_msg_msg_alloc_security(struct msg_msg *msg)
 {
-        return 0;
+	int err = 0;
+       	const struct task_struct *task = current;
+
+	if (inject_honeybest_tracker(task, 0))
+	       	err = -ENOMEM;
+	return err;
 }
 
 static void honeybest_msg_msg_free_security(struct msg_msg *msg)
 {
+       	const struct task_struct *task = current;
+
+	if (!enabled)
+		return;
+
+	if (!free_honeybest_tracker(task))
+		return;
 }
+
 
 static int honeybest_msg_queue_alloc_security(struct msg_queue *msq)
 {
-        return 0;
+	int err = 0;
+       	const struct task_struct *task = current;
+
+	if (!enabled)
+		return err;
+
+	if (inject_honeybest_tracker(task, 0))
+	       	err = -ENOMEM;
+	return err;
 }
 
 static void honeybest_msg_queue_free_security(struct msg_queue *msq)
 {
+       	const struct task_struct *task = current;
+
+	if (!enabled)
+		return;
+
+	if (!free_honeybest_tracker(task))
+		return;
 }
 
 static int honeybest_msg_queue_associate(struct msg_queue *msq, int msqflg)
@@ -2134,11 +2240,26 @@ static int honeybest_msg_queue_msgrcv(struct msg_queue *msq, struct msg_msg *msg
 
 static int honeybest_shm_alloc_security(struct shmid_kernel *shp)
 {
-	return 0;
+	int err = 0;
+       	const struct task_struct *task = current;
+
+	if (!enabled)
+		return err;
+
+	if (inject_honeybest_tracker(task, 0))
+	       	err = -ENOMEM;
+	return err;
 }
 
 static void honeybest_shm_free_security(struct shmid_kernel *shp)
 {
+       	const struct task_struct *task = current;
+
+	if (!enabled)
+		return;
+
+	if (!free_honeybest_tracker(task))
+		return;
 }
 
 static int honeybest_shm_associate(struct shmid_kernel *shp, int shmflg)
@@ -2159,11 +2280,26 @@ static int honeybest_shm_shmat(struct shmid_kernel *shp,
 
 static int honeybest_sem_alloc_security(struct sem_array *sma)
 {
-	return 0;
+	int err = 0;
+       	const struct task_struct *task = current;
+
+	if (!enabled)
+		return err;
+
+	if (inject_honeybest_tracker(task, 0))
+	       	err = -ENOMEM;
+	return err;
 }
 
 static void honeybest_sem_free_security(struct sem_array *sma)
 {
+       	const struct task_struct *task = current;
+
+	if (!enabled)
+		return;
+
+	if (!free_honeybest_tracker(task))
+		return;
 }
 
 static int honeybest_sem_associate(struct sem_array *sma, int semflg)
@@ -2252,11 +2388,26 @@ static int honeybest_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxle
 static int honeybest_key_alloc(struct key *k, const struct cred *cred,
                              unsigned long flags)
 {
-	return 0;
+	int err = 0;
+       	const struct task_struct *task = current;
+
+	if (!enabled)
+		return err;
+
+	if (inject_honeybest_tracker(task, 0))
+	       	err = -ENOMEM;
+	return err;
 }
 
 static void honeybest_key_free(struct key *k)
 {
+       	const struct task_struct *task = current;
+
+	if (!enabled)
+		return;
+
+	if (!free_honeybest_tracker(task))
+		return;
 }
 
 static int honeybest_key_permission(key_ref_t key_ref,
@@ -2314,6 +2465,13 @@ static int honeybest_audit_rule_match(u32 secid, u32 field, u32 op, void *lsmrul
 
 static void honeybest_audit_rule_free(void *lsmrule)
 {
+       	const struct task_struct *task = current;
+
+	if (!enabled)
+		return;
+
+	if (!free_honeybest_tracker(task))
+		return;
 }
 #endif /* CONFIG_AUDIT */
 

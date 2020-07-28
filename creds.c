@@ -259,7 +259,7 @@ ssize_t write_binprm_record(struct file *file, const char __user *buffer, size_t
 			char pathname[BUF_SIZE];
 
 			sscanf(token, "%u %u %s %s", &fid, &uid, digest, pathname);
-		       	if (add_binprm_record(HL_TASK_SIGNAL, uid, pathname, digest) != 0) {
+		       	if (add_binprm_record(HL_BPRM_SET_CREDS, uid, pathname, digest) != 0) {
 				printk(KERN_WARNING "Failure to add binprm record %u, %s, %s\n", uid, pathname, digest);
 			}
 		}

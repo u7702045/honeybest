@@ -218,9 +218,6 @@ ssize_t write_path_record(struct file *file, const char __user *buffer, size_t c
 	struct list_head *pos = NULL;
 	struct list_head *q = NULL;
 
-	if (list_empty(&hb_path_list_head.list))
-		return 0;
-
 	if(*ppos > 0 || count > BUF_SIZE) {
 		printk(KERN_WARNING "Write size is too big!\n");
 	       	return -EFAULT;

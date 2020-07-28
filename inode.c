@@ -169,9 +169,6 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 	struct list_head *pos = NULL;
 	struct list_head *q = NULL;
 
-	if (list_empty(&hb_inode_list_head.list))
-		return 0;
-
 	if(*ppos > 0 || count > BUF_SIZE) {
 		printk(KERN_WARNING "Write size is too big!\n");
 	       	return -EFAULT;
