@@ -39,7 +39,19 @@ HoneyBest is the new implementation of Linux Security Module project.
 1.	###### Add string hashlock.enabled=1 into GRUB parameter.
 2.	###### Enable at initrd-ramfs stage (`echo 1 > /proc/sys/kernel/honeybest/enabled`)
 ##### **__There is no deactivate after activate for security reason, update GRUB/initrd image must design tightly with secure boot verification process.__**
-###### Once you activate HoneyBest, kernel tracking activities start to record into different files under directory /proc/honeybest. User can monitor the tracking progress via read file application such as tail/cat/head. We will explain each single file corresponding on next section.
+###### Once you activate HoneyBest, kernel tracking activities start to record into different files under directory /proc/honeybest. User can monitor the tracking progress via read file application such as tail/cat/head. 
+
+##### Locking option – on mode or off mode
+###### Locking option only take effective once enablement option mode turn on (default locking option mode is turn off). Once turn on, only expect activities is allow to operate on system. Locking mode toggle can be set via command (`echo 1 > /proc/sys/kernel/honeybest/locking` or `echo 0 > /proc/sys/kernel/honeybest/locking`)
+##### Interactive option - manual mode vs auto mode
+###### Interactive & auto mode only take effectively when enablement mode turn into true. The default interactive option is switch to auto mode, all activities occur in kernel are immediately tracking after enablement option turn into true. Selecting manual mode are mandatory to install libhoneybest-notify package (still in developing progress). Interactive mode toggle can be set via command (`echo 1 > /proc/sys/kernel/honeybest/interact` or `echo 0 > /proc/sys/kernel/honeybest/interact`)
+
+### __Configure activities__
+##### Every single files in directory /proc/honeybest tracking different behavior. We will explain each single file corresponding on next section. In general, every file share the common column, e.g NO/FUNCTION/USER ID.
+* ###### NO – sequence number, honeybest compare the occurrence activities begin from lower to higher number.
+* ###### FUNCTION – functional identification, honeybest use to identify different activities. Under certain category such as ‘socket’, different activities are label as listen/bind/accept/open/setsocketopt and so on. 
+* ###### USER ID – user identification, honeybest use to reference relationship between identity and function. 
+
 ##### Files
 * ###### binprm – Tracking all executable file path name, process UID belong to and most importantly, calculate file context into HASH to protect the integrity.
 * ###### files – Tracking ordinary file behavior, such as open/read/write/delete/rename.
@@ -48,11 +60,4 @@ HoneyBest is the new implementation of Linux Security Module project.
 * ###### socket – Tracking TCP/UDP/ICMP socket activity, including port number.
 * ###### task – Tracking activity between process, such as signal exchanging.
 * ###### notify – Notification between security module and user space application. In interactive mode, unexpected event is detected, notify to user space program later. Dialogue pop up to acquiring security expertise allow or ignore such activities.
-##### Locking option – on mode or off mode
-###### Locking option only take effective once enablement option mode turn on (default locking option mode is turn off). Once turn on, only expect activities is allow to operate on system. Locking mode toggle can be set via command (`echo 1 > /proc/sys/kernel/honeybest/locking` or `echo 0 > /proc/sys/kernel/honeybest/locking`)
-##### Interactive option - manual mode vs auto mode
-###### Interactive & auto mode only take effectively when enablement mode turn into true. The default interactive option is switch to auto mode, all activities occur in kernel are immediately tracking after enablement option turn into true. Selecting manual mode are mandatory to install libhoneybest-notify package (still in developing progress). Interactive mode toggle can be set via command (`echo 1 > /proc/sys/kernel/honeybest/interact` or `echo 0 > /proc/sys/kernel/honeybest/interact`)
-
-### __Configure activities__
-##### Every single files in directory /proc/honeybest tracking different behavior.
 
