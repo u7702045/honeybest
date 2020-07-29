@@ -206,52 +206,65 @@ int add_socket_record(unsigned int fid, uid_t uid, int family, int type,
 
 ssize_t write_socket_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
 {
-	char rules[BUF_SIZE];
+	char *acts_buff = NULL;
 	char *delim = "\n";
-	char *token, *cur = rules;
+	char *token, *cur;
 	hb_socket_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	struct list_head *q = NULL;
 
-	if(*ppos > 0 || count > BUF_SIZE) {
+	if(*ppos > 0 || count > TOTAL_ACT_SIZE) {
 		printk(KERN_WARNING "Write size is too big!\n");
-	       	return -EFAULT;
+		count = 0;
+		goto out;
 	}
 
-	memset(rules, '\0', BUF_SIZE);
-	if (count > 0) {
-		if(copy_from_user(rules, buffer, count))
-			    return -EFAULT;
-
-		/* clean all rules */
-		list_for_each_safe(pos, q, &hb_socket_list_head.list) {
-			tmp = list_entry(pos, hb_socket_ll, list);
-			list_del(pos);
-			kfree(tmp);
-			tmp = NULL;
-		}
-
-		/* add rules */
-		while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
-			unsigned int fid = 0;
-			uid_t uid = 0;
-			int family = 0;
-			int type = 0;
-			int protocol = 0;
-			int kern = 0;
-			int port = 0;
-			int backlog = 0;
-			int level = 0;
-			int optname = 0;
-
-			sscanf(token, "%u %u %d %d %d %d %d %d %d %d", &fid, &uid, &family, &type, &protocol,
-					&kern, &port, &backlog, &level, &optname);
-		       	if (add_socket_record(fid, uid, family, type, protocol, kern,
-						port, backlog, level, optname, NULL, NULL, 0, 0) != 0) {
-				printk(KERN_WARNING "Failure to add socket record %u, %d, %d, %d\n", uid, family, type, protocol);
-			}
-		}
+	acts_buff = (char *)kmalloc(TOTAL_ACT_SIZE, GFP_KERNEL);
+	if (acts_buff == NULL) {
+		count = 0;
+		goto out1;
 	}
+	memset(acts_buff, '\0', TOTAL_ACT_SIZE);
+
+	if (count <= 0) {
+		goto out1;
+	}
+
+	if(copy_from_user(acts_buff, buffer, count))
+		goto out1;
+
+	/* clean all acts_buff */
+	list_for_each_safe(pos, q, &hb_socket_list_head.list) {
+		tmp = list_entry(pos, hb_socket_ll, list);
+		list_del(pos);
+		kfree(tmp);
+		tmp = NULL;
+	}
+
+       	cur = acts_buff;
+	/* add acts_buff */
+	while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
+		unsigned int fid = 0;
+		uid_t uid = 0;
+		int family = 0;
+		int type = 0;
+		int protocol = 0;
+		int kern = 0;
+		int port = 0;
+		int backlog = 0;
+		int level = 0;
+		int optname = 0;
+
+		sscanf(token, "%u %u %d %d %d %d %d %d %d %d", &fid, &uid, &family, &type, &protocol,
+				&kern, &port, &backlog, &level, &optname);
+		if (add_socket_record(fid, uid, family, type, protocol, kern,
+					port, backlog, level, optname, NULL, NULL, 0, 0) != 0) {
+			printk(KERN_WARNING "Failure to add socket record %u, %d, %d, %d\n", uid, family, type, protocol);
+		}
+	} //while
+out1:
+	kfree(acts_buff);
+out:
 	return count;
 }
 

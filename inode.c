@@ -168,46 +168,72 @@ int read_inode_record(struct seq_file *m, void *v)
 
 ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
 {
-	char rules[BUF_SIZE];
+	char *acts_buff = NULL;
 	char *delim = "\n";
-	char *token, *cur = rules;
+	char *token, *cur;
 	hb_inode_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	struct list_head *q = NULL;
 
-	if(*ppos > 0 || count > BUF_SIZE) {
+	if(*ppos > 0 || count > TOTAL_ACT_SIZE) {
 		printk(KERN_WARNING "Write size is too big!\n");
-	       	return -EFAULT;
+		count = 0;
+		goto out;
 	}
 
-	memset(rules, '\0', BUF_SIZE);
-	if (count > 0) {
-		if(copy_from_user(rules, buffer, count))
-			    return -EFAULT;
-
-		/* clean all rules */
-		list_for_each_safe(pos, q, &hb_inode_list_head.list) {
-			tmp = list_entry(pos, hb_inode_ll, list);
-			list_del(pos);
-			kfree(tmp->name);
-			kfree(tmp->dname);
-			kfree(tmp);
-			tmp = NULL;
-		}
-
-		/* add rules */
-		while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
-			uid_t uid = 0;
-			unsigned int fid = 0;
-			umode_t mode = 0;
-			char name[PATH_MAX];
-			char dname[PATH_MAX];
-
-			sscanf(token, "%u %u %hd %s %s", &fid, &uid, &mode, name, dname);
-		       	if (add_inode_record(fid, uid, name, dname, mode, 0) != 0) {
-				printk(KERN_WARNING "Failure to add inode record %u, %s, %s\n", uid, name, dname);
-			}
-		}
+	acts_buff = (char *)kmalloc(TOTAL_ACT_SIZE, GFP_KERNEL);
+	if (acts_buff == NULL) {
+		count = 0;
+		goto out1;
 	}
+	memset(acts_buff, '\0', TOTAL_ACT_SIZE);
+
+	if (count <= 0) {
+		goto out1;
+	}
+
+	if(copy_from_user(acts_buff, buffer, count))
+		goto out1;
+
+	/* clean all acts_buff */
+	list_for_each_safe(pos, q, &hb_inode_list_head.list) {
+		tmp = list_entry(pos, hb_inode_ll, list);
+		list_del(pos);
+		kfree(tmp->name);
+		kfree(tmp->dname);
+		kfree(tmp);
+		tmp = NULL;
+	}
+
+       	cur = acts_buff;
+	/* add acts_buff */
+	while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
+		uid_t uid = 0;
+		unsigned int fid = 0;
+		umode_t mode = 0;
+		char *filename = NULL;
+		char *dirname = NULL;
+
+		filename = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+		if (filename == NULL) {
+			continue;
+		}
+
+		dirname = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+		if (dirname == NULL) {
+			kfree(filename);
+			continue;
+		}
+
+		sscanf(token, "%u %u %hd %s %s", &fid, &uid, &mode, filename, dirname);
+		if (add_inode_record(fid, uid, filename, dirname, mode, 0) != 0) {
+			printk(KERN_WARNING "Failure to add inode record %u, %s, %s\n", uid, filename, dirname);
+		}
+		kfree(filename);
+		kfree(dirname);
+	} //while
+out1:
+	kfree(acts_buff);
+out:
 	return count;
 }

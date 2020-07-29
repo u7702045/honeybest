@@ -1,4 +1,4 @@
-#define BUF_SIZE			2048
+#define TOTAL_ACT_SIZE			10240
 
 #define HL_BPRM_SET_CREDS		1
 

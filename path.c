@@ -218,49 +218,78 @@ int read_path_record(struct seq_file *m, void *v)
 
 ssize_t write_path_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
 {
-	char rules[BUF_SIZE];
+	char *acts_buff = NULL;
 	char *delim = "\n";
-	char *token, *cur = rules;
+	char *token, *cur;
 	hb_path_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	struct list_head *q = NULL;
 
-	if(*ppos > 0 || count > BUF_SIZE) {
+	if(*ppos > 0 || count > TOTAL_ACT_SIZE) {
 		printk(KERN_WARNING "Write size is too big!\n");
-	       	return -EFAULT;
+		count = 0;
+		goto out;
 	}
 
-	memset(rules, '\0', BUF_SIZE);
-	if (count > 0) {
-		if(copy_from_user(rules, buffer, count))
-			    return -EFAULT;
-
-		/* clean all rules */
-		list_for_each_safe(pos, q, &hb_path_list_head.list) {
-			tmp = list_entry(pos, hb_path_ll, list);
-			list_del(pos);
-			kfree(tmp->source_pathname);
-			kfree(tmp->target_pathname);
-			kfree(tmp);
-			tmp = NULL;
-		}
-
-		/* add rules */
-		while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
-			uid_t uid = 0;
-			uid_t suid = 0;
-			uid_t sgid = 0;
-			unsigned int dev = 0;
-			unsigned int fid = 0;
-			umode_t mode = 0;
-			char source_pathname[PATH_MAX];
-			char target_pathname[PATH_MAX];
-
-			sscanf(token, "%u %u %hd %u %u %u %s %s", &fid, &uid, &mode, &suid, &sgid, &dev, source_pathname, target_pathname);
-		       	if (add_path_record(fid, uid, mode, source_pathname, target_pathname, suid, sgid, dev, 0) != 0) {
-				printk(KERN_WARNING "Failure to add path record %u, %s, %s\n", uid, source_pathname, target_pathname);
-			}
-		}
+	acts_buff = (char *)kmalloc(TOTAL_ACT_SIZE, GFP_KERNEL);
+	if (acts_buff == NULL) {
+		count = 0;
+		goto out1;
 	}
+	memset(acts_buff, '\0', TOTAL_ACT_SIZE);
+
+	if (count <= 0) {
+		goto out1;
+	}
+
+	if(copy_from_user(acts_buff, buffer, count))
+		goto out1;
+
+	/* clean all acts_buff */
+	list_for_each_safe(pos, q, &hb_path_list_head.list) {
+		tmp = list_entry(pos, hb_path_ll, list);
+		list_del(pos);
+		kfree(tmp->source_pathname);
+		kfree(tmp->target_pathname);
+		kfree(tmp);
+		tmp = NULL;
+	}
+
+       	cur = acts_buff;
+	/* add acts_buff */
+	while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
+		uid_t uid = 0;
+		uid_t suid = 0;
+		uid_t sgid = 0;
+		unsigned int dev = 0;
+		unsigned int fid = 0;
+		umode_t mode = 0;
+		char *source_pathname = NULL;
+		char *target_pathname = NULL;
+
+		source_pathname = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+		if (source_pathname == NULL) {
+			printk(KERN_ERR "source_pathname is null !\n");
+			continue;
+		}
+
+		target_pathname = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+		if (target_pathname == NULL) {
+			printk(KERN_ERR "target_pathname is null !\n");
+			kfree(source_pathname);
+			continue;
+		}
+
+		sscanf(token, "%u %u %hd %u %u %u %s %s", &fid, &uid, &mode, &suid, &sgid, &dev, source_pathname, target_pathname);
+		if (add_path_record(fid, uid, mode, source_pathname, target_pathname, suid, sgid, dev, 0) != 0) {
+			printk(KERN_WARNING "Failure to add path record %u, %s, %s\n", uid, source_pathname, target_pathname);
+		}
+
+		kfree(source_pathname);
+		kfree(target_pathname);
+	} //while
+out1:
+	kfree(acts_buff);
+out:
 	return count;
 }

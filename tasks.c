@@ -141,45 +141,59 @@ int read_task_record(struct seq_file *m, void *v)
 
 ssize_t write_task_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
 {
-	char rules[BUF_SIZE];
+	char *acts_buff = NULL;
 	char *delim = "\n";
-	char *token, *cur = rules;
+	char *token, *cur;
 	hb_task_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	struct list_head *q = NULL;
 
-	if(*ppos > 0 || count > BUF_SIZE) {
+	if(*ppos > 0 || count > TOTAL_ACT_SIZE) {
 		printk(KERN_WARNING "Write size is too big!\n");
-	       	return -EFAULT;
+		count = 0;
+		goto out;
 	}
 
-	memset(rules, '\0', BUF_SIZE);
-	if (count > 0) {
-		if(copy_from_user(rules, buffer, count))
-			    return -EFAULT;
+	acts_buff = (char *)kmalloc(TOTAL_ACT_SIZE, GFP_KERNEL);
+	if (acts_buff == NULL) {
+		count = 0;
+		goto out1;
+	}
+	memset(acts_buff, '\0', TOTAL_ACT_SIZE);
 
-		/* clean all rules */
-		list_for_each_safe(pos, q, &hb_task_list_head.list) {
-			tmp = list_entry(pos, hb_task_ll, list);
-			list_del(pos);
-			kfree(tmp);
-			tmp = NULL;
-		}
+	if (count <= 0) {
+		goto out1;
+	}
 
-		/* add rules */
-		while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
-			uid_t uid = 0;
-			unsigned int fid = 0;
-			int sig = 0;
-			int si_signo = 0;
-			int si_errno = 0;
-			u32 secid = 0;
+	if(copy_from_user(acts_buff, buffer, count))
+		goto out1;
 
-			sscanf(token, "%u %u %d %d %d %u", &fid, &uid, &sig, &si_signo, &si_errno, &secid);
-		       	if (add_task_record(HL_TASK_SIGNAL, uid, sig, si_signo, si_errno, secid, 0) != 0) {
-				printk(KERN_WARNING "Failure to add task record %u, %d\n", uid, sig);
-			}
+	/* clean all acts_buff */
+	list_for_each_safe(pos, q, &hb_task_list_head.list) {
+		tmp = list_entry(pos, hb_task_ll, list);
+		list_del(pos);
+		kfree(tmp);
+		tmp = NULL;
+	}
+
+       	cur = acts_buff;
+	/* add acts_buff */
+	while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
+		uid_t uid = 0;
+		unsigned int fid = 0;
+		int sig = 0;
+		int si_signo = 0;
+		int si_errno = 0;
+		u32 secid = 0;
+
+		sscanf(token, "%u %u %d %d %d %u", &fid, &uid, &sig, &si_signo, &si_errno, &secid);
+		if (add_task_record(HL_TASK_SIGNAL, uid, sig, si_signo, si_errno, secid, 0) != 0) {
+			printk(KERN_WARNING "Failure to add task record %u, %d\n", uid, sig);
 		}
 	}
+
+out1:
+	kfree(acts_buff);
+out:
 	return count;
 }

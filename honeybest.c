@@ -649,7 +649,7 @@ static int honeybest_path_unlink(const struct path *dir, struct dentry *dentry)
 	struct path source = { dir->mnt, dentry };
 	char *source_pathname = NULL;
        	char *target_pathname = "N/A";
-	char sbuff[PATH_MAX];
+	char *source_buff = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -659,15 +659,21 @@ static int honeybest_path_unlink(const struct path *dir, struct dentry *dentry)
 	       	err = -ENOMEM;
 
 	/* extract full path */
-	source_pathname = d_absolute_path(&source, sbuff, PATH_MAX);
+	source_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	source_pathname = d_absolute_path(&source, source_buff, PATH_MAX);
 
-	if (!source_pathname) {
+	if (source_buff == NULL) {
 		err = -EOPNOTSUPP;
 		goto out;
 	}
 
+	if (!source_pathname) {
+		err = -EOPNOTSUPP;
+		goto out1;
+	}
+
 	if (allow_file_whitelist(source_pathname)) {
-		return err;
+		goto out1;
 	}
 
 	record = search_path_record(HL_PATH_UNLINK, task->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
@@ -683,9 +689,8 @@ static int honeybest_path_unlink(const struct path *dir, struct dentry *dentry)
 			err = -EOPNOTSUPP;
 	}
 
-	// do we need to free after d_absolute_path? 
-	//kfree(source_pathname);
-
+out1:
+	kfree(source_buff);
 out:
 	return err;
 }
@@ -700,7 +705,7 @@ static int honeybest_path_mkdir(const struct path *dir, struct dentry *dentry,
 	struct path source = { dir->mnt, dentry };
 	char *source_pathname = NULL;
        	char *target_pathname = "N/A";
-	char sbuff[PATH_MAX];
+	char *source_buff = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -710,15 +715,21 @@ static int honeybest_path_mkdir(const struct path *dir, struct dentry *dentry,
 	       	err = -ENOMEM;
 
 	/* extract full path */
-	source_pathname = d_absolute_path(&source, sbuff, PATH_MAX);
+	source_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	source_pathname = d_absolute_path(&source, source_buff, PATH_MAX);
 
 	if (!source_pathname) {
 		err = -EOPNOTSUPP;
 		goto out;
 	}
 
+	if (!source_pathname) {
+		err = -EOPNOTSUPP;
+		goto out1;
+	}
+
 	if (allow_file_whitelist(source_pathname)) {
-		return err;
+		goto out1;
 	}
 
 	record = search_path_record(HL_PATH_MKDIR, task->cred->uid.val, mode, source_pathname, target_pathname, 0, 0, 0);
@@ -734,9 +745,8 @@ static int honeybest_path_mkdir(const struct path *dir, struct dentry *dentry,
 			err = -EOPNOTSUPP;
 	}
 
-	// do we need to free after d_absolute_path? 
-	//kfree(source_pathname);
-
+out1:
+	kfree(source_buff);
 out:
 	return err;
 }
@@ -749,7 +759,7 @@ static int honeybest_path_rmdir(const struct path *dir, struct dentry *dentry)
 	struct path source = { dir->mnt, dentry };
 	char *source_pathname = NULL;
        	char *target_pathname = "N/A";
-	char sbuff[PATH_MAX];
+	char *source_buff = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -759,11 +769,17 @@ static int honeybest_path_rmdir(const struct path *dir, struct dentry *dentry)
 	       	err = -ENOMEM;
 
 	/* extract full path */
-	source_pathname = d_absolute_path(&source, sbuff, PATH_MAX);
+	source_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	source_pathname = d_absolute_path(&source, source_buff, PATH_MAX);
+
+	if (!source_buff) {
+		err = -EOPNOTSUPP;
+		goto out;
+	}
 
 	if (!source_pathname) {
 		err = -EOPNOTSUPP;
-		goto out;
+		goto out1;
 	}
 
 	record = search_path_record(HL_PATH_RMDIR, task->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
@@ -779,9 +795,8 @@ static int honeybest_path_rmdir(const struct path *dir, struct dentry *dentry)
 			err = -EOPNOTSUPP;
 	}
 
-	// do we need to free after d_absolute_path? 
-	//kfree(source_pathname);
-
+out1:
+	kfree(source_buff);
 out:
 	return err;
 }
@@ -795,7 +810,7 @@ static int honeybest_path_mknod(const struct path *dir, struct dentry *dentry,
 	struct path source = { dir->mnt, dentry };
 	char *source_pathname = NULL;
        	char *target_pathname = "N/A";
-	char sbuff[PATH_MAX];
+	char *source_buff = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -805,15 +820,21 @@ static int honeybest_path_mknod(const struct path *dir, struct dentry *dentry,
 	       	err = -ENOMEM;
 
 	/* extract full path */
-	source_pathname = d_absolute_path(&source, sbuff, PATH_MAX);
+	source_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	source_pathname = d_absolute_path(&source, source_buff, PATH_MAX);
 
-	if (!source_pathname) {
+	if (!source_buff) {
 		err = -EOPNOTSUPP;
 		goto out;
 	}
 
+	if (!source_pathname) {
+		err = -EOPNOTSUPP;
+		goto out1;
+	}
+
 	if (allow_file_whitelist(source_pathname)) {
-		return err;
+		goto out1;
 	}
 
 	record = search_path_record(HL_PATH_MKNOD, task->cred->uid.val, mode, source_pathname, target_pathname, 0, 0, dev);
@@ -829,19 +850,19 @@ static int honeybest_path_mknod(const struct path *dir, struct dentry *dentry,
 			err = -EOPNOTSUPP;
 	}
 
-	// do we need to free after d_absolute_path? 
-	//kfree(source_pathname);
-
+out1:
+	kfree(source_buff);
 out:
 	return err;
 }
+
 static int honeybest_path_truncate(const struct path *path)
 {
 	int err = 0;
        	const struct task_struct *task = current;
 	char *source_pathname = NULL;
        	char *target_pathname = "N/A";
-	char sbuff[PATH_MAX];
+	char *source_buff = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -851,15 +872,21 @@ static int honeybest_path_truncate(const struct path *path)
 	       	err = -ENOMEM;
 
 	/* extract full path */
-	source_pathname = d_absolute_path(path, sbuff, PATH_MAX);
+	source_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	source_pathname = d_absolute_path(path, source_buff, PATH_MAX);
 
-	if (!source_pathname) {
+	if (source_buff == NULL) {
 		err = -EOPNOTSUPP;
 		goto out;
 	}
 
+	if (!source_pathname) {
+		err = -EOPNOTSUPP;
+		goto out1;
+	}
+
 	if (allow_file_whitelist(source_pathname)) {
-		return err;
+		goto out1;
 	}
 
 	record = search_path_record(HL_PATH_TRUNCATE, task->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
@@ -875,9 +902,8 @@ static int honeybest_path_truncate(const struct path *path)
 			err = -EOPNOTSUPP;
 	}
 
-	// do we need to free after d_absolute_path? 
-	//kfree(target_pathname);
-
+out1:
+	kfree(source_buff);
 out:
 	return err;
 }
@@ -891,7 +917,7 @@ static int honeybest_path_symlink(const struct path *dir, struct dentry *dentry,
 	struct path target = { dir->mnt, dentry };
 	char *source_pathname = (char *)old_name;
        	char *target_pathname = NULL;
-	char tbuff[PATH_MAX];
+	char *target_buff = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -901,11 +927,17 @@ static int honeybest_path_symlink(const struct path *dir, struct dentry *dentry,
 	       	err = -ENOMEM;
 
 	/* extract full path */
-	target_pathname = d_absolute_path(&target, tbuff, PATH_MAX);
+	target_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	target_pathname = d_absolute_path(&target, target_buff, PATH_MAX);
+
+	if (target_buff == NULL) {
+		err = -EOPNOTSUPP;
+		goto out;
+	}
 
 	if (!target_pathname) {
 		err = -EOPNOTSUPP;
-		goto out;
+		goto out1;
 	}
 
 	record = search_path_record(HL_PATH_SYMLINK, task->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
@@ -921,9 +953,8 @@ static int honeybest_path_symlink(const struct path *dir, struct dentry *dentry,
 			err = -EOPNOTSUPP;
 	}
 
-	// do we need to free after d_absolute_path? 
-	//kfree(target_pathname);
-
+out1:
+	kfree(target_buff);
 out:
 	return err;
 }
@@ -938,8 +969,8 @@ static int honeybest_path_link(struct dentry *old_dentry, const struct path *new
 	struct path target = { new_dir->mnt, old_dentry };
 	char *source_pathname = NULL;
        	char *target_pathname = NULL;
-	char sbuff[PATH_MAX];
-	char tbuff[PATH_MAX];
+	char *source_buff = NULL;
+	char *target_buff = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -949,22 +980,33 @@ static int honeybest_path_link(struct dentry *old_dentry, const struct path *new
 	       	err = -ENOMEM;
 
 	/* extract full path */
-	source_pathname = d_absolute_path(&source, sbuff, PATH_MAX);
-	target_pathname = d_absolute_path(&target, tbuff, PATH_MAX);
+	source_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	target_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	source_pathname = d_absolute_path(&source, source_buff, PATH_MAX);
+	target_pathname = d_absolute_path(&target, target_buff, PATH_MAX);
+
+	if (source_buff == NULL) {
+		err = -EOPNOTSUPP;
+		goto out;
+	}
+
+	if (target_buff == NULL) {
+		err = -EOPNOTSUPP;
+		goto out1;
+	}
 
 	if (!source_pathname) {
 		err = -EOPNOTSUPP;
-		goto out;
+		goto out2;
 	}
 
 	if (!target_pathname) {
-		kfree(source_pathname);
 		err = -EOPNOTSUPP;
-		goto out;
+		goto out2;
 	}
 
 	if (allow_file_whitelist(source_pathname)) {
-		return err;
+		goto out2;
 	}
 
 	record = search_path_record(HL_PATH_LINK, task->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
@@ -979,11 +1021,10 @@ static int honeybest_path_link(struct dentry *old_dentry, const struct path *new
 		if (locking == 1)
 			err = -EOPNOTSUPP;
 	}
-
-	// do we need to free after d_absolute_path? 
-	//kfree(source_pathname);
-	//kfree(target_pathname);
-
+out2:
+	kfree(target_buff);
+out1:
+	kfree(source_buff);
 out:
 	return err;
 }
@@ -997,8 +1038,8 @@ static int honeybest_path_rename(const struct path *old_dir, struct dentry *old_
 	struct path source = { old_dir->mnt, old_dentry };
 	char *source_pathname = NULL;
        	char *target_pathname = NULL;
-	char sbuff[PATH_MAX];
-	char tbuff[PATH_MAX];
+	char *source_buff = NULL;
+	char *target_buff = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1008,18 +1049,29 @@ static int honeybest_path_rename(const struct path *old_dir, struct dentry *old_
 	       	err = -ENOMEM;
 
 	/* extract full path */
-	source_pathname = d_absolute_path(&source, sbuff, PATH_MAX);
-	target_pathname = d_absolute_path(&target, tbuff, PATH_MAX);
+	source_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	target_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	source_pathname = d_absolute_path(&source, source_buff, PATH_MAX);
+	target_pathname = d_absolute_path(&target, target_buff, PATH_MAX);
 
-	if (!source_pathname) {
+	if (source_buff == NULL) {
 		err = -EOPNOTSUPP;
 		goto out;
 	}
 
-	if (!target_pathname) {
-		kfree(source_pathname);
+	if (target_buff == NULL) {
 		err = -EOPNOTSUPP;
-		goto out;
+		goto out1;
+	}
+
+	if (!source_pathname) {
+		err = -EOPNOTSUPP;
+		goto out2;
+	}
+
+	if (!target_pathname) {
+		err = -EOPNOTSUPP;
+		goto out2;
 	}
 
 	record = search_path_record(HL_PATH_RENAME, task->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
@@ -1035,10 +1087,10 @@ static int honeybest_path_rename(const struct path *old_dir, struct dentry *old_
 			err = -EOPNOTSUPP;
 	}
 
-	// do we need to free after d_absolute_path? 
-	//kfree(source_pathname);
-	//kfree(target_pathname);
-
+out2:
+	kfree(target_buff);
+out1:
+	kfree(source_buff);
 out:
 	return err;
 }
@@ -1049,7 +1101,7 @@ static int honeybest_path_chmod(const struct path *path, umode_t mode)
        	const struct task_struct *task = current;
 	char *source_pathname = NULL;
        	char *target_pathname = "N/A";
-	char sbuff[PATH_MAX];
+	char *source_buff = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1059,11 +1111,17 @@ static int honeybest_path_chmod(const struct path *path, umode_t mode)
 	       	err = -ENOMEM;
 
 	/* extract full path */
-	source_pathname = d_absolute_path(path, sbuff, PATH_MAX);
+	source_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	source_pathname = d_absolute_path(path, source_buff, PATH_MAX);
+
+	if (source_buff == NULL) {
+		err = -EOPNOTSUPP;
+		goto out;
+	}
 
 	if (!source_pathname) {
 		err = -EOPNOTSUPP;
-		goto out;
+		goto out1;
 	}
 
 	record = search_path_record(HL_PATH_CHMOD, task->cred->uid.val, mode, source_pathname, target_pathname, 0, 0, 0);
@@ -1079,9 +1137,8 @@ static int honeybest_path_chmod(const struct path *path, umode_t mode)
 			err = -EOPNOTSUPP;
 	}
 
-	// do we need to free after d_absolute_path? 
-	//kfree(source_pathname);
-
+out1:
+	kfree(source_buff);
 out:
 	return err;
 }
@@ -1092,7 +1149,7 @@ static int honeybest_path_chown(const struct path *path, kuid_t uid, kgid_t gid)
        	const struct task_struct *task = current;
 	char *source_pathname = NULL;
        	char *target_pathname = "N/A";
-	char sbuff[PATH_MAX];
+	char *source_buff = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1102,11 +1159,17 @@ static int honeybest_path_chown(const struct path *path, kuid_t uid, kgid_t gid)
 	       	err = -ENOMEM;
 
 	/* extract full path */
-	source_pathname = d_absolute_path(path, sbuff, PATH_MAX);
+	source_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	source_pathname = d_absolute_path(path, source_buff, PATH_MAX);
+
+	if (source_buff == NULL) {
+		err = -EOPNOTSUPP;
+		goto out;
+	}
 
 	if (!source_pathname) {
 		err = -EOPNOTSUPP;
-		goto out;
+		goto out1;
 	}
 
 	record = search_path_record(HL_PATH_CHOWN, task->cred->uid.val, 0, source_pathname, target_pathname, uid.val, gid.val, 0);
@@ -1122,9 +1185,8 @@ static int honeybest_path_chown(const struct path *path, kuid_t uid, kgid_t gid)
 			err = -EOPNOTSUPP;
 	}
 
-	// do we need to free after d_absolute_path? 
-	//kfree(source_pathname);
-
+out1:
+	kfree(source_buff);
 out:
 	return err;
 }

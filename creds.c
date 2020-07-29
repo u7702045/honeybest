@@ -229,45 +229,73 @@ int read_binprm_record(struct seq_file *m, void *v)
 
 ssize_t write_binprm_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
 {
-	char rules[BUF_SIZE];
+	char *acts_buff = NULL;
 	char *delim = "\n";
-	char *token, *cur = rules;
+	char *token, *cur;
 	hb_binprm_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	struct list_head *q = NULL;
 
-	if(*ppos > 0 || count > BUF_SIZE) {
+	if(*ppos > 0 || count > TOTAL_ACT_SIZE) {
 		printk(KERN_WARNING "Write size is too big!\n");
-	       	return -EFAULT;
+		count = 0;
+		goto out;
 	}
 
-	memset(rules, '\0', BUF_SIZE);
-	if (count > 0) {
-		if(copy_from_user(rules, buffer, count))
-			    return -EFAULT;
-
-		/* clean all rules */
-		list_for_each_safe(pos, q, &hb_binprm_list_head.list) {
-			tmp = list_entry(pos, hb_binprm_ll, list);
-			kfree(tmp->pathname);
-			list_del(pos);
-			kfree(tmp);
-			tmp = NULL;
-		}
-
-		/* add rules */
-		while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
-			uid_t uid = 0;
-			unsigned int fid = 0;
-			char digest[SHA1_HONEYBEST_DIGEST_SIZE];
-			char pathname[BUF_SIZE];
-
-			sscanf(token, "%u %u %s %s", &fid, &uid, digest, pathname);
-		       	if (add_binprm_record(HL_BPRM_SET_CREDS, uid, pathname, digest, 0) != 0) {
-				printk(KERN_WARNING "Failure to add binprm record %u, %s, %s\n", uid, pathname, digest);
-			}
-		}
+	acts_buff = (char *)kmalloc(TOTAL_ACT_SIZE, GFP_KERNEL);
+	if (acts_buff == NULL) {
+		count = 0;
+		goto out1;
 	}
+	memset(acts_buff, '\0', TOTAL_ACT_SIZE);
+
+	if (count <= 0) {
+		goto out1;
+	}
+
+	if(copy_from_user(acts_buff, buffer, count))
+		goto out1;
+
+	/* clean all acts_buff */
+	list_for_each_safe(pos, q, &hb_binprm_list_head.list) {
+		tmp = list_entry(pos, hb_binprm_ll, list);
+		list_del(pos);
+		kfree(tmp->digest);
+		kfree(tmp->pathname);
+		kfree(tmp);
+		tmp = NULL;
+	}
+
+       	cur = acts_buff;
+	/* add acts_buff */
+	while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
+		uid_t uid = 0;
+		unsigned int fid = 0;
+		char *digest = NULL;
+		char *pathname = NULL;
+
+		digest = (char *)kmalloc(SHA1_HONEYBEST_DIGEST_SIZE, GFP_KERNEL);
+		if (digest == NULL) {
+			continue;
+		}
+
+		pathname = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+		if (pathname == NULL) {
+			kfree(digest);
+			continue;
+		}
+
+		sscanf(token, "%u %u %s %s", &fid, &uid, digest, pathname);
+		if (add_binprm_record(HL_BPRM_SET_CREDS, uid, pathname, digest, 0) != 0) {
+			printk(KERN_WARNING "Failure to add binprm record %u, %s, %s\n", uid, pathname, digest);
+		}
+
+		kfree(pathname);
+		kfree(digest);
+	} //while
+out1:
+	kfree(acts_buff);
+out:
 	return count;
 }
 

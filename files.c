@@ -145,44 +145,64 @@ int read_file_record(struct seq_file *m, void *v)
 
 ssize_t write_file_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
 {
-	char rules[BUF_SIZE];
+	char *acts_buff = NULL;
 	char *delim = "\n";
-	char *token, *cur = rules;
+	char *token, *cur;
 	hb_file_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	struct list_head *q = NULL;
 
-	if(*ppos > 0 || count > BUF_SIZE) {
+	if(*ppos > 0 || count > TOTAL_ACT_SIZE) {
 		printk(KERN_WARNING "Write size is too big!\n");
-	       	return -EFAULT;
+		count = 0;
+		goto out;
 	}
 
-	memset(rules, '\0', BUF_SIZE);
-	if (count > 0) {
-		if(copy_from_user(rules, buffer, count))
-			    return -EFAULT;
-
-		/* clean all rules */
-		list_for_each_safe(pos, q, &hb_file_list_head.list) {
-			tmp = list_entry(pos, hb_file_ll, list);
-			list_del(pos);
-			kfree(tmp->pathname);
-			kfree(tmp);
-			tmp = NULL;
-		}
-
-		/* add rules */
-		while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
-			uid_t uid = 0;
-			unsigned int fid = 0;
-			char pathname[BUF_SIZE];
-
-			sscanf(token, "%u %u %s", &fid, &uid, pathname);
-		       	if (add_file_record(HL_FILE_OPEN, uid, pathname, 0) != 0) {
-				printk(KERN_WARNING "Failure to add file record %u, %s\n", uid, pathname);
-			}
-		}
+	acts_buff = (char *)kmalloc(TOTAL_ACT_SIZE, GFP_KERNEL);
+	if (acts_buff == NULL) {
+		count = 0;
+		goto out1;
 	}
+	memset(acts_buff, '\0', TOTAL_ACT_SIZE);
+
+	if (count <= 0) {
+		goto out1;
+	}
+
+	if(copy_from_user(acts_buff, buffer, count))
+		goto out1;
+
+	/* clean all acts_buff */
+	list_for_each_safe(pos, q, &hb_file_list_head.list) {
+		tmp = list_entry(pos, hb_file_ll, list);
+		list_del(pos);
+		kfree(tmp->pathname);
+		kfree(tmp);
+		tmp = NULL;
+	}
+
+       	cur = acts_buff;
+	/* add acts_buff */
+	while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
+		uid_t uid = 0;
+		unsigned int fid = 0;
+		char *pathname = NULL;
+
+		pathname = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+		if (pathname == NULL) {
+			continue;
+		}
+
+		sscanf(token, "%u %u %s", &fid, &uid, pathname);
+		if (add_file_record(HL_FILE_OPEN, uid, pathname, 0) != 0) {
+			printk(KERN_WARNING "Failure to add file record %u, %s\n", uid, pathname);
+		}
+
+		kfree(pathname);
+	} //while
+out1:
+	kfree(acts_buff);
+out:
 	return count;
 }
 
