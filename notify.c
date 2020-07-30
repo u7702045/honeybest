@@ -88,6 +88,7 @@ int add_notify_record(unsigned int fid, void *data)
 	if (tmp) {
 		memset(tmp, 0, sizeof(hb_notify_ll));
 		tmp->fid = fid;
+		tmp->data = NULL;
 		switch (fid) {
 			case HL_BPRM_SET_CREDS:
 				tmp->data = (void *)kmalloc(sizeof(hb_binprm_ll), GFP_KERNEL);
@@ -180,6 +181,7 @@ int read_notify_record(struct seq_file *m, void *v)
 {
 	hb_notify_ll *tmp = NULL;
 	struct list_head *pos = NULL;
+	struct list_head *q = NULL;
 	unsigned long total = 0;
        	hb_binprm_ll *binprm = NULL;
        	hb_file_ll *files = NULL;
@@ -189,7 +191,8 @@ int read_notify_record(struct seq_file *m, void *v)
        	hb_inode_ll *inodes = NULL;
 
 	seq_printf(m, "ID\tFILE\tFUNC\tUID\tDATA\n");
-	list_for_each(pos, &hb_notify_list_head.list) {
+	//list_for_each(pos, &hb_notify_list_head.list) {
+	list_for_each_safe(pos, q, &hb_notify_list_head.list) {
 		tmp = list_entry(pos, hb_notify_ll, list);
 		switch (tmp->fid) {
 			case HL_BPRM_SET_CREDS:
@@ -238,6 +241,11 @@ int read_notify_record(struct seq_file *m, void *v)
 			default:
 				break;
 		}
+
+		list_del(pos);
+		if (tmp->data != NULL)
+		       	kfree(tmp->data);
+		kfree(tmp);
 	}
 
 	return 0;

@@ -200,7 +200,7 @@ int read_path_record(struct seq_file *m, void *v)
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
-	seq_printf(m, "ID\tFUNC\tUID\tMODE\tSUID\tGUID\tDEV NODE\tSOURCE PATH\t\t\tTARGET PATH\n");
+	seq_printf(m, "NO\tFUNC\tUID\tMODE\tSUID\tGUID\tDEV NODE\tSOURCE PATH\t\t\tTARGET PATH\n");
 
 	if (list_empty(&hb_path_list_head.list)) {
 		printk(KERN_WARNING "List is empty!!\n");

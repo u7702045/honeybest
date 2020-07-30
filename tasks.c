@@ -130,7 +130,7 @@ int read_task_record(struct seq_file *m, void *v)
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
-	seq_printf(m, "ID\tFUNC\tUID\tSIGNAL\tSIGNO\tERRNO\tSECID\n");
+	seq_printf(m, "NO\tFUNC\tUID\tSIGNAL\tSIGNO\tERRNO\tSECID\n");
 	list_for_each(pos, &hb_task_list_head.list) {
 		tmp = list_entry(pos, hb_task_ll, list);
 		seq_printf(m, "%lu\t%u\t%u\t%d\t%d\t%d\t%u\n", total++, tmp->fid, tmp->uid, tmp->sig, tmp->si_signo, tmp->si_errno, tmp->secid);

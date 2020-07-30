@@ -151,7 +151,7 @@ int read_inode_record(struct seq_file *m, void *v)
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
-	seq_printf(m, "ID\tFUNC\tUID\tMODE\tNAME\t\t\tDENTRY NAME\n");
+	seq_printf(m, "NO\tFUNC\tUID\tMODE\tNAME\t\t\tDENTRY NAME\n");
 
 	if (list_empty(&hb_inode_list_head.list)) {
 		printk(KERN_WARNING "List is empty!!\n");

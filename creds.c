@@ -218,7 +218,7 @@ int read_binprm_record(struct seq_file *m, void *v)
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
-	seq_printf(m, "ID\tFUNC\tUID\tDIGEST\t\t\t\t\t\tPATH\n");
+	seq_printf(m, "NO\tFUNC\tUID\tDIGEST\t\t\t\t\t\tPATH\n");
 	list_for_each(pos, &hb_binprm_list_head.list) {
 		tmp = list_entry(pos, hb_binprm_ll, list);
 		seq_printf(m, "%lu\t%u\t%d\t%s\t%s\n", total++, tmp->fid, tmp->uid, tmp->digest, tmp->pathname);
