@@ -53,7 +53,7 @@
 * ###### FUNCTION – functional identification, honeybest use to identify different activities. Under certain category such as ‘socket’, different activities are label as listen/bind/accept/open/setsocketopt and so on. 
 * ###### USER ID – user identification, honeybest use to reference relationship between identity and function. 
 
-##### 檔案
+##### Files
 * ###### binprm – Tracking all executable file path name, process UID belong to and most importantly, calculate file context into HASH to protect the integrity.
 * ###### files – Tracking ordinary file behavior, such as open/read/write/delete/rename.
 * ###### inode – Tracking inode operation, such as create/delete/read/update/setxattr/getxattr.
@@ -62,5 +62,39 @@
 * ###### task – Tracking activity between process, such as signal exchanging.
 * ###### sb – Tracking superblock information. Activities such as mount/umount/df will stamp into this category. Highly relate to file/path categories due to system register /proc information.
 * ###### kmod – Tracking Linux kernel modules activity. Kernel modprobe will stamp into this category. 
-* ###### notify – Notification between security module and user space application. In interactive mode, detect to unexpected events are save into this file for user space program to notify user later. Dialogue pop up to acquiring security expertise allow or ignore such activities. Context in 
+* ###### notify – Notification between security module and user space application. In interactive mode, detect to unexpected events are save into this file for user space program to notify user later. Dialogue pop up to acquiring security expertise allow or ignore such activities. Once the interactive mode is enable, all events go through this file could expose memory exhaust. Thurs, design a READ scheduler from user space program is vital. Context in notify file will be cleaned after each single READ operation is executed.
+##### Tuning example (`/proc/honeybest/path`)
+###### In general, developer usually run through the flow below: <br/>
+1. Enable the HoneyBest LSM. `echo 1 > /proc/sys/kernel/honeybest/enabled`
+2. Running the system test. The example here we focus on path file, which have high relative to symbolic file create activity. Let mimic our system test involve to creating symbolic link. `ln -s /etc/services /tmp/services`
+3. Now, disable the HoneyBest before tuning whitelist. `echo 0 > /proc/sys/kernel/honeybest/enabled`
+4. Review the activities relates to path. `cat /proc/honeybest/path | grep services`
+5. If you find out result show `23 0 0 0 0 0 /etc/services /tmp/services`, that indicate whitelist is automatically track.
+6. Another advance case here. Let say your system test involve udev daemon constantly accumulate new symbolic file with constant pattern, e.g /dev/usb0, /dev/usb1…n link to /dev/ttyUSB. We notice that multi line relate to /dev/ttyusb have attach into path file context after enable the HoneyBest LSM. Here is an approach to solve the matching issue. <br/>
+	6.1. Disable the HoneyBest LSM. <br/>
+	6.2. Dump context to new file. `cat /proc/honeybest/path > /etc/hb/path` <br/>
+	6.3. Example Figure 1 is the example context of /etc/hb/path file.  <br/>
+	6.4. Eliminate first row & first column, eliminate all duplicate line and leave only one line with regular express at increasing character, Figure 2. <br/>
+	6.5. Re-apply new activities to HoneyBest LSM. `cat /etc/hb/path > /proc/honeybest/path`<br/>
+	6.6 Enable the HoneyBest LSM. <br/>
+###### Developer can enable the locking mode during system test to verify the outcome. If system test failure, disable the locking mode and run again the activities. Comparing the files context will give you hint what missing activity need to inject.
+#### Figure 1
+|NO|FUNC|UID|MODE|SUID|GUID|DEV|SOURCE PATH|TARGET PATH|
+|--|----|---|----|----|----|---|-----------|-----------|
+|0|23|0|0|0|0|0|/dev/usb0|/dev/ttyUSB0|
+|1|23|0|0|0|0|0|/dev/usb0|/dev/ttyUSB1|
+|2|23|0|0|0|0|0|/dev/usb0|/dev/ttyUSB2|
+|3|20|0|420|0|0|0|/etc/resolv.conf.dhclient-new.1115|/etc/resolv.conf|
 
+#### Figure 2
+| | | | | | | | | |
+|--|----|---|----|----|----|---|-----------|-----------|
+|23|0|0|0|0|0|/dev/usb0|/dev/ttyUSB*|
+|23|0|0|0|0|0||/etc/resolv.conf.dhclient-new.1115|/etc/resolv.conf|
+
+##### Save & Restore configuration
+###### Saving the HoneyBest LSM configuration are pretty simple. All you need is to dump it out into separate file and restore once the system restart (initrd or rc.local). __Redo the step 6.4 is necessary after save the context, HoneyBest LSM will not restore correctly if step 6.4 is not complete.__
+* ###### save – Dump current setting to file, command `cat /proc/honeybest/binprm > /etc/hb/binprm`.
+* ###### restore – Restore current setting to system, command `cat /etc/hb/binprm > /proc/honeybest/binprm`.
+* ###### lock down – After restore, lock down HoneyBest to prevent tracking, command `echo 1 > /proc/sys/kernel/honeybest/locking`.
+* ###### enable– Enable HoneyBest to protect system, command `echo 1 > /proc/sys/kernel/honeybest/enabled`
