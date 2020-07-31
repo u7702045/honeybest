@@ -1,5 +1,5 @@
 # 漢妮安全模組
-漢妮專案主要目標為打造一個基於LSM的全新安全模組設計.<br/> 
+漢妮專案主要目標為打造一個基於白名單設計的全新安全模組.<br/> 
 *Read this in other languages: [English](README.md), [正體中文](README.zh-tw.md).*
 ### __背景__
 ###### Over the year few security modules have been developed on Linux distribution, such as SELinux / Apparmor / Smack / Tomoyo project, but there is still huge space to make improvement nevertheless. Until now, most of the Linux user keep apart from existing security modules mainly because it make a high entry barrier for those who have little understanding of system behavior & security module rules. In order to build the more user friendly module, our target is to hide the complexity of rules, but also allow advanced user to be able to refine the granularity.<br/> 
