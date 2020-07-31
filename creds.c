@@ -83,7 +83,7 @@ hb_binprm_ll *search_binprm_record(unsigned int fid, uid_t uid, char *pathname, 
 
 	list_for_each(pos, &hb_binprm_list_head.list) {
 		tmp = list_entry(pos, hb_binprm_ll, list);
-		if ((tmp->fid == HL_BPRM_SET_CREDS) && !memcmp(tmp->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE-1) && (uid == tmp->uid) && !compare_regex(tmp->pathname, pathname, strlen(pathname))) {
+		if ((tmp->fid == HB_BPRM_SET_CREDS) && !memcmp(tmp->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE-1) && (uid == tmp->uid) && !compare_regex(tmp->pathname, pathname, strlen(pathname))) {
 			/* we find the record */
 			printk(KERN_INFO "Found binprm set record !!!!\n");
 			return tmp;
@@ -105,7 +105,7 @@ int add_binprm_record(unsigned int fid, uid_t uid, char *pathname, char *digest,
 		tmp->fid = fid;
 		tmp->uid = uid;
 		switch (fid) {
-			case HL_BPRM_SET_CREDS:
+			case HB_BPRM_SET_CREDS:
 				strcpy(tmp->digest, digest);
 				tmp->pathname = kmalloc(len+1, GFP_KERNEL);
 				if (tmp->pathname == NULL)
@@ -286,7 +286,7 @@ ssize_t write_binprm_record(struct file *file, const char __user *buffer, size_t
 		}
 
 		sscanf(token, "%u %u %s %s", &fid, &uid, digest, pathname);
-		if (add_binprm_record(HL_BPRM_SET_CREDS, uid, pathname, digest, 0) != 0) {
+		if (add_binprm_record(HB_BPRM_SET_CREDS, uid, pathname, digest, 0) != 0) {
 			printk(KERN_WARNING "Failure to add binprm record %u, %s, %s\n", uid, pathname, digest);
 		}
 

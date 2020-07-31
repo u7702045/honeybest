@@ -84,9 +84,9 @@ hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *name, char *
 	list_for_each(pos, &hb_inode_list_head.list) {
 		tmp = list_entry(pos, hb_inode_ll, list);
 		switch (fid) {
-			case HL_INODE_REMOVEXATTR:
-			case HL_INODE_GETXATTR:
-			case HL_INODE_SETXATTR:
+			case HB_INODE_REMOVEXATTR:
+			case HB_INODE_GETXATTR:
+			case HB_INODE_SETXATTR:
 				if ((fid == tmp->fid) && (uid == tmp->uid) && (tmp->mode == mode) && !compare_regex(tmp->name, name, strlen(name)) && !compare_regex(tmp->dname, dname, strlen(dname))) {
 					/* we find the record */
 					printk(KERN_INFO "Found inode open record !!!!\n");
@@ -122,9 +122,9 @@ int add_inode_record(unsigned int fid, uid_t uid, char *name, char *dname, umode
 		}
 
 		switch (fid) {
-			case HL_INODE_REMOVEXATTR:
-			case HL_INODE_GETXATTR:
-			case HL_INODE_SETXATTR:
+			case HB_INODE_REMOVEXATTR:
+			case HB_INODE_GETXATTR:
+			case HB_INODE_SETXATTR:
 				strcpy(tmp->name, name);
 				strcpy(tmp->dname, dname);
 				break;

@@ -119,21 +119,21 @@ hb_socket_ll *search_socket_record(unsigned int fid, uid_t uid, int family, int 
 	list_for_each(pos, &hb_socket_list_head.list) {
 		tmp = list_entry(pos, hb_socket_ll, list);
 		switch (fid) {
-			case HL_SOCKET_CREATE:
-			case HL_SOCKET_CONNECT:
+			case HB_SOCKET_CREATE:
+			case HB_SOCKET_CONNECT:
 				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->family == family) && (tmp->type == type) && (tmp->protocol == protocol) && (tmp->kern == kern)) {
 					printk(KERN_INFO "Found socket create record !!!!\n");
 					return tmp;
 				}
 				break;
-			case HL_SOCKET_BIND:
+			case HB_SOCKET_BIND:
 				snum = lookup_source_port(sock, address, addrlen);
 				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->port == snum)) {
 					printk(KERN_INFO "Found socket bind record !!!!\n");
 					return tmp;
 				}
 				break;
-			case HL_SOCKET_SETSOCKOPT:
+			case HB_SOCKET_SETSOCKOPT:
 				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->level == level) && (tmp->optname == optname)) {
 					printk(KERN_INFO "Found socket setsockopt record !!!!\n");
 					return tmp;
@@ -175,17 +175,17 @@ int add_socket_record(unsigned int fid, uid_t uid, int family, int type,
 		tmp->fid = fid;
 		tmp->uid = uid;
 		switch (fid) {
-			case HL_SOCKET_CREATE:
-			case HL_SOCKET_CONNECT:
+			case HB_SOCKET_CREATE:
+			case HB_SOCKET_CONNECT:
 				tmp->family = family;
 				tmp->type = type;
 				tmp->protocol = protocol;
 				tmp->kern = kern;
 			       	break;
-			case HL_SOCKET_BIND:
+			case HB_SOCKET_BIND:
 				tmp->port = lookup_source_port(sock, address, addrlen);
 				break;
-			case HL_SOCKET_SETSOCKOPT:
+			case HB_SOCKET_SETSOCKOPT:
 				tmp->level = level;
 				tmp->optname = optname;
 				break;

@@ -82,7 +82,7 @@ hb_task_ll *search_task_record(unsigned int fid, uid_t uid, struct siginfo *info
 
 	list_for_each(pos, &hb_task_list_head.list) {
 		tmp = list_entry(pos, hb_task_ll, list);
-		if ((tmp->fid == HL_TASK_SIGNAL) && (uid == tmp->uid) && (tmp->sig == sig)) {
+		if ((tmp->fid == HB_TASK_SIGNAL) && (uid == tmp->uid) && (tmp->sig == sig)) {
 			/* we find the record */
 			printk(KERN_INFO "Found task open record !!!!\n");
 			return tmp;
@@ -103,7 +103,7 @@ int add_task_record(unsigned int fid, uid_t uid, int sig, int si_signo, int si_e
 		tmp->fid = fid;
 		tmp->uid = uid;
 		switch (fid) {
-			case HL_TASK_SIGNAL:
+			case HB_TASK_SIGNAL:
 				tmp->sig = sig;
 				tmp->si_signo = si_signo;
 				tmp->si_errno = si_errno;
@@ -187,7 +187,7 @@ ssize_t write_task_record(struct file *file, const char __user *buffer, size_t c
 		u32 secid = 0;
 
 		sscanf(token, "%u %u %d %d %d %u", &fid, &uid, &sig, &si_signo, &si_errno, &secid);
-		if (add_task_record(HL_TASK_SIGNAL, uid, sig, si_signo, si_errno, secid, 0) != 0) {
+		if (add_task_record(HB_TASK_SIGNAL, uid, sig, si_signo, si_errno, secid, 0) != 0) {
 			printk(KERN_WARNING "Failure to add task record %u, %d\n", uid, sig);
 		}
 	}

@@ -85,29 +85,29 @@ hb_sb_ll *search_sb_record(unsigned int fid, uid_t uid, char *s_id, char *name, 
 	list_for_each(pos, &hb_sb_list_head.list) {
 		tmp = list_entry(pos, hb_sb_ll, list);
 		switch (fid) {
-			case HL_SB_COPY_DATA:
+			case HB_SB_COPY_DATA:
 				if ((tmp->fid == fid) && (uid == tmp->uid)) {
 					/* we find the record */
 					printk(KERN_INFO "Found sb copy data record !!!!\n");
 					return tmp;
 				}
 				break;
-			case HL_SB_STATFS:
-			case HL_SB_REMOUNT:
+			case HB_SB_STATFS:
+			case HB_SB_REMOUNT:
 				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_id, s_id, strlen(s_id)) && !compare_regex(tmp->name, name, strlen(name))) {
 					/* we find the record */
 					printk(KERN_INFO "Found sb remount/statfs data record !!!!\n");
 					return tmp;
 				}
 				break;
-			case HL_SB_UMOUNT:
+			case HB_SB_UMOUNT:
 				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_id, s_id, strlen(s_id)) && !compare_regex(tmp->name, name, strlen(name)) && (tmp->flags == flags)) {
 					/* we find the record */
 					printk(KERN_INFO "Found sb umount data record !!!!\n");
 					return tmp;
 				}
 				break;
-			case HL_SB_MOUNT:
+			case HB_SB_MOUNT:
 				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->dev_name, dev_name, strlen(dev_name)) && !strncmp(tmp->type, type, strlen(type)) && (tmp->flags == flags)) {
 					/* we find the record */
 					printk(KERN_INFO "Found sb mount data record !!!!\n");

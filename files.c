@@ -83,7 +83,7 @@ hb_file_ll *search_file_record(unsigned int fid, uid_t uid, char *pathname)
 
 	list_for_each(pos, &hb_file_list_head.list) {
 		tmp = list_entry(pos, hb_file_ll, list);
-		if ((tmp->fid == HL_FILE_OPEN) && (uid == tmp->uid) && !compare_regex(tmp->pathname, pathname, strlen(pathname))) {
+		if ((tmp->fid == HB_FILE_OPEN) && (uid == tmp->uid) && !compare_regex(tmp->pathname, pathname, strlen(pathname))) {
 			/* we find the record */
 			printk(KERN_INFO "Found file set record !!!!\n");
 			return tmp;
@@ -105,7 +105,7 @@ int add_file_record(unsigned int fid, uid_t uid, char *pathname, int interact)
 		tmp->fid = fid;
 		tmp->uid = uid;
 		switch (fid) {
-			case HL_FILE_OPEN:
+			case HB_FILE_OPEN:
 				tmp->pathname = kmalloc(len+1, GFP_KERNEL);
 				if (tmp->pathname == NULL)
 					err = -EOPNOTSUPP;
@@ -194,7 +194,7 @@ ssize_t write_file_record(struct file *file, const char __user *buffer, size_t c
 		}
 
 		sscanf(token, "%u %u %s", &fid, &uid, pathname);
-		if (add_file_record(HL_FILE_OPEN, uid, pathname, 0) != 0) {
+		if (add_file_record(HB_FILE_OPEN, uid, pathname, 0) != 0) {
 			printk(KERN_WARNING "Failure to add file record %u, %s\n", uid, pathname);
 		}
 

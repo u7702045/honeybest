@@ -84,34 +84,34 @@ hb_path_ll *search_path_record(unsigned int fid, uid_t uid, umode_t mode, char *
 	list_for_each(pos, &hb_path_list_head.list) {
 		tmp = list_entry(pos, hb_path_ll, list);
 		switch (fid) {
-			case HL_PATH_RENAME:
-			case HL_PATH_TRUNCATE:
-			case HL_PATH_RMDIR:
-			case HL_PATH_SYMLINK:
-			case HL_PATH_LINK:
-			case HL_PATH_UNLINK:
+			case HB_PATH_RENAME:
+			case HB_PATH_TRUNCATE:
+			case HB_PATH_RMDIR:
+			case HB_PATH_SYMLINK:
+			case HB_PATH_LINK:
+			case HB_PATH_UNLINK:
 				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->source_pathname, source_pathname, strlen(source_pathname)) && !compare_regex(tmp->target_pathname, target_pathname, strlen(target_pathname))) {
 					/* we find the record */
 					printk(KERN_INFO "Found link/rename/rmdir/symlink/unlink path record !!!!\n");
 					return tmp;
 				}
 				break;
-			case HL_PATH_MKDIR:
-			case HL_PATH_CHMOD:
+			case HB_PATH_MKDIR:
+			case HB_PATH_CHMOD:
 				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->source_pathname, source_pathname, strlen(source_pathname)) && (tmp->mode == mode)) {
 					/* we find the record */
 					printk(KERN_INFO "Found chmod path record !!!!\n");
 					return tmp;
 				}
 				break;
-			case HL_PATH_CHOWN:
+			case HB_PATH_CHOWN:
 				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->source_pathname, source_pathname, strlen(source_pathname)) && (tmp->suid == suid) && (tmp->sgid == sgid)) {
 					/* we find the record */
 					printk(KERN_INFO "Found chown path record !!!!\n");
 					return tmp;
 				}
 				break;
-			case HL_PATH_MKNOD:
+			case HB_PATH_MKNOD:
 				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->source_pathname, source_pathname, strlen(source_pathname)) && (tmp->dev == dev)) {
 					/* we find the record */
 					printk(KERN_INFO "Found mknod path record !!!!\n");
@@ -157,24 +157,24 @@ int add_path_record(unsigned int fid, uid_t uid, umode_t mode, char *source_path
 		strcpy(tmp->target_pathname, target_pathname);
 
 		switch (fid) {
-			case HL_PATH_RENAME:
-			case HL_PATH_SYMLINK:
-			case HL_PATH_RMDIR:
-			case HL_PATH_TRUNCATE:
-			case HL_PATH_LINK:
-			case HL_PATH_UNLINK:
+			case HB_PATH_RENAME:
+			case HB_PATH_SYMLINK:
+			case HB_PATH_RMDIR:
+			case HB_PATH_TRUNCATE:
+			case HB_PATH_LINK:
+			case HB_PATH_UNLINK:
 				break;
-			case HL_PATH_CHOWN:
+			case HB_PATH_CHOWN:
 				tmp->suid = suid;
 				tmp->sgid = sgid;
 				break;
-			case HL_PATH_MKNOD:
+			case HB_PATH_MKNOD:
 				tmp->dev = dev;
 				if (mode >= 0) //mknod from userspace look weird, bug?
 				       	tmp->mode = mode;
 				break;
-			case HL_PATH_MKDIR:
-			case HL_PATH_CHMOD:
+			case HB_PATH_MKDIR:
+			case HB_PATH_CHMOD:
 				tmp->mode = mode;
 				break;
 			default:

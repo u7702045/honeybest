@@ -1,7 +1,7 @@
 #include "honeybest.h"
 typedef struct hb_notify_ll_t {
 	unsigned int fid;		// security hook function binprm by program
-	char proc[HL_PROC_FSIZE];	//name of /proc/honeybest/*
+	char proc[HB_PROC_FSIZE];	//name of /proc/honeybest/*
 	void *data;			// pointer to different type of struct
 	struct list_head list;
 } hb_notify_ll;

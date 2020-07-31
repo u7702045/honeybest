@@ -84,7 +84,7 @@ hb_kmod_ll *search_kmod_record(unsigned int fid, uid_t uid, char *name)
 	list_for_each(pos, &hb_kmod_list_head.list) {
 		tmp = list_entry(pos, hb_kmod_ll, list);
 		switch (fid) {
-			case HL_KMOD_REQ:
+			case HB_KMOD_REQ:
 				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->name, name, strlen(name))) {
 					/* we find the record */
 					printk(KERN_INFO "Found kernel module record !!!!\n");
