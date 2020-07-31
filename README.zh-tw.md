@@ -1,7 +1,7 @@
 # HoneyBest LSM
-HoneyBest is the new implementation of Linux Security Module project.<br/> 
+HoneyBest 安全模組設計.<br/> 
 *Read this in other languages: [English](README.md), [正體中文](README.zh-tw.md).*
-### __Background__
+### __背景__
 ###### Over the year few security modules have been developed on Linux distribution, such as SELinux / Apparmor / Smack / Tomoyo project, but there is still huge space to make improvement nevertheless. Until now, most of the Linux user keep apart from existing security modules mainly because it make a high entry barrier for those who have little understanding of system behavior & security module rules. In order to build the more user friendly module, our target is to hide the complexity of rules, but also allow advanced user to be able to refine the granularity.<br/> 
 ###### For most of the user case, security module begin to involve in post software development. Take an embedded devices, NAS appliance for the example. Security developer have to write a bunch of rules to protect applications, configuration files from other unauthorized process & restriction to certain resources. In order to do so, they had to go deep understanding through every single process to prevent from threads. We start to ask ourselves few question, is there any possible we can build an auto generation secure module policy base on real time scenario? How if the secure module policy support interaction with developer whether or not to add new rules or requesting permission under safe condition? Is there an alternative approach to replace rules concept? HoneyBest secure module might be for those answer. <br/>
 ### __Concept__
