@@ -93,6 +93,7 @@
 #include "tasks.h"
 #include "inode.h"
 #include "path.h"
+#include "sb.h"
 #include "notify.h"
 
 #ifdef CONFIG_SECURITY_HONEYBEST
@@ -108,6 +109,7 @@ extern hb_socket_ll hb_socket_list_head;
 extern hb_task_ll hb_task_list_head;
 extern hb_inode_ll hb_inode_list_head;
 extern hb_path_ll hb_path_list_head;
+extern hb_sb_ll hb_sb_list_head;
 extern hb_notify_ll hb_notify_list_head;
 
 extern struct proc_dir_entry *hb_proc_file_entry;
@@ -116,6 +118,7 @@ extern struct proc_dir_entry *hb_proc_socket_entry;
 extern struct proc_dir_entry *hb_proc_binprm_entry;
 extern struct proc_dir_entry *hb_proc_inode_entry;
 extern struct proc_dir_entry *hb_proc_path_entry;
+extern struct proc_dir_entry *hb_proc_sb_entry;
 extern struct proc_dir_entry *hb_proc_notify_entry;
 
 
@@ -310,6 +313,18 @@ static const struct file_operations hb_proc_path_fops = {
 	.release = single_release,
 };
 
+static int open_sb_proc(struct inode *inode, struct  file *file) {
+	  return single_open(file, read_sb_record, NULL);
+}
+
+static const struct file_operations hb_proc_sb_fops = {
+	.open  = open_sb_proc,
+	.read  = seq_read,
+	.write  = write_sb_record,
+	.llseek  = seq_lseek,
+	.release = single_release,
+};
+
 static void __init honeybest_init_sysctl(void)
 {
        	struct proc_dir_entry *honeybest_dir = proc_mkdir("honeybest", NULL);
@@ -339,6 +354,9 @@ static void __init honeybest_init_sysctl(void)
 
 	/* path tracing */
 	INIT_LIST_HEAD(&hb_path_list_head.list);
+
+	/* super block tracing */
+	INIT_LIST_HEAD(&hb_sb_list_head.list);
 
 	/* prepare notify proc entry */
 	hb_proc_notify_entry = proc_create("notify", 0666, honeybest_dir, &hb_proc_notify_fops);
@@ -380,6 +398,12 @@ static void __init honeybest_init_sysctl(void)
 	hb_proc_path_entry = proc_create("path", 0666, honeybest_dir, &hb_proc_path_fops);
 	if (!hb_proc_path_entry) {
 		printk(KERN_INFO "Error creating honeybest path proc entry");
+	}
+
+	/* prepare sb proc entry */
+	hb_proc_sb_entry = proc_create("sb", 0666, honeybest_dir, &hb_proc_sb_fops);
+	if (!hb_proc_sb_entry) {
+		printk(KERN_INFO "Error creating honeybest sb proc entry");
 	}
 
 }
@@ -565,22 +589,98 @@ static void honeybest_sb_free_security(struct super_block *sb)
 	
 static int honeybest_sb_copy_data(char *orig, char *copy)
 {
-	return 0;
+	int err = 0;
+       	const struct task_struct *task = current;
+
+	if (!enabled)
+		return err;
+
+	if (inject_honeybest_tracker(task, HL_SB_COPY_DATA))
+	       	err = -ENOMEM;
+
+	return err;
 }
 
 static int honeybest_sb_remount(struct super_block *sb, void *data)
 {
-	return 0;
+	int err = 0;
+	struct security_mnt_opts opts;
+	char **mount_options;
+	int *flags;
+	int i = 0;
+	char *na = "N/A";
+	hb_sb_ll *record = NULL;
+       	const struct task_struct *task = current;
+
+	if (!enabled)
+		return err;
+
+	if (inject_honeybest_tracker(task, 0))
+	       	err = -ENOMEM;
+
+	security_init_mnt_opts(&opts);
+	mount_options = opts.mnt_opts;
+	flags = opts.mnt_opts_flags;
+	for (i = 0; i < opts.num_mnt_opts; i++) {
+		record = search_sb_record(HL_SB_REMOUNT, task->cred->uid.val, sb->s_id, (char *)sb->s_type->name, na, na, 0);
+
+		if (record) {
+			printk(KERN_INFO "Found sb remount record func=%u, uid %u, s_id=%s, type name=%s\n", record->fid, record->uid, record->s_id, record->name);
+		}
+		else {
+			if (locking == 0) 
+				err = add_sb_record(HL_SB_REMOUNT, task->cred->uid.val, sb->s_id, (char *)sb->s_type->name, na, na, 0, interact);
+
+			if (locking == 1)
+				err = -EOPNOTSUPP;
+		}
+	}
+	return err;
 }
 
 static int honeybest_sb_kern_mount(struct super_block *sb, int flags, void *data)
 {
-	return 0;
+	int err = 0;
+       	const struct task_struct *task = current;
+
+	if (!enabled)
+		return err;
+
+	if (inject_honeybest_tracker(task, HL_SB_KERN_MOUNT))
+	       	err = -ENOMEM;
+
+	// less info compare to sb_mount
+
+	return err;
 }
 
 static int honeybest_sb_statfs(struct dentry *dentry)
 {
-  	return 0;
+	int err = 0;
+       	const struct task_struct *task = current;
+       	struct super_block *sb = dentry->d_sb;
+	char *na = "N/A";
+	hb_sb_ll *record = NULL;
+
+	if (!enabled)
+		return err;
+
+	if (inject_honeybest_tracker(task, HL_SB_STATFS))
+	       	err = -ENOMEM;
+
+	record = search_sb_record(HL_SB_STATFS, task->cred->uid.val, sb->s_id, (char *)sb->s_type->name, na, na, 0);
+
+	if (record) {
+		printk(KERN_INFO "Found sb statfs record func=%u, uid %u, s_id=%s, type name=%s\n", record->fid, record->uid, record->s_id, record->name);
+	}
+	else {
+		if (locking == 0) 
+			err = add_sb_record(HL_SB_STATFS, task->cred->uid.val, sb->s_id, (char *)sb->s_type->name, na, na, 0, interact);
+
+		if (locking == 1)
+			err = -EOPNOTSUPP;
+	}
+	return err;
 }
 
 static int honeybest_mount(const char *dev_name,
@@ -589,12 +689,61 @@ static int honeybest_mount(const char *dev_name,
                          unsigned long flags,
                          void *data)
 {
-	return 0;
+	int err = 0;
+       	const struct task_struct *task = current;
+	char *na = "N/A";
+	hb_sb_ll *record = NULL;
+
+	if (!enabled)
+		return err;
+
+	if (inject_honeybest_tracker(task, HL_SB_MOUNT))
+	       	err = -ENOMEM;
+
+	record = search_sb_record(HL_SB_MOUNT, task->cred->uid.val, na, (char *)na, (char *)dev_name, (char *)type, flags);
+
+	if (record) {
+		printk(KERN_INFO "Found sb mount record func=%u, uid %u, dev_name=%s, type name=%s, flags=%d\n", record->fid, record->uid, record->dev_name, record->type, record->flags);
+	}
+	else {
+		if (locking == 0) 
+			err = add_sb_record(HL_SB_MOUNT, task->cred->uid.val, na, na, (char *)dev_name, (char *)type, flags, interact);
+
+		if (locking == 1)
+			err = -EOPNOTSUPP;
+	}
+
+	return err;
 }
 
 static int honeybest_umount(struct vfsmount *mnt, int flags)
 {
-	return 0;
+	int err = 0;
+       	const struct task_struct *task = current;
+       	struct super_block *sb = mnt->mnt_sb;
+	char *na = "N/A";
+	hb_sb_ll *record = NULL;
+
+	if (!enabled)
+		return err;
+
+	if (inject_honeybest_tracker(task, HL_SB_UMOUNT))
+	       	err = -ENOMEM;
+
+	record = search_sb_record(HL_SB_UMOUNT, task->cred->uid.val, sb->s_id, (char *)sb->s_type->name, na, na, flags);
+
+	if (record) {
+		printk(KERN_INFO "Found sb umount record func=%u, uid %u, dev_name=%s, type name=%s, flags=%d\n", record->fid, record->uid, record->dev_name, record->type, record->flags);
+	}
+	else {
+		if (locking == 0) 
+			err = add_sb_record(HL_SB_UMOUNT, task->cred->uid.val, sb->s_id, (char *)sb->s_type->name, na, na, flags, interact);
+
+		if (locking == 1)
+			err = -EOPNOTSUPP;
+	}
+
+	return err;
 }
 
 static int honeybest_inode_alloc_security(struct inode *inode)
@@ -1717,12 +1866,26 @@ static int honeybest_kernel_act_as(struct cred *new, u32 secid)
 
 static int honeybest_kernel_create_files_as(struct cred *new, struct inode *inode)
 {
-        return 0;
+	int err = 0;
+
+	if (!enabled) {
+		return err;
+	}
+
+        return err;
 }
 
 static int honeybest_kernel_module_request(char *kmod_name)
 {
-        return 0;
+	int err = 0;
+
+	if (!enabled) {
+		return err;
+	}
+
+	printk(KERN_ERR "--------->%s, %s\n", __FUNCTION__, kmod_name);
+
+        return err;
 }
 
 static int honeybest_kernel_read_file(struct file *file, enum kernel_read_file_id id)
@@ -2743,8 +2906,7 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(socket_setsockopt, honeybest_socket_setsockopt),
         LSM_HOOK_INIT(socket_shutdown, honeybest_socket_shutdown),
         LSM_HOOK_INIT(socket_sock_rcv_skb, honeybest_socket_sock_rcv_skb),
-        LSM_HOOK_INIT(socket_getpeersec_stream,
-                        honeybest_socket_getpeersec_stream),
+        LSM_HOOK_INIT(socket_getpeersec_stream, honeybest_socket_getpeersec_stream),
         LSM_HOOK_INIT(socket_getpeersec_dgram, honeybest_socket_getpeersec_dgram),
         LSM_HOOK_INIT(sk_alloc_security, honeybest_sk_alloc_security),
         LSM_HOOK_INIT(sk_free_security, honeybest_sk_free_security),
