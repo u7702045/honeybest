@@ -41,6 +41,8 @@
 #define HL_SB_MOUNT			34
 #define HL_SB_UMOUNT			35
 
+#define HL_KMOD_REQ			40
+
 #define HL_DENTRY_INIT_SEC		160
 
 #define HL_NOTIFY_ADD			500
@@ -54,3 +56,4 @@
 #define HL_PATH_PROC			"path"
 #define HL_SOCKET_PROC			"socket"
 #define HL_SB_PROC			"sb"
+#define HL_KMOD_PROC			"kmod"

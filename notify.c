@@ -77,6 +77,7 @@
 #include "path.h"
 #include "inode.h"
 #include "sb.h"
+#include "kmod.h"
 #include "honeybest.h"
 
 struct proc_dir_entry *hb_proc_notify_entry;
@@ -179,6 +180,16 @@ int add_notify_record(unsigned int fid, void *data)
 				else
 					tmp->data = data;
 				break;
+			case HL_KMOD_REQ:
+				tmp->data = (void *)kmalloc(sizeof(hb_kmod_ll), GFP_KERNEL);
+				strncpy(tmp->proc, HL_KMOD_PROC, strlen(HL_KMOD_PROC));
+				if (tmp->data == NULL) {
+					printk(KERN_ERR "unable to add kmod notify linked list\n");
+					err = -EOPNOTSUPP;
+				}
+				else
+					tmp->data = data;
+				break;
 			default:
 				break;
 		}
@@ -205,6 +216,7 @@ int read_notify_record(struct seq_file *m, void *v)
        	hb_path_ll *paths = NULL;
        	hb_inode_ll *inodes = NULL;
        	hb_sb_ll *sbs = NULL;
+       	hb_kmod_ll *kmods = NULL;
 
 	seq_printf(m, "ID\tFILE\tFUNC\tUID\tDATA\n");
 	list_for_each_safe(pos, q, &hb_notify_list_head.list) {
@@ -261,6 +273,11 @@ int read_notify_record(struct seq_file *m, void *v)
 				sbs = (hb_sb_ll *)tmp->data;
 				seq_printf(m, "%lu\t%s\t%u\t%u\t%s\t%s\t%s\t%s\t%d\n", total++, tmp->proc, sbs->fid\
 						, sbs->uid, sbs->s_id, sbs->name, sbs->dev_name, sbs->type, sbs->flags);
+				break;
+			case HL_KMOD_REQ:
+				kmods = (hb_kmod_ll *)tmp->data;
+				seq_printf(m, "%lu\t%s\t%u\t%u\t%s\n", total++, tmp->proc, sbs->fid\
+						, sbs->uid, sbs->name);
 				break;
 			default:
 				break;

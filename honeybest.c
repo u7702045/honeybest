@@ -94,6 +94,7 @@
 #include "inode.h"
 #include "path.h"
 #include "sb.h"
+#include "kmod.h"
 #include "notify.h"
 
 #ifdef CONFIG_SECURITY_HONEYBEST
@@ -110,6 +111,7 @@ extern hb_task_ll hb_task_list_head;
 extern hb_inode_ll hb_inode_list_head;
 extern hb_path_ll hb_path_list_head;
 extern hb_sb_ll hb_sb_list_head;
+extern hb_kmod_ll hb_kmod_list_head;
 extern hb_notify_ll hb_notify_list_head;
 
 extern struct proc_dir_entry *hb_proc_file_entry;
@@ -119,6 +121,7 @@ extern struct proc_dir_entry *hb_proc_binprm_entry;
 extern struct proc_dir_entry *hb_proc_inode_entry;
 extern struct proc_dir_entry *hb_proc_path_entry;
 extern struct proc_dir_entry *hb_proc_sb_entry;
+extern struct proc_dir_entry *hb_proc_kmod_entry;
 extern struct proc_dir_entry *hb_proc_notify_entry;
 
 
@@ -325,6 +328,18 @@ static const struct file_operations hb_proc_sb_fops = {
 	.release = single_release,
 };
 
+static int open_kmod_proc(struct inode *inode, struct  file *file) {
+	  return single_open(file, read_kmod_record, NULL);
+}
+
+static const struct file_operations hb_proc_kmod_fops = {
+	.open  = open_kmod_proc,
+	.read  = seq_read,
+	.write  = write_kmod_record,
+	.llseek  = seq_lseek,
+	.release = single_release,
+};
+
 static void __init honeybest_init_sysctl(void)
 {
        	struct proc_dir_entry *honeybest_dir = proc_mkdir("honeybest", NULL);
@@ -357,6 +372,9 @@ static void __init honeybest_init_sysctl(void)
 
 	/* super block tracing */
 	INIT_LIST_HEAD(&hb_sb_list_head.list);
+
+	/* kernel modules tracing */
+	INIT_LIST_HEAD(&hb_kmod_list_head.list);
 
 	/* prepare notify proc entry */
 	hb_proc_notify_entry = proc_create("notify", 0666, honeybest_dir, &hb_proc_notify_fops);
@@ -404,6 +422,12 @@ static void __init honeybest_init_sysctl(void)
 	hb_proc_sb_entry = proc_create("sb", 0666, honeybest_dir, &hb_proc_sb_fops);
 	if (!hb_proc_sb_entry) {
 		printk(KERN_INFO "Error creating honeybest sb proc entry");
+	}
+
+	/* prepare kmod proc entry */
+	hb_proc_kmod_entry = proc_create("kmod", 0666, honeybest_dir, &hb_proc_kmod_fops);
+	if (!hb_proc_kmod_entry) {
+		printk(KERN_INFO "Error creating honeybest kmod proc entry");
 	}
 
 }
@@ -1878,12 +1902,30 @@ static int honeybest_kernel_create_files_as(struct cred *new, struct inode *inod
 static int honeybest_kernel_module_request(char *kmod_name)
 {
 	int err = 0;
+       	const struct task_struct *task = current;
+	hb_kmod_ll *record = NULL;
 
 	if (!enabled) {
 		return err;
 	}
 
+	if (inject_honeybest_tracker(task, HL_KMOD_REQ))
+	       	err = -ENOMEM;
+
 	printk(KERN_ERR "--------->%s, %s\n", __FUNCTION__, kmod_name);
+
+	record = search_kmod_record(HL_KMOD_REQ, task->cred->uid.val, kmod_name);
+
+	if (record) {
+		printk(KERN_INFO "Found kmod record func=%u, uid %u, name=%s\n", record->fid, record->uid, record->name);
+	}
+	else {
+		if (locking == 0) 
+			err = add_kmod_record(HL_KMOD_REQ, task->cred->uid.val, kmod_name, interact);
+
+		if (locking == 1)
+			err = -EOPNOTSUPP;
+	}
 
         return err;
 }
