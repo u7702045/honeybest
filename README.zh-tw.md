@@ -1,10 +1,10 @@
-# HoneyBest LSM
-HoneyBest 安全模組設計.<br/> 
+# HoneyBest Linux安全模組
+HoneyBest 目標為打造一個基於LSM的全新安全模組設計.<br/> 
 *Read this in other languages: [English](README.md), [正體中文](README.zh-tw.md).*
 ### __背景__
 ###### Over the year few security modules have been developed on Linux distribution, such as SELinux / Apparmor / Smack / Tomoyo project, but there is still huge space to make improvement nevertheless. Until now, most of the Linux user keep apart from existing security modules mainly because it make a high entry barrier for those who have little understanding of system behavior & security module rules. In order to build the more user friendly module, our target is to hide the complexity of rules, but also allow advanced user to be able to refine the granularity.<br/> 
 ###### For most of the user case, security module begin to involve in post software development. Take an embedded devices, NAS appliance for the example. Security developer have to write a bunch of rules to protect applications, configuration files from other unauthorized process & restriction to certain resources. In order to do so, they had to go deep understanding through every single process to prevent from threads. We start to ask ourselves few question, is there any possible we can build an auto generation secure module policy base on real time scenario? How if the secure module policy support interaction with developer whether or not to add new rules or requesting permission under safe condition? Is there an alternative approach to replace rules concept? HoneyBest secure module might be for those answer. <br/>
-### __Concept__
+### __概念__
 ###### Let us imaging few conditions here.
 ##### Condition A – Environment complexity is hard to apply rules
 ###### Team of developers have complete their software development on Linux box. The appliance involve NGIX server for user to configure setting; Samba server for file sharing; SNMP server for remote setting; Syslog server to track system record. They handle the appliance to one of their security guy, Bob, who are the expertise in security module. In order to create thread model, Bob have to understand every single process running on the box, how each process interfere with system and other processes. He now create rules to protect base on the thread model. At first, he create rules to restrict process to access only certain system resource, such as Syslog server. Syslog server is allowed to create files under /var/log/*.log, with WRITE permission only; Syslog server is allow to create only localhost 514 UDP port, receive other application log message. Here come small part of complicate scenario, log message files could grow up over the time and Logrotate daemon are design into system to handle compression job; log message files need permission rules to MOVE files(DELETE/CREATE/READ/WRITE); Meanwhile, NGIX we server need permission READ in order to show context while user login via web page. After Bob figure out all those cross over relationship & rules, he start to apply into system. It turn out, the box does not act as normal as expect to pass system integration test. Bob have to invite developer to figure out what going on to the system. It turn out that NGIX web server need permission rules to interact with 514 UDP port for logging itself message. In real world, security expertise feel frustrate to do their job because of complexity environment involve.<br/>
@@ -16,7 +16,7 @@ HoneyBest 安全模組設計.<br/>
 ###### Real time interaction feedback mechanism are more easy way for developers to understand what going. Instead of rules, pop out dialogue asking permission to explain activity is an effective way to make progress. For the fine-grain advanced user, our design also consider to fulfill such needs.<br/>
 ##### Condition E – Different perspective of software protection
 ###### In some privacy scenario, system designer not only require the task to have restriction from accessing resources, but also restriction from other resources to access the task. Here are the 2 examples, I want to protect my private libraries/program from piracy, however, still allow certain program to use; I want only “upgrade-firmware” command to be able upgrade system firmware, not “dd” command, and the integrity of “upgrade-firmware” command is concerned. <br/>
-### __Design__
+### __設計__
 ###### Our core design is to focus on capturing the kernel activities triggered by user space program. Activities which is tracking will later turn into list data structure for security module to detect an unexpected occur event. The size of list data structure is tightly depends on level of granularity. The more precise restriction or control to be chosen, the higher space requirement for data structure to be saved. Above the surface of such design, here is the approach to apply secure module. Unfreeze the box in your security environment, run all activities as you can to create a model, then freeze the box. Once you freeze the box, all activities are restrict to previous model. You might consider fine-grain the model because some activities are not able to perform in your security environment. Either use an editor to edit the model or turn on interaction mode, developers are able to selectively choose prompt up dialogue with new activity in real world situation. Below figure show how the lifecycle go:
 1.	###### Product finish development
 2.	###### Turn on unfreeze mode / Turn off interaction mode
@@ -34,7 +34,7 @@ HoneyBest 安全模組設計.<br/>
 6.	###### Select HoneyBest security module (`make menuconfig`)
 7.	###### Compiling kernel under [KERNEL SOURCE] (`make modules bzImage`)
 8.	###### Install new kernel & modules (`make install`)
-### __Usage__
+### __使用__
 ##### Enablement option – on mode or off mode
 ###### HoneyBest security module stay in deactivate mode / non-interactive mode as default. It provides 2 activation options, below: 
 1.	###### Add string hashlock.enabled=1 into GRUB parameter.
@@ -53,7 +53,7 @@ HoneyBest 安全模組設計.<br/>
 * ###### FUNCTION – functional identification, honeybest use to identify different activities. Under certain category such as ‘socket’, different activities are label as listen/bind/accept/open/setsocketopt and so on. 
 * ###### USER ID – user identification, honeybest use to reference relationship between identity and function. 
 
-##### Files
+##### 檔案
 * ###### binprm – Tracking all executable file path name, process UID belong to and most importantly, calculate file context into HASH to protect the integrity.
 * ###### files – Tracking ordinary file behavior, such as open/read/write/delete/rename.
 * ###### inode – Tracking inode operation, such as create/delete/read/update/setxattr/getxattr.
