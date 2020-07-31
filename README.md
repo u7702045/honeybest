@@ -59,5 +59,7 @@ HoneyBest is the new implementation of Linux Security Module project.
 * ###### path – Tracking behavior of all type of file such as device node, hard/soft symbolic, directory, pipe, unix socket.
 * ###### socket – Tracking TCP/UDP/ICMP socket activity, including port number.
 * ###### task – Tracking activity between process, such as signal exchanging.
-* ###### notify – Notification between security module and user space application. In interactive mode, unexpected event is detected, notify to user space program later. Dialogue pop up to acquiring security expertise allow or ignore such activities.
+* ###### sb – Tracking superblock information. Activities such as mount/umount/df will stamp into this category. Highly relate to file/path categories due to system register /proc information.
+* ###### kmod – Tracking Linux kernel modules activity. Kernel modprobe will stamp into this category. 
+* ###### notify – Notification between security module and user space application. In interactive mode, detect to unexpected events are save into this file for user space program to notify user later. Dialogue pop up to acquiring security expertise allow or ignore such activities. Context in 
 
