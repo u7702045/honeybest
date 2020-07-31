@@ -1,4 +1,4 @@
-# 漢妮安全模組<br/><img src="HoneyBest.png" width="100" height="150" />
+# 漢妮安全模組<br/><img src="images/HoneyBest.png" width="100" height="150" />
 漢妮專案主要目標為打造一個基於白名單設計的全新安全模組.<br/> 
 *Read this in other languages: [English](README.md), [正體中文](README.zh-tw.md).*
 ### __背景__

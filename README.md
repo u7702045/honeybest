@@ -1,4 +1,4 @@
-# HoneyBest LSM <br/><img src="HoneyBest.png" width="100" height="150" />
+# HoneyBest LSM <br/><img src="images/HoneyBest.png" width="100" height="150" />
 HoneyBest is the new implementation of Linux Security Module project.<br/> 
 *Read this in other languages: [English](README.md), [正體中文](README.zh-tw.md).*
 ### __Background__
