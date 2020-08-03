@@ -1912,8 +1912,6 @@ static int honeybest_kernel_module_request(char *kmod_name)
 	if (inject_honeybest_tracker(task, HB_KMOD_REQ))
 	       	err = -ENOMEM;
 
-	printk(KERN_ERR "--------->%s, %s\n", __FUNCTION__, kmod_name);
-
 	record = search_kmod_record(HB_KMOD_REQ, task->cred->uid.val, kmod_name);
 
 	if (record) {
