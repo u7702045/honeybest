@@ -1,4 +1,20 @@
-12d11
-< subdir-$(CONFIG_SECURITY_HONEYBEST)	+= honeybest
-29d27
-< obj-$(CONFIG_SECURITY_HONEYBEST)	+= honeybest/
+diff --git a/../Makefile b/tmp/Makefile
+index 492e9bc..8631f0c 100644
+--- a/../Makefile
++++ b/tmp/Makefile
+@@ -9,7 +9,6 @@ subdir-$(CONFIG_SECURITY_TOMOYO)        += tomoyo
+ subdir-$(CONFIG_SECURITY_APPARMOR)	+= apparmor
+ subdir-$(CONFIG_SECURITY_YAMA)		+= yama
+ subdir-$(CONFIG_SECURITY_LOADPIN)	+= loadpin
+-subdir-$(CONFIG_SECURITY_HONEYBEST)	+= honeybest
+ 
+ # always enable default capabilities
+ obj-y					+= commoncap.o
+@@ -26,7 +25,6 @@ obj-$(CONFIG_SECURITY_TOMOYO)		+= tomoyo/
+ obj-$(CONFIG_SECURITY_APPARMOR)		+= apparmor/
+ obj-$(CONFIG_SECURITY_YAMA)		+= yama/
+ obj-$(CONFIG_SECURITY_LOADPIN)		+= loadpin/
+-obj-$(CONFIG_SECURITY_HONEYBEST)	+= honeybest/
+ obj-$(CONFIG_CGROUP_DEVICE)		+= device_cgroup.o
+ 
+ # Object integrity file lists
