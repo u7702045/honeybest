@@ -1,0 +1,4 @@
+12d11
+< subdir-$(CONFIG_SECURITY_HONEYBEST)	+= honeybest
+29d27
+< obj-$(CONFIG_SECURITY_HONEYBEST)	+= honeybest/
