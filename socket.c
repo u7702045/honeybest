@@ -85,7 +85,7 @@ static unsigned short lookup_source_port(struct socket *sock, struct sockaddr *a
 	       	unsigned short snum;
 		struct sockaddr_in *addr4 = NULL;
 		struct sockaddr_in6 *addr6 = NULL;
-		char *addrp;
+		char *addrp = NULL;
 		if (family == PF_INET) {
 			if (addrlen < sizeof(struct sockaddr_in)) {
 				goto out;
@@ -183,7 +183,10 @@ int add_socket_record(unsigned int fid, uid_t uid, int family, int type,
 				tmp->kern = kern;
 			       	break;
 			case HB_SOCKET_BIND:
-				tmp->port = lookup_source_port(sock, address, addrlen);
+				if (interact == 0)
+					tmp->port = 0;
+				else
+				       	tmp->port = lookup_source_port(sock, address, addrlen);
 				break;
 			case HB_SOCKET_SETSOCKOPT:
 				tmp->level = level;
