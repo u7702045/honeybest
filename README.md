@@ -72,7 +72,7 @@ In real world, security expertise feel frustrate to do their job because of comp
 2. Running the system test. The example here we focus on path file, which have high relative to symbolic file create activity. Let mimic our system test involve to creating symbolic link. `ln -s /etc/services /tmp/services`
 3. Now, disable the HoneyBest before tuning whitelist. `echo 0 > /proc/sys/kernel/honeybest/enabled`
 4. Review the activities relates to path. `cat /proc/honeybest/path | grep services`
-5. If you find out result show `23 0 0 0 0 0 /etc/services /tmp/services`, that indicate whitelist is automatically track.
+5. If you find out result show `23 0 0 0 0 0 /etc/services /tmp/services`, that indicate whitelist is automatically tracked.
 6. Another advance case here. Let say your system test involve udev daemon constantly accumulate new symbolic file with constant pattern, e.g /dev/usb0, /dev/usb1…n link to /dev/ttyUSB. We notice that multi line relate to /dev/ttyusb have attach into path file context after enable the HoneyBest LSM. Here is an approach to solve the matching issue. <br/>
 	6.1. Disable the HoneyBest LSM. <br/>
 	6.2. Dump context to new file. `cat /proc/honeybest/path > /etc/hb/path` <br/>
@@ -80,7 +80,7 @@ In real world, security expertise feel frustrate to do their job because of comp
 	6.4. Eliminate first row & first column, eliminate all duplicate line and leave only one line with regular express at increasing character, Figure 2. <br/>
 	6.5. Re-apply new activities to HoneyBest LSM. `cat /etc/hb/path > /proc/honeybest/path`<br/>
 	6.6 Enable the HoneyBest LSM. <br/>
-###### Developer can enable the locking mode during system test to verify the outcome. If system test failure, disable the locking mode and run again the activities. Comparing the files context will give you hint what missing activity need to inject.
+###### Developer can enable the locking mode (`echo 1 > /proc/sys/kernel/honeybest/locking`) during system test to verify the outcome. If system test failure, disable the locking mode (`echo 0 > /proc/sys/kernel/honeybest/locking`) and run again the activities. Comparing the files context will give you hint what missing activity need to inject.
 #### Figure 1
 |NO|FUNC|UID|MODE|SUID|GUID|DEV|SOURCE PATH|TARGET PATH|
 |--|----|---|----|----|----|---|-----------|-----------|
