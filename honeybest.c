@@ -86,6 +86,7 @@
 #include <crypto/hash.h>
 #include <crypto/sha.h>
 #include <crypto/algapi.h>
+#include <linux/version.h>
 #include "honeybest.h"
 #include "creds.h"
 #include "files.h"
@@ -185,6 +186,51 @@ static struct ctl_table honeybest_sysctl_table[] = {
 	},
 	{ }
 };
+#endif
+
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,4,0)
+char *kstrdup_quotable(const char *src, gfp_t gfp)
+{
+	size_t slen, dlen;
+	char *dst;
+	const int flags = ESCAPE_HEX;
+	const char esc[] = "\f\n\r\t\v\a\e\\\"";
+
+	if (!src)
+		return NULL;
+	slen = strlen(src);
+
+	dlen = string_escape_mem(src, slen, NULL, 0, flags, esc);
+	dst = kmalloc(dlen + 1, gfp);
+	if (!dst)
+		return NULL;
+
+	WARN_ON(string_escape_mem(src, slen, dst, dlen, flags, esc) != dlen);
+	dst[dlen] = '\0';
+
+	return dst;
+}
+char *kstrdup_quotable_file(struct file *file, gfp_t gfp)
+{
+	char *temp, *pathname;
+
+	if (!file)
+		return kstrdup("<unknown>", gfp);
+
+	/* We add 11 spaces for ' (deleted)' to be appended */
+	temp = kmalloc(PATH_MAX + 11, GFP_KERNEL);
+	if (!temp)
+		return kstrdup("<no_memory>", gfp);
+
+	pathname = file_path(file, temp, PATH_MAX + 11);
+	if (IS_ERR(pathname))
+		pathname = kstrdup("<too_long>", gfp);
+	else
+		pathname = kstrdup_quotable(pathname, gfp);
+
+	kfree(temp);
+	return pathname;
+}
 #endif
 
 int free_honeybest_tracker(const struct task_struct *task)
@@ -707,11 +753,16 @@ static int honeybest_sb_statfs(struct dentry *dentry)
 	return err;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_mount(const char *dev_name,
                          const struct path *path,
                          const char *type,
                          unsigned long flags,
                          void *data)
+#else
+static int honeybest_mount(const char *dev_name, struct path *path,
+                         const char *type, unsigned long flags, void *data)
+#endif
 {
 	int err = 0;
        	const struct task_struct *task = current;
@@ -797,6 +848,7 @@ static void honeybest_inode_free_security(struct inode *inode)
 	return;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_dentry_init_security(struct dentry *dentry, int mode,
                                         const struct qstr *name, void **ctx,
                                         u32 *ctxlen)
@@ -815,6 +867,9 @@ static int honeybest_dentry_init_security(struct dentry *dentry, int mode,
 
 
 static int honeybest_path_unlink(const struct path *dir, struct dentry *dentry)
+#else
+static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
+#endif
 {
 
 	int err = 0;
@@ -868,9 +923,13 @@ out:
 	return err;
 }
 
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_mkdir(const struct path *dir, struct dentry *dentry,
 			       umode_t mode)
+#else
+static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
+			       umode_t mode)
+#endif
 {
 
 	int err = 0;
@@ -924,7 +983,11 @@ out:
 	return err;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_rmdir(const struct path *dir, struct dentry *dentry)
+#else
+static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
+#endif
 {
 
 	int err = 0;
@@ -974,8 +1037,13 @@ out:
 	return err;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_mknod(const struct path *dir, struct dentry *dentry,
 			       umode_t mode, unsigned int dev)
+#else
+static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
+			       umode_t mode, unsigned int dev)
+#endif
 {
 
 	int err = 0;
@@ -1029,7 +1097,11 @@ out:
 	return err;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_truncate(const struct path *path)
+#else
+static int honeybest_path_truncate(struct path *path)
+#endif
 {
 	int err = 0;
        	const struct task_struct *task = current;
@@ -1081,8 +1153,13 @@ out:
 	return err;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_symlink(const struct path *dir, struct dentry *dentry,
 				 const char *old_name)
+#else
+static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
+				 const char *old_name)
+#endif
 {
 
 	int err = 0;
@@ -1132,9 +1209,14 @@ out:
 	return err;
 }
 
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_link(struct dentry *old_dentry, const struct path *new_dir,
 			      struct dentry *new_dentry)
+#else
+
+static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
+			      struct dentry *new_dentry)
+#endif
 {
 	int err = 0;
        	const struct task_struct *task = current;
@@ -1202,8 +1284,13 @@ out:
 	return err;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_rename(const struct path *old_dir, struct dentry *old_dentry,
 				const struct path *new_dir, struct dentry *new_dentry)
+#else
+static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry,
+				struct path *new_dir, struct dentry *new_dentry)
+#endif
 {
 	int err = 0;
        	const struct task_struct *task = current;
@@ -1268,7 +1355,11 @@ out:
 	return err;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_chmod(const struct path *path, umode_t mode)
+#else
+static int honeybest_path_chmod(struct path *path, umode_t mode)
+#endif
 {
 	int err = 0;
        	const struct task_struct *task = current;
@@ -1316,7 +1407,11 @@ out:
 	return err;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_chown(const struct path *path, kuid_t uid, kgid_t gid)
+#else
+static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
+#endif
 {
 	int err = 0;
        	const struct task_struct *task = current;
@@ -1685,7 +1780,7 @@ static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
         return err;
 }
 
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_inode_getsecurity(struct inode *inode, const char *name, void **buffer, bool alloc)
 {
 	return -EOPNOTSUPP;
@@ -1708,6 +1803,7 @@ static void honeybest_inode_getsecid(struct inode *inode, u32 *secid)
 }
 
 
+#endif
 
 static int honeybest_file_permission(struct file *file, int mask)
 {
@@ -1928,10 +2024,12 @@ static int honeybest_kernel_module_request(char *kmod_name)
         return err;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_kernel_read_file(struct file *file, enum kernel_read_file_id id)
 {
 	return 0;
 }
+#endif
 
 static int honeybest_task_setpgid(struct task_struct *p, pid_t pgid)
 {
@@ -2648,6 +2746,7 @@ static int honeybest_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid
 	return -EOPNOTSUPP;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static void honeybest_release_secctx(char *secdata, u32 seclen)
 {
 }
@@ -2670,6 +2769,7 @@ static int honeybest_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxle
 {
 	return 0;
 }
+#endif
 
 #ifdef CONFIG_KEYS
 static int honeybest_key_alloc(struct key *k, const struct cred *cred,
@@ -2706,11 +2806,13 @@ static int honeybest_key_permission(key_ref_t key_ref,
 	return 0;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_key_getsecurity(struct key *key, char **_buffer)
 {
 	*_buffer = NULL;
 	return 0;
 }
+#endif
 
 #endif /* CONFIG_KEYS */
 
@@ -2810,7 +2912,9 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(sb_clone_mnt_opts, honeybest_sb_clone_mnt_opts),
         LSM_HOOK_INIT(sb_parse_opts_str, honeybest_parse_opts_str),
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
         LSM_HOOK_INIT(dentry_init_security, honeybest_dentry_init_security),
+#endif
 
 #ifdef CONFIG_SECURITY_PATH
 	LSM_HOOK_INIT(path_link, honeybest_path_link),
@@ -2846,10 +2950,12 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(inode_getxattr, honeybest_inode_getxattr),
         LSM_HOOK_INIT(inode_listxattr, honeybest_inode_listxattr),
         LSM_HOOK_INIT(inode_removexattr, honeybest_inode_removexattr),
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
         LSM_HOOK_INIT(inode_getsecurity, honeybest_inode_getsecurity),
         LSM_HOOK_INIT(inode_setsecurity, honeybest_inode_setsecurity),
         LSM_HOOK_INIT(inode_listsecurity, honeybest_inode_listsecurity),
         LSM_HOOK_INIT(inode_getsecid, honeybest_inode_getsecid),
+#endif
 
         LSM_HOOK_INIT(file_permission, honeybest_file_permission),
         LSM_HOOK_INIT(file_alloc_security, honeybest_file_alloc_security),
@@ -2873,7 +2979,9 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(kernel_act_as, honeybest_kernel_act_as),
         LSM_HOOK_INIT(kernel_create_files_as, honeybest_kernel_create_files_as),
         LSM_HOOK_INIT(kernel_module_request, honeybest_kernel_module_request),
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
         LSM_HOOK_INIT(kernel_read_file, honeybest_kernel_read_file),
+#endif
         LSM_HOOK_INIT(task_setpgid, honeybest_task_setpgid),
         LSM_HOOK_INIT(task_getpgid, honeybest_task_getpgid),
         LSM_HOOK_INIT(task_getsid, honeybest_task_getsid),
@@ -2923,11 +3031,13 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(ismaclabel, honeybest_ismaclabel),
         LSM_HOOK_INIT(secid_to_secctx, honeybest_secid_to_secctx),
         LSM_HOOK_INIT(secctx_to_secid, honeybest_secctx_to_secid),
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
         LSM_HOOK_INIT(release_secctx, honeybest_release_secctx),
         LSM_HOOK_INIT(inode_invalidate_secctx, honeybest_inode_invalidate_secctx),
 	LSM_HOOK_INIT(inode_notifysecctx, honeybest_inode_notifysecctx),
         LSM_HOOK_INIT(inode_setsecctx, honeybest_inode_setsecctx),
         LSM_HOOK_INIT(inode_getsecctx, honeybest_inode_getsecctx),
+#endif
 
         LSM_HOOK_INIT(unix_stream_connect, honeybest_socket_unix_stream_connect),
         LSM_HOOK_INIT(unix_may_send, honeybest_socket_unix_may_send),
@@ -2987,7 +3097,9 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(key_alloc, honeybest_key_alloc),
         LSM_HOOK_INIT(key_free, honeybest_key_free),
         LSM_HOOK_INIT(key_permission, honeybest_key_permission),
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
         LSM_HOOK_INIT(key_getsecurity, honeybest_key_getsecurity),
+#endif
 #endif
 
 #ifdef CONFIG_AUDIT
