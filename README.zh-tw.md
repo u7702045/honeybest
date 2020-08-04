@@ -60,12 +60,12 @@
 ##### 檔案
 * ###### binprm – 追蹤所有可執行文件的路徑名，處理UID所屬的文件，最重要的是，將文件上下文計算為HASH以保護完整性。
 * ###### files - 追蹤普通文件的行為，例如打開/讀取/寫入/刪除/重命名。
-* ###### inode – 追蹤inode操作，例如創建/刪除/讀取/更新/ setxattr / getxattr。
-* ###### path – 追蹤所有類型的文件的行為，例如設備節點，硬/軟符號，目錄，管道，Unix套接字。
-* ###### socket – 追蹤TCP / UDP / ICMP套接字活動，包括端口號。
+* ###### inode – 追蹤inode操作，例如create/delete/read/update/setxattr/getxattr.。
+* ###### path – 追蹤所有類型的文件的行為，例如 device node, hard/soft symbolic, directory, pipe, unix socket。
+* ###### socket – 追蹤TCP / UDP / ICMP / SOCKET 活動，包括端口號。
 * ###### task – 追蹤進程之間的活動，例如訊號交換。
-* ###### sb - 追蹤super block資訊。諸如mount / umount / df之類的活動將標記在此類別中。由於系統暫存器/proc資訊，與文件/路徑類別高度相關。
-* ###### kmod – 追蹤Linux核心核心模組的活動。核心modprobe將加蓋此類別。
+* ###### sb - 追蹤super block資訊。諸如mount / umount / df之類的活動將標記在此類別中。由於系統暫存器/proc資訊，與file/path類別高度相關。
+* ###### kmod – 追蹤Linux核心核心模組的活動。核心modprobe將戳記加入此類別。
 * ###### notify - 安全模組和使用者空間應用程式之間的通知。在互動模式下，檢測到意外事件將保存到此文件中，以便使用者空間程式稍後通知使用者。彈出對話以獲取安全專業知識允許或忽略此類活動。啟用互動模式後，所有通過此文件的事件都可能暴露內存耗盡。星期四，從使用者空間程式設計READ調度程式至關重要。執行每個單個READ操作後，將清除notify文件中的上下文。
 ##### 調整範例 (`/proc/honeybest/path`)
 ###### 通常，開發人員通常會執行以下流程：<br/>
@@ -81,7 +81,7 @@
 	6.4. 	 消除第一行和第一列，消除所有重複的行，並只保留一行以正則表達式表示的遞增字元，如圖2所示。<br/>
 	6.5. 	 重新套用新的活動到HoneyBest LSM. `cat /etc/hb/path > /proc/honeybest/path`<br/>
 	6.6. 	 啟動HoneyBest LSM. <br/>
-###### 開發人員可以在系統測試期間啟用鎖定模式以驗證結果。 如果系統測試失敗，請停用鎖定模式，然後再次運行活動。 比較文件提示您需要注入哪些丟失的活動。
+###### 開發人員可以在系統測試期間啟用鎖定模式(`echo 1 > /proc/sys/kernel/honeybest/locking`)以驗證結果。 如果系統測試失敗，請停用鎖定模式(`echo 0 > /proc/sys/kernel/honeybest/locking`)，然後再次運行活動,比較文件提示您需要注入哪些遺漏的活動。
 #### 圖1
 |NO|FUNC|UID|MODE|SUID|GUID|DEV|SOURCE PATH|TARGET PATH|
 |--|----|---|----|----|----|---|-----------|-----------|
