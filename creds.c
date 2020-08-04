@@ -69,6 +69,7 @@
 #include <crypto/hash.h>
 #include <crypto/sha.h>
 #include <crypto/algapi.h>
+#include <linux/version.h>
 #include "creds.h"
 #include "regex.h"
 #include "notify.h"
@@ -139,8 +140,12 @@ int lookup_binprm_digest(struct file *file, char *digest)
        	struct crypto_shash *tfm = NULL;
        	struct shash_desc *desc = NULL;
        	char *rbuf = NULL;
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,4,0)
+       	struct inode *inode = file_inode(file);
+#else
        	struct dentry *dentry = file->f_path.dentry;
        	struct inode *inode = d_backing_inode(dentry);
+#endif
 
 	tfm = crypto_alloc_shash("sha1", 0, 0);
 
