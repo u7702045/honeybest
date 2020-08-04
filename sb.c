@@ -162,10 +162,15 @@ int add_sb_record(unsigned int fid, uid_t uid, char *s_id, char *name, \
 		}
 		memset(tmp->type, '\0', strlen(type)+1);
 
-		strncpy(tmp->s_id, s_id, strlen(s_id));
-		strncpy(tmp->name, name, strlen(name));
-		strncpy(tmp->dev_name, dev_name, strlen(dev_name));
-		strncpy(tmp->type, type, strlen(type));
+		if(s_id != NULL)
+		       	strncpy(tmp->s_id, s_id, strlen(s_id));
+		if(name != NULL)
+			strncpy(tmp->name, name, strlen(name));
+		if(dev_name != NULL)
+			strncpy(tmp->dev_name, dev_name, strlen(dev_name));
+		if(type != NULL)
+			strncpy(tmp->type, type, strlen(type));
+
 		tmp->flags = flags;
 
 		printk(KERN_DEBUG "%s, %s, %s, %s, %s, %d\n", __FUNCTION__, tmp->s_id, tmp->name, tmp->dev_name, tmp->type, tmp->flags);
