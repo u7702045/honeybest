@@ -84,7 +84,7 @@ hb_task_ll *search_task_record(unsigned int fid, uid_t uid, struct siginfo *info
 		tmp = list_entry(pos, hb_task_ll, list);
 		if ((tmp->fid == HB_TASK_SIGNAL) && (uid == tmp->uid) && (tmp->sig == sig)) {
 			/* we find the record */
-			printk(KERN_INFO "Found task open record !!!!\n");
+			//printk(KERN_INFO "Found task open record !!!!\n");
 			return tmp;
 		}
 	}

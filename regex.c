@@ -72,18 +72,62 @@
 #include "regex.h"
 #include "honeybest.h"
 
-// support only last *, example /home/files.* or /home/*
+// support only 1 * at the last,middle & full match, example /home/files.* or /proc/*maps
 int compare_regex(char *str1, char *str2, int len)
 {
 	int i = 0;
-	int cmp_len = 0;
+	int asterik_offset = 0;
+	int have_asterik = 0;
+	int str1_leftover = 0;
+	enum regex_match match = End;
 
+	if (len <= 0)
+		return 1;
+
+	// check * offset
 	for(i=0; i<len; i++) {
-		if(str1[i] == '*')
+		asterik_offset = i;
+		if(str1[i] == '*') {
+			have_asterik = 1;
 		       	break;
-	       	cmp_len = i + 1; //len != offset
+		}
 	}
 
-	//printk(KERN_ERR "str1 %s, compare %d bytes\n", str1, cmp_len);
-	return strncmp(str1, str2, cmp_len);
+	if (have_asterik == 0)
+		match = Full;
+	else {
+		// verify if * is in the middle of the str1
+		if (asterik_offset == len-1)
+			match = End;
+		else {
+			match = Middle;
+			str1_leftover = asterik_offset+1;
+		}
+	}
+
+	//printk(KERN_ERR "Match is [%d], len %d", match, len);
+
+	if (match == Full) {
+	       	;//printk(KERN_ERR "str1 %s, compare %d bytes\n", str1, len);
+		return strncmp(str1, str2, len);
+	}
+	else if (match == Middle) {
+		int str2_len = strlen(str2);
+		int str2_offset = str2_len - (str1_leftover - 2); //offset to str2 with str1 leftover
+	       	;//printk(KERN_ERR "str1 %s, compare %d bytes, compare leftover %d bytes, leftover offset start %s\n", str1, asterik_offset, (len-str1_leftover), str1+str1_leftover);
+		if (str2_offset < 0)
+			;//printk(KERN_ERR "str1 leftover is bigger than str2 len!!\n");
+		else {
+		       	;//printk(KERN_ERR "str2 %s, str2 leftover offset %d, leftover compare %s\n", str2, str2_offset, str2+str2_offset);
+	       		return ((strncmp(str1, str2, asterik_offset)) || (strncmp(str1+str1_leftover, str2+str2_offset, len-str1_leftover)));
+		}
+	}
+	else if (match == End) {
+	       	;//printk(KERN_ERR "str1 %s, compare %d bytes\n", str1, asterik_offset);
+	       	return strncmp(str1, str2, asterik_offset);
+	}
+	else
+	       	printk(KERN_ERR "Unknown regular expression.\n");
+
+	return 1;
 }

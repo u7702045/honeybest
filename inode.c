@@ -87,9 +87,9 @@ hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *name, char *
 			case HB_INODE_REMOVEXATTR:
 			case HB_INODE_GETXATTR:
 			case HB_INODE_SETXATTR:
-				if ((fid == tmp->fid) && (uid == tmp->uid) && (tmp->mode == mode) && !compare_regex(tmp->name, name, strlen(name)) && !compare_regex(tmp->dname, dname, strlen(dname))) {
+				if ((fid == tmp->fid) && (uid == tmp->uid) && (tmp->mode == mode) && !compare_regex(tmp->name, name, strlen(tmp->name)) && !compare_regex(tmp->dname, dname, strlen(tmp->dname))) {
 					/* we find the record */
-					printk(KERN_INFO "Found inode open record !!!!\n");
+					//printk(KERN_INFO "Found inode open record !!!!\n");
 					return tmp;
 				}
 				break;
@@ -227,7 +227,7 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 
 		sscanf(token, "%u %u %hd %s %s", &fid, &uid, &mode, filename, dirname);
 		if (add_inode_record(fid, uid, filename, dirname, mode, 0) != 0) {
-			printk(KERN_WARNING "Failure to add inode record %u, %s, %s\n", uid, filename, dirname);
+			//printk(KERN_WARNING "Failure to add inode record %u, %s, %s\n", uid, filename, dirname);
 		}
 		kfree(filename);
 		kfree(dirname);

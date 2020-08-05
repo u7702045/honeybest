@@ -83,9 +83,9 @@ hb_file_ll *search_file_record(unsigned int fid, uid_t uid, char *pathname)
 
 	list_for_each(pos, &hb_file_list_head.list) {
 		tmp = list_entry(pos, hb_file_ll, list);
-		if ((tmp->fid == HB_FILE_OPEN) && (uid == tmp->uid) && !compare_regex(tmp->pathname, pathname, strlen(pathname))) {
+		if ((tmp->fid == HB_FILE_OPEN) && (uid == tmp->uid) && !compare_regex(tmp->pathname, pathname, strlen(tmp->pathname))) {
 			/* we find the record */
-			printk(KERN_INFO "Found file set record !!!!\n");
+			//printk(KERN_INFO "Found file set record !!!!\n");
 			return tmp;
 		}
 	}
@@ -209,7 +209,7 @@ out:
 // true if match
 int allow_file_whitelist(char *path)
 {
-	if (!strncmp(path, "/proc/sys/kernel/honeybest/", 27) || (!strncmp(path, "/proc/honeybest/", 16))) {
+	if (!strncmp(path, "/proc/sys/kernel/honeybest/", 27) || (!strncmp(path, "/proc/honeybest/", 16)) || (!strcmp(path, "/"))) {
 		return 1;
 	}
 	return 0;

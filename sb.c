@@ -88,29 +88,29 @@ hb_sb_ll *search_sb_record(unsigned int fid, uid_t uid, char *s_id, char *name, 
 			case HB_SB_COPY_DATA:
 				if ((tmp->fid == fid) && (uid == tmp->uid)) {
 					/* we find the record */
-					printk(KERN_INFO "Found sb copy data record !!!!\n");
+					//printk(KERN_INFO "Found sb copy data record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_SB_STATFS:
 			case HB_SB_REMOUNT:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_id, s_id, strlen(s_id)) && !compare_regex(tmp->name, name, strlen(name))) {
+				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_id, s_id, strlen(tmp->s_id)) && !compare_regex(tmp->name, name, strlen(tmp->name))) {
 					/* we find the record */
-					printk(KERN_INFO "Found sb remount/statfs data record !!!!\n");
+					//printk(KERN_INFO "Found sb remount/statfs data record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_SB_UMOUNT:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_id, s_id, strlen(s_id)) && !compare_regex(tmp->name, name, strlen(name)) && (tmp->flags == flags)) {
+				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_id, s_id, strlen(tmp->s_id)) && !compare_regex(tmp->name, name, strlen(tmp->name)) && (tmp->flags == flags)) {
 					/* we find the record */
-					printk(KERN_INFO "Found sb umount data record !!!!\n");
+					//printk(KERN_INFO "Found sb umount data record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_SB_MOUNT:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->dev_name, dev_name, strlen(dev_name)) && !strncmp(tmp->type, type, strlen(type)) && (tmp->flags == flags)) {
+				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->dev_name, dev_name, strlen(tmp->dev_name)) && !strncmp(tmp->type, type, strlen(type)) && (tmp->flags == flags)) {
 					/* we find the record */
-					printk(KERN_INFO "Found sb mount data record !!!!\n");
+					//printk(KERN_INFO "Found sb mount data record !!!!\n");
 					return tmp;
 				}
 				break;

@@ -122,20 +122,20 @@ hb_socket_ll *search_socket_record(unsigned int fid, uid_t uid, int family, int 
 			case HB_SOCKET_CREATE:
 			case HB_SOCKET_CONNECT:
 				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->family == family) && (tmp->type == type) && (tmp->protocol == protocol) && (tmp->kern == kern)) {
-					printk(KERN_INFO "Found socket create record !!!!\n");
+					//printk(KERN_INFO "Found socket create record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_SOCKET_BIND:
 				snum = lookup_source_port(sock, address, addrlen);
 				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->port == snum)) {
-					printk(KERN_INFO "Found socket bind record !!!!\n");
+					//printk(KERN_INFO "Found socket bind record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_SOCKET_SETSOCKOPT:
 				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->level == level) && (tmp->optname == optname)) {
-					printk(KERN_INFO "Found socket setsockopt record !!!!\n");
+					//printk(KERN_INFO "Found socket setsockopt record !!!!\n");
 					return tmp;
 				}
 				break;

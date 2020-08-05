@@ -84,9 +84,9 @@ hb_binprm_ll *search_binprm_record(unsigned int fid, uid_t uid, char *pathname, 
 
 	list_for_each(pos, &hb_binprm_list_head.list) {
 		tmp = list_entry(pos, hb_binprm_ll, list);
-		if ((tmp->fid == HB_BPRM_SET_CREDS) && !memcmp(tmp->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE-1) && (uid == tmp->uid) && !compare_regex(tmp->pathname, pathname, strlen(pathname))) {
+		if ((tmp->fid == HB_BPRM_SET_CREDS) && !memcmp(tmp->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE-1) && (uid == tmp->uid) && !compare_regex(tmp->pathname, pathname, strlen(tmp->pathname))) {
 			/* we find the record */
-			printk(KERN_INFO "Found binprm set record !!!!\n");
+			//printk(KERN_INFO "Found binprm set record !!!!\n");
 			return tmp;
 		}
 	}
@@ -151,13 +151,13 @@ int lookup_binprm_digest(struct file *file, char *digest)
 
 	if (IS_ERR(tfm)) {
 		err = PTR_ERR(tfm);
-		printk(KERN_WARNING "failed to setup sha1 hasher\n");
+		//printk(KERN_WARNING "failed to setup sha1 hasher\n");
 		goto out;
 	}
        	desc = kmalloc(sizeof(*desc) + crypto_shash_descsize(tfm), GFP_KERNEL);
 
 	if (!desc) {
-		printk(KERN_WARNING "Failed to kmalloc desc\n");
+		//printk(KERN_WARNING "Failed to kmalloc desc\n");
 		goto out1;
 	}
 
@@ -166,13 +166,13 @@ int lookup_binprm_digest(struct file *file, char *digest)
        	err = crypto_shash_init(desc);
 
 	if (err) {
-		printk(KERN_WARNING "failed to crypto_shash_init\n");
+		//printk(KERN_WARNING "failed to crypto_shash_init\n");
 		goto out2;
 	}
 
 	rbuf = kzalloc(PAGE_SIZE, GFP_KERNEL);
 	if (!rbuf) {
-		printk(KERN_WARNING "failed to kzalloc\n");
+		//printk(KERN_WARNING "failed to kzalloc\n");
 		err = -ENOMEM;
 		goto out2;
 	}
@@ -182,7 +182,7 @@ int lookup_binprm_digest(struct file *file, char *digest)
 	while (offset < size) {
 		int rbuf_len;
 		rbuf_len = kernel_read(file, offset, rbuf, PAGE_SIZE);
-		printk(KERN_DEBUG "rbuf_len is %d, offset is %d\n", rbuf_len, offset);
+		//printk(KERN_DEBUG "rbuf_len is %d, offset is %d\n", rbuf_len, offset);
 
 		if (rbuf_len < 0) {
 			rc = rbuf_len;
@@ -207,7 +207,7 @@ int lookup_binprm_digest(struct file *file, char *digest)
 	for (i = 0; i < SHA1_DIGEST_SIZE; i++) {
 		snprintf(digest + (i * 2), 4, "%02x", hash[i]);
 	}
-	printk(KERN_DEBUG "digest is %s\n", digest);
+	//printk(KERN_DEBUG "digest is %s\n", digest);
 
 out2:
        	kfree(desc);
