@@ -98,6 +98,25 @@
 #include "kmod.h"
 #include "notify.h"
 
+/**
+ * @brief honeybest.c is the entry point of honeybest LSM. Main job
+ * 1. Initializing all external linked list use by
+ * 	creds
+ * 	files
+ * 	tasks
+ * 	sockets
+ * 	inodes
+ * 	kmod (kernel modules)
+ * 	paths
+ * 	sb (super block)
+ * 	notify
+ * 2. Initialize various of hooks
+ * 3. Initialize userspace variable options including enabled/locking/interact/level
+ * 4. Inject tracking ticket
+ * 5. Operate insert/search activities
+ * 6. Initialize /proc/honeybest* & /proc/sys/kernel/honeybest* interface
+ */
+
 #ifdef CONFIG_SECURITY_HONEYBEST
 static int enabled = IS_ENABLED(CONFIG_SECURITY_HONEYBEST_ENABLED);
 static int locking = 0;		// detect mode
@@ -126,15 +145,12 @@ extern struct proc_dir_entry *hb_proc_kmod_entry;
 extern struct proc_dir_entry *hb_proc_notify_entry;
 
 
-/* attach to each trigger function so that we can trace all system activity */
 typedef struct hb_track_t { 
-	kuid_t uid;
-	unsigned long tsid;	// task sequence id
-	unsigned int prev_fid;	// previous track clue across function
-	unsigned int curr_fid;	// current track clue across function
+	kuid_t uid;		/**< current task uid */
+	unsigned long tsid;	/**< task sequence id */
+	unsigned int prev_fid;	/**< previous track clue across function */
+	unsigned int curr_fid;	/**< current track clue across function */
 } hb_track_info;
-
-MODULE_LICENSE("GPL");
 
 #ifdef CONFIG_SYSCTL
 static int zero;
@@ -149,7 +165,7 @@ static struct ctl_path honeybest_sysctl_path[] = {
 
 static struct ctl_table honeybest_sysctl_table[] = {
 	{
-		.procname       = "enabled",
+		.procname       = "enabled",	/**< enabled = 1 turn on honeybest LSM */
 		.data           = &enabled,
 		.maxlen         = sizeof(int),
 		.mode           = 0644,
@@ -158,7 +174,7 @@ static struct ctl_table honeybest_sysctl_table[] = {
 		.extra2         = &one,
 	},
 	{
-		.procname       = "locking",
+		.procname       = "locking",	/**< locking = 1 turn on honeybest LSM lock down activities update */
 		.data           = &locking,
 		.maxlen         = sizeof(int),
 		.mode           = 0644,
@@ -167,7 +183,7 @@ static struct ctl_table honeybest_sysctl_table[] = {
 		.extra2         = &one,
 	},
 	{
-		.procname       = "interact",
+		.procname       = "interact",	/**< interact = 1 update activities to /proc/honeybest/notify */
 		.data           = &interact,
 		.maxlen         = sizeof(int),
 		.mode           = 0644,
@@ -176,7 +192,7 @@ static struct ctl_table honeybest_sysctl_table[] = {
 		.extra2         = &one,
 	},
 	{
-		.procname       = "level",
+		.procname       = "level",	/**< currently support 0 & 1 honeybest LSM granularity level */
 		.data           = &level,
 		.maxlen         = sizeof(int),
 		.mode           = 0644,
@@ -189,6 +205,11 @@ static struct ctl_table honeybest_sysctl_table[] = {
 #endif
 
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(4,4,0)
+/**
+ * Migrate from kernel 4.9.189 string_helpers.c
+ * kstrdup_quotable / kstrdup_quotable_file use to extract
+ * struct file to full pathname.
+ */
 char *kstrdup_quotable(const char *src, gfp_t gfp)
 {
 	size_t slen, dlen;
@@ -210,6 +231,7 @@ char *kstrdup_quotable(const char *src, gfp_t gfp)
 
 	return dst;
 }
+
 char *kstrdup_quotable_file(struct file *file, gfp_t gfp)
 {
 	char *temp, *pathname;
@@ -233,6 +255,11 @@ char *kstrdup_quotable_file(struct file *file, gfp_t gfp)
 }
 #endif
 
+/**
+ * Free track memory from current task cred->security pointer
+ * reference track memory allocation inject_honeybest_tracker()
+ * 
+ */
 int free_honeybest_tracker(const struct task_struct *task)
 {
 	int err = 0;
@@ -245,6 +272,13 @@ int free_honeybest_tracker(const struct task_struct *task)
 	return err;
 }
 
+/**
+ * Attach to each trigger function so that we can track previous system activity
+ * reference to memory free_honeybest_tracker.
+ * 
+ * @param[in] fid reference to honeybest.h to track who is the caller
+ * @param[in] task reference to global struct task
+ */
 int inject_honeybest_tracker(const struct task_struct *task, unsigned int fid)
 {
 	int err = 0;
@@ -277,6 +311,10 @@ int inject_honeybest_tracker(const struct task_struct *task, unsigned int fid)
 	return err;
 }
 
+/**
+ * open_notify_proc provide read OP for user to acces all activities
+ * while /proc/sys/kernel/interact < 1
+ */
 static int open_notify_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_notify_record, NULL);
 }
@@ -289,7 +327,9 @@ static const struct file_operations hb_proc_notify_fops = {
 	.release = single_release,
 };
 
-
+/**
+ * open_file_proc provide read OP for user to acces current file activities
+ */
 static int open_file_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_file_record, NULL);
 }
@@ -302,6 +342,9 @@ static const struct file_operations hb_proc_file_fops = {
 	.release = single_release,
 };
 
+/**
+ * open_task_proc provide read OP for user to acces current signal activities
+ */
 static int open_task_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_task_record, NULL);
 }
@@ -314,6 +357,10 @@ static const struct file_operations hb_proc_task_fops = {
 	.release = single_release,
 };
 
+/**
+ * open_socket_proc provide read OP for user to acces current 
+ * bind/listen/accept socket activities
+ */
 static int open_socket_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_socket_record, NULL);
 }
@@ -326,6 +373,10 @@ static const struct file_operations hb_proc_socket_fops = {
 	.release = single_release,
 };
 
+/**
+ * open_binprm_proc provide read OP for user to acces current 
+ * execution activities
+ */
 static int open_binprm_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_binprm_record, NULL);
 }
@@ -338,6 +389,10 @@ static const struct file_operations hb_proc_binprm_fops = {
 	.release = single_release,
 };
 
+/**
+ * open_inode_proc provide read OP for user to acces current 
+ * inode create/delete activities
+ */
 static int open_inode_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_inode_record, NULL);
 }
@@ -350,6 +405,10 @@ static const struct file_operations hb_proc_inode_fops = {
 	.release = single_release,
 };
 
+/**
+ * open_path_proc provide read OP for user to acces current 
+ * symlink/delete/create/softlink file activities
+ */
 static int open_path_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_path_record, NULL);
 }
@@ -362,6 +421,10 @@ static const struct file_operations hb_proc_path_fops = {
 	.release = single_release,
 };
 
+/**
+ * open_sb_proc provide read OP for user to acces current 
+ * superblock mount/umount activities
+ */
 static int open_sb_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_sb_record, NULL);
 }
@@ -374,6 +437,10 @@ static const struct file_operations hb_proc_sb_fops = {
 	.release = single_release,
 };
 
+/**
+ * open_kmod_proc provide read OP for user to acces current 
+ * kernel insmod/rmmod activities
+ */
 static int open_kmod_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_kmod_record, NULL);
 }
@@ -563,6 +630,10 @@ static int honeybest_vm_enough_memory(struct mm_struct *mm, long pages)
 	return 0;
 }
 
+/**
+ * This function use to tracking all binary had been executed.
+ * Tracking info: absolute path / sha1 digest / user id 
+ */
 static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 {
 	int err = 0;
@@ -671,6 +742,10 @@ static int honeybest_sb_copy_data(char *orig, char *copy)
 	return err;
 }
 
+/**
+ * This function use to tracking remount activity.
+ * Tracking info: superblock id / disk format 
+ */
 static int honeybest_sb_remount(struct super_block *sb, void *data)
 {
 	int err = 0;
@@ -724,6 +799,11 @@ static int honeybest_sb_kern_mount(struct super_block *sb, int flags, void *data
 	return err;
 }
 
+/**
+ * This function use to tracking disk stat activity.
+ * Trigger by command df/mount while view disk information
+ * Tracking info: superblock id / disk format 
+ */
 static int honeybest_sb_statfs(struct dentry *dentry)
 {
 	int err = 0;
@@ -753,6 +833,11 @@ static int honeybest_sb_statfs(struct dentry *dentry)
 	return err;
 }
 
+/**
+ * This function use to tracking mount activity.
+ * Trigger after success allocate disk
+ * Tracking info: device name / disk format 
+ */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_mount(const char *dev_name,
                          const struct path *path,
@@ -791,6 +876,11 @@ static int honeybest_mount(const char *dev_name, struct path *path,
 	return err;
 }
 
+/**
+ * This function use to tracking umount activity.
+ * Trigger after success deallocate disk
+ * Tracking info: superblock id / disk format 
+ */
 static int honeybest_umount(struct vfsmount *mnt, int flags)
 {
 	int err = 0;
@@ -865,7 +955,11 @@ static int honeybest_dentry_init_security(struct dentry *dentry, int mode,
 	return err;
 }
 
-
+/**
+ * This function use to tracking remove file activity.
+ * Trigger during remove file
+ * Tracking info: user id / source file
+ */
 static int honeybest_path_unlink(const struct path *dir, struct dentry *dentry)
 #else
 static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
@@ -923,6 +1017,11 @@ out:
 	return err;
 }
 
+/**
+ * This function use to tracking create directory activity.
+ * Trigger during create directory
+ * Tracking info: user id / directory mode / directory
+ */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_mkdir(const struct path *dir, struct dentry *dentry,
 			       umode_t mode)
@@ -983,6 +1082,11 @@ out:
 	return err;
 }
 
+/**
+ * This function use to tracking remove directory activity.
+ * Trigger during remove directory
+ * Tracking info: user id / directory name
+ */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_rmdir(const struct path *dir, struct dentry *dentry)
 #else
@@ -1037,6 +1141,11 @@ out:
 	return err;
 }
 
+/**
+ * This function use to tracking create device node activity.
+ * Trigger during create device node
+ * Tracking info: user id / mode / device node name
+ */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_mknod(const struct path *dir, struct dentry *dentry,
 			       umode_t mode, unsigned int dev)
@@ -1097,6 +1206,11 @@ out:
 	return err;
 }
 
+/**
+ * This function use to tracking resize file activity.
+ * Trigger during resize file
+ * Tracking info: user id / file name
+ */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_truncate(const struct path *path)
 #else
@@ -1153,6 +1267,11 @@ out:
 	return err;
 }
 
+/**
+ * This function use to tracking symbolic file activity.
+ * Trigger during create symbolic file
+ * Tracking info: user id / source filename / target filename
+ */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_symlink(const struct path *dir, struct dentry *dentry,
 				 const char *old_name)
@@ -1209,6 +1328,11 @@ out:
 	return err;
 }
 
+/**
+ * This function use to tracking hard link file activity.
+ * Trigger during create hard symbolic link
+ * Tracking info: user id / source filename / target filename
+ */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_link(struct dentry *old_dentry, const struct path *new_dir,
 			      struct dentry *new_dentry)
@@ -1284,6 +1408,11 @@ out:
 	return err;
 }
 
+/**
+ * This function use to tracking rename file activity.
+ * Trigger during rename
+ * Tracking info: user id / source filename / target filename
+ */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_rename(const struct path *old_dir, struct dentry *old_dentry,
 				const struct path *new_dir, struct dentry *new_dentry)
@@ -1355,6 +1484,11 @@ out:
 	return err;
 }
 
+/**
+ * This function use to tracking change file mode activity.
+ * Trigger during file mode change
+ * Tracking info: user id / mode / source filename / target filename
+ */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_chmod(const struct path *path, umode_t mode)
 #else
@@ -1407,6 +1541,11 @@ out:
 	return err;
 }
 
+/**
+ * This function use to tracking change owner activity.
+ * Trigger during file owner change
+ * Tracking info: user id / source filename / uid / gid
+ */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_chown(const struct path *path, kuid_t uid, kgid_t gid)
 #else
@@ -1660,6 +1799,11 @@ static int honeybest_inode_getattr(const struct path *path)
         return err;
 }
 
+/**
+ * This function use to tracking add extend attribute activity.
+ * Trigger during add file extend attribute
+ * Tracking info: user id / xattr key / xattr value
+ */
 static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
                                   const void *value, size_t size, int flags)
 {
@@ -1701,6 +1845,11 @@ static void honeybest_inode_post_setxattr(struct dentry *dentry, const char *nam
 	return ;
 }
 
+/**
+ * This function use to tracking read extend attribute activity.
+ * Trigger during read file extend attribute
+ * Tracking info: user id / xattr key / xattr value
+ */
 static int honeybest_inode_getxattr(struct dentry *dentry, const char *name)
 {
 	int err = 0;
@@ -1747,6 +1896,11 @@ static int honeybest_inode_listxattr(struct dentry *dentry)
         return err;
 }
 
+/**
+ * This function use to tracking remove extend attribute activity.
+ * Trigger during remove file extend attribute
+ * Tracking info: user id / xattr key / xattr value
+ */
 static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
 {
 	int err = 0;
@@ -1885,6 +2039,11 @@ static int honeybest_file_receive(struct file *file)
 	return 0;
 }
 
+/**
+ * This function use to tracking open file activity.
+ * Trigger during open file
+ * Tracking info: user id / filename / digest? (future)
+ */
 static int honeybest_file_open(struct file *file, const struct cred *cred)
 {
 	int err = 0;
@@ -1995,6 +2154,11 @@ static int honeybest_kernel_create_files_as(struct cred *new, struct inode *inod
         return err;
 }
 
+/**
+ * This function use to tracking kernel load driver activity.
+ * Trigger during insmod/rmmod
+ * Tracking info: user id / driver register name
+ */
 static int honeybest_kernel_module_request(char *kmod_name)
 {
 	int err = 0;
@@ -2087,6 +2251,11 @@ static int honeybest_task_movememory(struct task_struct *p)
         return 0;
 }
 
+/**
+ * This function use to tracking between process signal activity.
+ * Trigger during kill [NUMBER]
+ * Tracking info: user id / signal number / signal err / securityID
+ */
 static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
                                 int sig, u32 secid)
 {
@@ -2136,6 +2305,11 @@ static void honeybest_task_to_inode(struct task_struct *p,
 	       	return;
 }
 
+/**
+ * This function use to tracking socket activity.
+ * Trigger during bind/listen/create/connect
+ * Tracking info: user id / inet family / udp_tcp / protocol / warning msg
+ */
 static int honeybest_socket_create(int family, int type,
                                  int protocol, int kern)
 {
@@ -2173,6 +2347,11 @@ static int honeybest_socket_post_create(struct socket *sock, int family,
 	return 0;
 }
 
+/**
+ * This function use to tracking socket activity.
+ * Trigger during bind
+ * Tracking info: user id / interface / address / address length
+ */
 static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, int addrlen)
 {
        	const struct task_struct *task = current;
@@ -2205,6 +2384,11 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 	return err;
 }
 
+/**
+ * This function use to tracking socket activity.
+ * Trigger during connect
+ * Tracking info: user id / interface / address / address length
+ */
 static int honeybest_socket_connect(struct socket *sock, struct sockaddr *address, int addrlen)
 {
        	const struct task_struct *task = current;
@@ -2279,6 +2463,11 @@ static int honeybest_socket_getpeername(struct socket *sock)
 	return 0;
 }
 
+/**
+ * This function use to tracking socket activity.
+ * Trigger during set socket attribute
+ * Tracking info: user id / level / options
+ */
 static int honeybest_socket_setsockopt(struct socket *sock, int level, int optname)
 {
        	const struct task_struct *task = current;
@@ -3121,5 +3310,6 @@ void __init honeybest_add_hooks(void)
 module_param(enabled, int, 0);
 module_param(locking, int, 0);
 MODULE_PARM_DESC(enabled, "HoneyBest module/firmware loading (default: true)");
+MODULE_LICENSE("GPL");
 
 #endif /* CONFIG_SECURITY_HONEYBEST */
