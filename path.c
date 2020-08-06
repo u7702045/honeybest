@@ -1,3 +1,19 @@
+/*
+ * Security Hash Locking Module
+ *
+ * Copyright 2020 Moxa Inc.
+ *
+ * Author: Jimmy Chen <jimmy.chen@moxa.com>
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
 #include <linux/init.h>
 #include <linux/kd.h>
 #include <linux/kernel.h>
@@ -90,31 +106,31 @@ hb_path_ll *search_path_record(unsigned int fid, uid_t uid, umode_t mode, char *
 			case HB_PATH_SYMLINK:
 			case HB_PATH_LINK:
 			case HB_PATH_UNLINK:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->source_pathname, source_pathname, strlen(source_pathname)) && !compare_regex(tmp->target_pathname, target_pathname, strlen(target_pathname))) {
+				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->source_pathname, source_pathname, strlen(tmp->source_pathname)) && !compare_regex(tmp->target_pathname, target_pathname, strlen(tmp->target_pathname))) {
 					/* we find the record */
-					printk(KERN_INFO "Found link/rename/rmdir/symlink/unlink path record !!!!\n");
+					//printk(KERN_INFO "Found link/rename/rmdir/symlink/unlink path record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_PATH_MKDIR:
 			case HB_PATH_CHMOD:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->source_pathname, source_pathname, strlen(source_pathname)) && (tmp->mode == mode)) {
+				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->source_pathname, source_pathname, strlen(tmp->source_pathname)) && (tmp->mode == mode)) {
 					/* we find the record */
-					printk(KERN_INFO "Found chmod path record !!!!\n");
+					//printk(KERN_INFO "Found chmod path record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_PATH_CHOWN:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->source_pathname, source_pathname, strlen(source_pathname)) && (tmp->suid == suid) && (tmp->sgid == sgid)) {
+				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->source_pathname, source_pathname, strlen(tmp->source_pathname)) && (tmp->suid == suid) && (tmp->sgid == sgid)) {
 					/* we find the record */
-					printk(KERN_INFO "Found chown path record !!!!\n");
+					//printk(KERN_INFO "Found chown path record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_PATH_MKNOD:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->source_pathname, source_pathname, strlen(source_pathname)) && (tmp->dev == dev)) {
+				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->source_pathname, source_pathname, strlen(tmp->source_pathname)) && (tmp->dev == dev)) {
 					/* we find the record */
-					printk(KERN_INFO "Found mknod path record !!!!\n");
+					//printk(KERN_INFO "Found mknod path record !!!!\n");
 					return tmp;
 				}
 				break;

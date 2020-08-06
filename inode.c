@@ -1,3 +1,19 @@
+/*
+ * Security Hash Locking Module
+ *
+ * Copyright 2020 Moxa Inc.
+ *
+ * Author: Jimmy Chen <jimmy.chen@moxa.com>
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
 #include <linux/init.h>
 #include <linux/kd.h>
 #include <linux/kernel.h>
@@ -87,9 +103,9 @@ hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *name, char *
 			case HB_INODE_REMOVEXATTR:
 			case HB_INODE_GETXATTR:
 			case HB_INODE_SETXATTR:
-				if ((fid == tmp->fid) && (uid == tmp->uid) && (tmp->mode == mode) && !compare_regex(tmp->name, name, strlen(name)) && !compare_regex(tmp->dname, dname, strlen(dname))) {
+				if ((fid == tmp->fid) && (uid == tmp->uid) && (tmp->mode == mode) && !compare_regex(tmp->name, name, strlen(tmp->name)) && !compare_regex(tmp->dname, dname, strlen(tmp->dname))) {
 					/* we find the record */
-					printk(KERN_INFO "Found inode open record !!!!\n");
+					//printk(KERN_INFO "Found inode open record !!!!\n");
 					return tmp;
 				}
 				break;
@@ -227,7 +243,7 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 
 		sscanf(token, "%u %u %hd %s %s", &fid, &uid, &mode, filename, dirname);
 		if (add_inode_record(fid, uid, filename, dirname, mode, 0) != 0) {
-			printk(KERN_WARNING "Failure to add inode record %u, %s, %s\n", uid, filename, dirname);
+			//printk(KERN_WARNING "Failure to add inode record %u, %s, %s\n", uid, filename, dirname);
 		}
 		kfree(filename);
 		kfree(dirname);

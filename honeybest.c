@@ -86,6 +86,7 @@
 #include <crypto/hash.h>
 #include <crypto/sha.h>
 #include <crypto/algapi.h>
+#include <linux/version.h>
 #include "honeybest.h"
 #include "creds.h"
 #include "files.h"
@@ -96,6 +97,25 @@
 #include "sb.h"
 #include "kmod.h"
 #include "notify.h"
+
+/**
+ * @brief honeybest.c is the entry point of honeybest LSM. Main job
+ * 1. Initializing all external linked list use by
+ * 	creds
+ * 	files
+ * 	tasks
+ * 	sockets
+ * 	inodes
+ * 	kmod (kernel modules)
+ * 	paths
+ * 	sb (super block)
+ * 	notify
+ * 2. Initialize various of hooks
+ * 3. Initialize userspace variable options including enabled/locking/interact/level
+ * 4. Inject tracking ticket
+ * 5. Operate insert/search activities
+ * 6. Initialize /proc/honeybest* & /proc/sys/kernel/honeybest* interface
+ */
 
 #ifdef CONFIG_SECURITY_HONEYBEST
 static int enabled = IS_ENABLED(CONFIG_SECURITY_HONEYBEST_ENABLED);
@@ -125,15 +145,12 @@ extern struct proc_dir_entry *hb_proc_kmod_entry;
 extern struct proc_dir_entry *hb_proc_notify_entry;
 
 
-/* attach to each trigger function so that we can trace all system activity */
 typedef struct hb_track_t { 
-	kuid_t uid;
-	unsigned long tsid;	// task sequence id
-	unsigned int prev_fid;	// previous track clue across function
-	unsigned int curr_fid;	// current track clue across function
+	kuid_t uid;		/**< current task uid */
+	unsigned long tsid;	/**< task sequence id */
+	unsigned int prev_fid;	/**< previous track clue across function */
+	unsigned int curr_fid;	/**< current track clue across function */
 } hb_track_info;
-
-MODULE_LICENSE("GPL");
 
 #ifdef CONFIG_SYSCTL
 static int zero;
@@ -148,7 +165,7 @@ static struct ctl_path honeybest_sysctl_path[] = {
 
 static struct ctl_table honeybest_sysctl_table[] = {
 	{
-		.procname       = "enabled",
+		.procname       = "enabled",	/**< enabled = 1 turn on honeybest LSM */
 		.data           = &enabled,
 		.maxlen         = sizeof(int),
 		.mode           = 0644,
@@ -157,7 +174,7 @@ static struct ctl_table honeybest_sysctl_table[] = {
 		.extra2         = &one,
 	},
 	{
-		.procname       = "locking",
+		.procname       = "locking",	/**< locking = 1 turn on honeybest LSM lock down activities update */
 		.data           = &locking,
 		.maxlen         = sizeof(int),
 		.mode           = 0644,
@@ -166,7 +183,7 @@ static struct ctl_table honeybest_sysctl_table[] = {
 		.extra2         = &one,
 	},
 	{
-		.procname       = "interact",
+		.procname       = "interact",	/**< interact = 1 update activities to /proc/honeybest/notify */
 		.data           = &interact,
 		.maxlen         = sizeof(int),
 		.mode           = 0644,
@@ -175,7 +192,7 @@ static struct ctl_table honeybest_sysctl_table[] = {
 		.extra2         = &one,
 	},
 	{
-		.procname       = "level",
+		.procname       = "level",	/**< currently support 0 & 1 honeybest LSM granularity level */
 		.data           = &level,
 		.maxlen         = sizeof(int),
 		.mode           = 0644,
@@ -187,6 +204,62 @@ static struct ctl_table honeybest_sysctl_table[] = {
 };
 #endif
 
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,4,0)
+/**
+ * Migrate from kernel 4.9.189 string_helpers.c
+ * kstrdup_quotable / kstrdup_quotable_file use to extract
+ * struct file to full pathname.
+ */
+char *kstrdup_quotable(const char *src, gfp_t gfp)
+{
+	size_t slen, dlen;
+	char *dst;
+	const int flags = ESCAPE_HEX;
+	const char esc[] = "\f\n\r\t\v\a\e\\\"";
+
+	if (!src)
+		return NULL;
+	slen = strlen(src);
+
+	dlen = string_escape_mem(src, slen, NULL, 0, flags, esc);
+	dst = kmalloc(dlen + 1, gfp);
+	if (!dst)
+		return NULL;
+
+	WARN_ON(string_escape_mem(src, slen, dst, dlen, flags, esc) != dlen);
+	dst[dlen] = '\0';
+
+	return dst;
+}
+
+char *kstrdup_quotable_file(struct file *file, gfp_t gfp)
+{
+	char *temp, *pathname;
+
+	if (!file)
+		return kstrdup("<unknown>", gfp);
+
+	/* We add 11 spaces for ' (deleted)' to be appended */
+	temp = kmalloc(PATH_MAX + 11, GFP_KERNEL);
+	if (!temp)
+		return kstrdup("<no_memory>", gfp);
+
+	pathname = file_path(file, temp, PATH_MAX + 11);
+	if (IS_ERR(pathname))
+		pathname = kstrdup("<too_long>", gfp);
+	else
+		pathname = kstrdup_quotable(pathname, gfp);
+
+	kfree(temp);
+	return pathname;
+}
+#endif
+
+/**
+ * Free track memory from current task cred->security pointer
+ * reference track memory allocation inject_honeybest_tracker()
+ * 
+ */
 int free_honeybest_tracker(const struct task_struct *task)
 {
 	int err = 0;
@@ -199,6 +272,13 @@ int free_honeybest_tracker(const struct task_struct *task)
 	return err;
 }
 
+/**
+ * Attach to each trigger function so that we can track previous system activity
+ * reference to memory free_honeybest_tracker.
+ * 
+ * @param[in] fid reference to honeybest.h to track who is the caller
+ * @param[in] task reference to global struct task
+ */
 int inject_honeybest_tracker(const struct task_struct *task, unsigned int fid)
 {
 	int err = 0;
@@ -231,6 +311,10 @@ int inject_honeybest_tracker(const struct task_struct *task, unsigned int fid)
 	return err;
 }
 
+/**
+ * open_notify_proc provide read OP for user to acces all activities
+ * while /proc/sys/kernel/interact < 1
+ */
 static int open_notify_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_notify_record, NULL);
 }
@@ -243,7 +327,9 @@ static const struct file_operations hb_proc_notify_fops = {
 	.release = single_release,
 };
 
-
+/**
+ * open_file_proc provide read OP for user to acces current file activities
+ */
 static int open_file_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_file_record, NULL);
 }
@@ -256,6 +342,9 @@ static const struct file_operations hb_proc_file_fops = {
 	.release = single_release,
 };
 
+/**
+ * open_task_proc provide read OP for user to acces current signal activities
+ */
 static int open_task_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_task_record, NULL);
 }
@@ -268,6 +357,10 @@ static const struct file_operations hb_proc_task_fops = {
 	.release = single_release,
 };
 
+/**
+ * open_socket_proc provide read OP for user to acces current 
+ * bind/listen/accept socket activities
+ */
 static int open_socket_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_socket_record, NULL);
 }
@@ -280,6 +373,10 @@ static const struct file_operations hb_proc_socket_fops = {
 	.release = single_release,
 };
 
+/**
+ * open_binprm_proc provide read OP for user to acces current 
+ * execution activities
+ */
 static int open_binprm_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_binprm_record, NULL);
 }
@@ -292,6 +389,10 @@ static const struct file_operations hb_proc_binprm_fops = {
 	.release = single_release,
 };
 
+/**
+ * open_inode_proc provide read OP for user to acces current 
+ * inode create/delete activities
+ */
 static int open_inode_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_inode_record, NULL);
 }
@@ -304,6 +405,10 @@ static const struct file_operations hb_proc_inode_fops = {
 	.release = single_release,
 };
 
+/**
+ * open_path_proc provide read OP for user to acces current 
+ * symlink/delete/create/softlink file activities
+ */
 static int open_path_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_path_record, NULL);
 }
@@ -316,6 +421,10 @@ static const struct file_operations hb_proc_path_fops = {
 	.release = single_release,
 };
 
+/**
+ * open_sb_proc provide read OP for user to acces current 
+ * superblock mount/umount activities
+ */
 static int open_sb_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_sb_record, NULL);
 }
@@ -328,6 +437,10 @@ static const struct file_operations hb_proc_sb_fops = {
 	.release = single_release,
 };
 
+/**
+ * open_kmod_proc provide read OP for user to acces current 
+ * kernel insmod/rmmod activities
+ */
 static int open_kmod_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_kmod_record, NULL);
 }
@@ -517,6 +630,10 @@ static int honeybest_vm_enough_memory(struct mm_struct *mm, long pages)
 	return 0;
 }
 
+/**
+ * This function use to tracking all binary had been executed.
+ * Tracking info: absolute path / sha1 digest / user id 
+ */
 static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 {
 	int err = 0;
@@ -541,7 +658,7 @@ static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 	record = search_binprm_record(HB_BPRM_SET_CREDS, task->cred->uid.val, pathname, digest);
 
 	if (record) {
-	       	printk(KERN_INFO "Found set creds record func=%u, hash=[%s]\n", record->fid, record->digest);
+	       	;//printk(KERN_INFO "Found set creds record func=%u, hash=[%s]\n", record->fid, record->digest);
 	}
 	else {
 
@@ -625,6 +742,10 @@ static int honeybest_sb_copy_data(char *orig, char *copy)
 	return err;
 }
 
+/**
+ * This function use to tracking remount activity.
+ * Tracking info: superblock id / disk format 
+ */
 static int honeybest_sb_remount(struct super_block *sb, void *data)
 {
 	int err = 0;
@@ -649,7 +770,7 @@ static int honeybest_sb_remount(struct super_block *sb, void *data)
 		record = search_sb_record(HB_SB_REMOUNT, task->cred->uid.val, sb->s_id, (char *)sb->s_type->name, na, na, 0);
 
 		if (record) {
-			printk(KERN_INFO "Found sb remount record func=%u, uid %u, s_id=%s, type name=%s\n", record->fid, record->uid, record->s_id, record->name);
+			;//printk(KERN_INFO "Found sb remount record func=%u, uid %u, s_id=%s, type name=%s\n", record->fid, record->uid, record->s_id, record->name);
 		}
 		else {
 			if (locking == 0) 
@@ -678,6 +799,11 @@ static int honeybest_sb_kern_mount(struct super_block *sb, int flags, void *data
 	return err;
 }
 
+/**
+ * This function use to tracking disk stat activity.
+ * Trigger by command df/mount while view disk information
+ * Tracking info: superblock id / disk format 
+ */
 static int honeybest_sb_statfs(struct dentry *dentry)
 {
 	int err = 0;
@@ -695,7 +821,7 @@ static int honeybest_sb_statfs(struct dentry *dentry)
 	record = search_sb_record(HB_SB_STATFS, task->cred->uid.val, sb->s_id, (char *)sb->s_type->name, na, na, 0);
 
 	if (record) {
-		printk(KERN_INFO "Found sb statfs record func=%u, uid %u, s_id=%s, type name=%s\n", record->fid, record->uid, record->s_id, record->name);
+		;//printk(KERN_INFO "Found sb statfs record func=%u, uid %u, s_id=%s, type name=%s\n", record->fid, record->uid, record->s_id, record->name);
 	}
 	else {
 		if (locking == 0) 
@@ -707,11 +833,21 @@ static int honeybest_sb_statfs(struct dentry *dentry)
 	return err;
 }
 
+/**
+ * This function use to tracking mount activity.
+ * Trigger after success allocate disk
+ * Tracking info: device name / disk format 
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_mount(const char *dev_name,
                          const struct path *path,
                          const char *type,
                          unsigned long flags,
                          void *data)
+#else
+static int honeybest_mount(const char *dev_name, struct path *path,
+                         const char *type, unsigned long flags, void *data)
+#endif
 {
 	int err = 0;
        	const struct task_struct *task = current;
@@ -727,7 +863,7 @@ static int honeybest_mount(const char *dev_name,
 	record = search_sb_record(HB_SB_MOUNT, task->cred->uid.val, na, (char *)na, (char *)dev_name, (char *)type, flags);
 
 	if (record) {
-		printk(KERN_INFO "Found sb mount record func=%u, uid %u, dev_name=%s, type name=%s, flags=%d\n", record->fid, record->uid, record->dev_name, record->type, record->flags);
+		;//printk(KERN_INFO "Found sb mount record func=%u, uid %u, dev_name=%s, type name=%s, flags=%d\n", record->fid, record->uid, record->dev_name, record->type, record->flags);
 	}
 	else {
 		if (locking == 0) 
@@ -740,6 +876,11 @@ static int honeybest_mount(const char *dev_name,
 	return err;
 }
 
+/**
+ * This function use to tracking umount activity.
+ * Trigger after success deallocate disk
+ * Tracking info: superblock id / disk format 
+ */
 static int honeybest_umount(struct vfsmount *mnt, int flags)
 {
 	int err = 0;
@@ -757,7 +898,7 @@ static int honeybest_umount(struct vfsmount *mnt, int flags)
 	record = search_sb_record(HB_SB_UMOUNT, task->cred->uid.val, sb->s_id, (char *)sb->s_type->name, na, na, flags);
 
 	if (record) {
-		printk(KERN_INFO "Found sb umount record func=%u, uid %u, dev_name=%s, type name=%s, flags=%d\n", record->fid, record->uid, record->dev_name, record->type, record->flags);
+		;//printk(KERN_INFO "Found sb umount record func=%u, uid %u, dev_name=%s, type name=%s, flags=%d\n", record->fid, record->uid, record->dev_name, record->type, record->flags);
 	}
 	else {
 		if (locking == 0) 
@@ -797,6 +938,7 @@ static void honeybest_inode_free_security(struct inode *inode)
 	return;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_dentry_init_security(struct dentry *dentry, int mode,
                                         const struct qstr *name, void **ctx,
                                         u32 *ctxlen)
@@ -813,8 +955,15 @@ static int honeybest_dentry_init_security(struct dentry *dentry, int mode,
 	return err;
 }
 
-
+/**
+ * This function use to tracking remove file activity.
+ * Trigger during remove file
+ * Tracking info: user id / source file
+ */
 static int honeybest_path_unlink(const struct path *dir, struct dentry *dentry)
+#else
+static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
+#endif
 {
 
 	int err = 0;
@@ -852,7 +1001,7 @@ static int honeybest_path_unlink(const struct path *dir, struct dentry *dentry)
 	record = search_path_record(HB_PATH_UNLINK, task->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
 
 	if (record) {
-	       	printk(KERN_INFO "Found path unlink record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+	       	;//printk(KERN_INFO "Found path unlink record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
 	}
 	else {
 		if (locking == 0) 
@@ -868,9 +1017,18 @@ out:
 	return err;
 }
 
-
+/**
+ * This function use to tracking create directory activity.
+ * Trigger during create directory
+ * Tracking info: user id / directory mode / directory
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_mkdir(const struct path *dir, struct dentry *dentry,
 			       umode_t mode)
+#else
+static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
+			       umode_t mode)
+#endif
 {
 
 	int err = 0;
@@ -908,7 +1066,7 @@ static int honeybest_path_mkdir(const struct path *dir, struct dentry *dentry,
 	record = search_path_record(HB_PATH_MKDIR, task->cred->uid.val, mode, source_pathname, target_pathname, 0, 0, 0);
 
 	if (record) {
-	       	printk(KERN_INFO "Found path mkdir record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+	       	;//printk(KERN_INFO "Found path mkdir record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
 	}
 	else {
 		if (locking == 0) 
@@ -924,7 +1082,16 @@ out:
 	return err;
 }
 
+/**
+ * This function use to tracking remove directory activity.
+ * Trigger during remove directory
+ * Tracking info: user id / directory name
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_rmdir(const struct path *dir, struct dentry *dentry)
+#else
+static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
+#endif
 {
 
 	int err = 0;
@@ -958,7 +1125,7 @@ static int honeybest_path_rmdir(const struct path *dir, struct dentry *dentry)
 	record = search_path_record(HB_PATH_RMDIR, task->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
 
 	if (record) {
-	       	printk(KERN_INFO "Found path rmdir record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+	       	;//printk(KERN_INFO "Found path rmdir record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
 	}
 	else {
 		if (locking == 0) 
@@ -974,8 +1141,18 @@ out:
 	return err;
 }
 
+/**
+ * This function use to tracking create device node activity.
+ * Trigger during create device node
+ * Tracking info: user id / mode / device node name
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_mknod(const struct path *dir, struct dentry *dentry,
 			       umode_t mode, unsigned int dev)
+#else
+static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
+			       umode_t mode, unsigned int dev)
+#endif
 {
 
 	int err = 0;
@@ -1013,7 +1190,7 @@ static int honeybest_path_mknod(const struct path *dir, struct dentry *dentry,
 	record = search_path_record(HB_PATH_MKNOD, task->cred->uid.val, mode, source_pathname, target_pathname, 0, 0, dev);
 
 	if (record) {
-	       	printk(KERN_INFO "Found path mknod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+	       	;//printk(KERN_INFO "Found path mknod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
 	}
 	else {
 		if (locking == 0) 
@@ -1029,7 +1206,16 @@ out:
 	return err;
 }
 
+/**
+ * This function use to tracking resize file activity.
+ * Trigger during resize file
+ * Tracking info: user id / file name
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_truncate(const struct path *path)
+#else
+static int honeybest_path_truncate(struct path *path)
+#endif
 {
 	int err = 0;
        	const struct task_struct *task = current;
@@ -1065,7 +1251,7 @@ static int honeybest_path_truncate(const struct path *path)
 	record = search_path_record(HB_PATH_TRUNCATE, task->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
 
 	if (record) {
-	       	printk(KERN_INFO "Found path truncate record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+	       	;//printk(KERN_INFO "Found path truncate record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
 	}
 	else {
 		if (locking == 0) 
@@ -1081,8 +1267,18 @@ out:
 	return err;
 }
 
+/**
+ * This function use to tracking symbolic file activity.
+ * Trigger during create symbolic file
+ * Tracking info: user id / source filename / target filename
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_symlink(const struct path *dir, struct dentry *dentry,
 				 const char *old_name)
+#else
+static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
+				 const char *old_name)
+#endif
 {
 
 	int err = 0;
@@ -1116,7 +1312,7 @@ static int honeybest_path_symlink(const struct path *dir, struct dentry *dentry,
 	record = search_path_record(HB_PATH_SYMLINK, task->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
 
 	if (record) {
-	       	printk(KERN_INFO "Found path symlink record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+	       	;//printk(KERN_INFO "Found path symlink record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
 	}
 	else {
 		if (locking == 0) 
@@ -1132,9 +1328,19 @@ out:
 	return err;
 }
 
-
+/**
+ * This function use to tracking hard link file activity.
+ * Trigger during create hard symbolic link
+ * Tracking info: user id / source filename / target filename
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_link(struct dentry *old_dentry, const struct path *new_dir,
 			      struct dentry *new_dentry)
+#else
+
+static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
+			      struct dentry *new_dentry)
+#endif
 {
 	int err = 0;
        	const struct task_struct *task = current;
@@ -1185,7 +1391,7 @@ static int honeybest_path_link(struct dentry *old_dentry, const struct path *new
 	record = search_path_record(HB_PATH_LINK, task->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
 
 	if (record) {
-	       	printk(KERN_INFO "Found path link record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+	       	;//printk(KERN_INFO "Found path link record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
 	}
 	else {
 		if (locking == 0) 
@@ -1202,8 +1408,18 @@ out:
 	return err;
 }
 
+/**
+ * This function use to tracking rename file activity.
+ * Trigger during rename
+ * Tracking info: user id / source filename / target filename
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_rename(const struct path *old_dir, struct dentry *old_dentry,
 				const struct path *new_dir, struct dentry *new_dentry)
+#else
+static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry,
+				struct path *new_dir, struct dentry *new_dentry)
+#endif
 {
 	int err = 0;
        	const struct task_struct *task = current;
@@ -1250,7 +1466,7 @@ static int honeybest_path_rename(const struct path *old_dir, struct dentry *old_
 	record = search_path_record(HB_PATH_RENAME, task->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
 
 	if (record) {
-	       	printk(KERN_INFO "Found path rename record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+	       	;//printk(KERN_INFO "Found path rename record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
 	}
 	else {
 		if (locking == 0) 
@@ -1268,7 +1484,16 @@ out:
 	return err;
 }
 
+/**
+ * This function use to tracking change file mode activity.
+ * Trigger during file mode change
+ * Tracking info: user id / mode / source filename / target filename
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_chmod(const struct path *path, umode_t mode)
+#else
+static int honeybest_path_chmod(struct path *path, umode_t mode)
+#endif
 {
 	int err = 0;
        	const struct task_struct *task = current;
@@ -1300,7 +1525,7 @@ static int honeybest_path_chmod(const struct path *path, umode_t mode)
 	record = search_path_record(HB_PATH_CHMOD, task->cred->uid.val, mode, source_pathname, target_pathname, 0, 0, 0);
 
 	if (record) {
-	       	printk(KERN_INFO "Found path chmod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+	       	;//printk(KERN_INFO "Found path chmod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
 	}
 	else {
 		if (locking == 0) 
@@ -1316,7 +1541,16 @@ out:
 	return err;
 }
 
+/**
+ * This function use to tracking change owner activity.
+ * Trigger during file owner change
+ * Tracking info: user id / source filename / uid / gid
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_path_chown(const struct path *path, kuid_t uid, kgid_t gid)
+#else
+static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
+#endif
 {
 	int err = 0;
        	const struct task_struct *task = current;
@@ -1348,7 +1582,7 @@ static int honeybest_path_chown(const struct path *path, kuid_t uid, kgid_t gid)
 	record = search_path_record(HB_PATH_CHOWN, task->cred->uid.val, 0, source_pathname, target_pathname, uid.val, gid.val, 0);
 
 	if (record) {
-	       	printk(KERN_INFO "Found path chmod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+	       	;//printk(KERN_INFO "Found path chmod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
 	}
 	else {
 		if (locking == 0) 
@@ -1565,6 +1799,11 @@ static int honeybest_inode_getattr(const struct path *path)
         return err;
 }
 
+/**
+ * This function use to tracking add extend attribute activity.
+ * Trigger during add file extend attribute
+ * Tracking info: user id / xattr key / xattr value
+ */
 static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
                                   const void *value, size_t size, int flags)
 {
@@ -1583,7 +1822,7 @@ static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
 	record = search_inode_record(HB_INODE_SETXATTR, task->cred->uid.val, (char *)name, (char *)dname, 0);
 
 	if (record) {
-		printk(KERN_INFO "Found inode setxattr name %s, dname %s\n", name, dname);
+		;//printk(KERN_INFO "Found inode setxattr name %s, dname %s\n", name, dname);
 	}
 	else {
 
@@ -1606,6 +1845,11 @@ static void honeybest_inode_post_setxattr(struct dentry *dentry, const char *nam
 	return ;
 }
 
+/**
+ * This function use to tracking read extend attribute activity.
+ * Trigger during read file extend attribute
+ * Tracking info: user id / xattr key / xattr value
+ */
 static int honeybest_inode_getxattr(struct dentry *dentry, const char *name)
 {
 	int err = 0;
@@ -1623,7 +1867,7 @@ static int honeybest_inode_getxattr(struct dentry *dentry, const char *name)
 	record = search_inode_record(HB_INODE_GETXATTR, task->cred->uid.val, (char *)name, (char *)dname, 0);
 
 	if (record) {
-		printk(KERN_INFO "Found inode getxattr name %s, dname %s\n", name, dname);
+		;//printk(KERN_INFO "Found inode getxattr name %s, dname %s\n", name, dname);
 	}
 	else {
 
@@ -1652,6 +1896,11 @@ static int honeybest_inode_listxattr(struct dentry *dentry)
         return err;
 }
 
+/**
+ * This function use to tracking remove extend attribute activity.
+ * Trigger during remove file extend attribute
+ * Tracking info: user id / xattr key / xattr value
+ */
 static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
 {
 	int err = 0;
@@ -1669,7 +1918,7 @@ static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
 	record = search_inode_record(HB_INODE_REMOVEXATTR, task->cred->uid.val, (char *)name, (char *)dname, 0);
 
 	if (record) {
-		printk(KERN_INFO "Found inode removexattr name %s, dname %s\n", name, dname);
+		;//printk(KERN_INFO "Found inode removexattr name %s, dname %s\n", name, dname);
 	}
 	else {
 
@@ -1685,7 +1934,7 @@ static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
         return err;
 }
 
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_inode_getsecurity(struct inode *inode, const char *name, void **buffer, bool alloc)
 {
 	return -EOPNOTSUPP;
@@ -1708,6 +1957,7 @@ static void honeybest_inode_getsecid(struct inode *inode, u32 *secid)
 }
 
 
+#endif
 
 static int honeybest_file_permission(struct file *file, int mask)
 {
@@ -1789,6 +2039,11 @@ static int honeybest_file_receive(struct file *file)
 	return 0;
 }
 
+/**
+ * This function use to tracking open file activity.
+ * Trigger during open file
+ * Tracking info: user id / filename / digest? (future)
+ */
 static int honeybest_file_open(struct file *file, const struct cred *cred)
 {
 	int err = 0;
@@ -1812,7 +2067,7 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 	record = search_file_record(HB_FILE_OPEN, task->cred->uid.val, pathname);
 
 	if (record) {
-	       	printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->pathname);
+	       	;//printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->pathname);
 	}
 	else {
 
@@ -1899,6 +2154,11 @@ static int honeybest_kernel_create_files_as(struct cred *new, struct inode *inod
         return err;
 }
 
+/**
+ * This function use to tracking kernel load driver activity.
+ * Trigger during insmod/rmmod
+ * Tracking info: user id / driver register name
+ */
 static int honeybest_kernel_module_request(char *kmod_name)
 {
 	int err = 0;
@@ -1912,12 +2172,10 @@ static int honeybest_kernel_module_request(char *kmod_name)
 	if (inject_honeybest_tracker(task, HB_KMOD_REQ))
 	       	err = -ENOMEM;
 
-	printk(KERN_ERR "--------->%s, %s\n", __FUNCTION__, kmod_name);
-
 	record = search_kmod_record(HB_KMOD_REQ, task->cred->uid.val, kmod_name);
 
 	if (record) {
-		printk(KERN_INFO "Found kmod record func=%u, uid %u, name=%s\n", record->fid, record->uid, record->name);
+		;//printk(KERN_INFO "Found kmod record func=%u, uid %u, name=%s\n", record->fid, record->uid, record->name);
 	}
 	else {
 		if (locking == 0) 
@@ -1930,10 +2188,12 @@ static int honeybest_kernel_module_request(char *kmod_name)
         return err;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_kernel_read_file(struct file *file, enum kernel_read_file_id id)
 {
 	return 0;
 }
+#endif
 
 static int honeybest_task_setpgid(struct task_struct *p, pid_t pgid)
 {
@@ -1991,6 +2251,11 @@ static int honeybest_task_movememory(struct task_struct *p)
         return 0;
 }
 
+/**
+ * This function use to tracking between process signal activity.
+ * Trigger during kill [NUMBER]
+ * Tracking info: user id / signal number / signal err / securityID
+ */
 static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
                                 int sig, u32 secid)
 {
@@ -2008,7 +2273,7 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 	record = search_task_record(HB_TASK_SIGNAL, task->cred->uid.val, info, sig, secid);
 
 	if (record) {
-		printk(KERN_INFO "Found task struct sig %d, secid %d, signo %d, errno %d\n", record->sig, record->secid, record->si_signo, record->si_errno);
+		;//printk(KERN_INFO "Found task struct sig %d, secid %d, signo %d, errno %d\n", record->sig, record->secid, record->si_signo, record->si_errno);
 	}
 	else {
 
@@ -2040,6 +2305,11 @@ static void honeybest_task_to_inode(struct task_struct *p,
 	       	return;
 }
 
+/**
+ * This function use to tracking socket activity.
+ * Trigger during bind/listen/create/connect
+ * Tracking info: user id / inet family / udp_tcp / protocol / warning msg
+ */
 static int honeybest_socket_create(int family, int type,
                                  int protocol, int kern)
 {
@@ -2056,7 +2326,7 @@ static int honeybest_socket_create(int family, int type,
 	record = search_socket_record(HB_SOCKET_CREATE, task->cred->uid.val, family, type, protocol, kern, 0, 0 , 0, NULL, NULL, 0);
 
 	if (record) {
-	       	printk(KERN_INFO "Found socket create record func=%u, family %d, type %d, protocol %d, kern %d\n", record->fid, family, type, protocol, kern);
+	       	;//printk(KERN_INFO "Found socket create record func=%u, family %d, type %d, protocol %d, kern %d\n", record->fid, family, type, protocol, kern);
 	}
 	else {
 
@@ -2077,6 +2347,11 @@ static int honeybest_socket_post_create(struct socket *sock, int family,
 	return 0;
 }
 
+/**
+ * This function use to tracking socket activity.
+ * Trigger during bind
+ * Tracking info: user id / interface / address / address length
+ */
 static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, int addrlen)
 {
        	const struct task_struct *task = current;
@@ -2092,7 +2367,7 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 	record = search_socket_record(HB_SOCKET_BIND, task->cred->uid.val, 0, 0, 0, 0, 0, 0 , 0, sock, address, addrlen);
 
 	if (record) {
-	       	printk(KERN_INFO "Found socket bind record func=%u, port=[%d]\n", record->fid, record->port);
+	       	;//printk(KERN_INFO "Found socket bind record func=%u, port=[%d]\n", record->fid, record->port);
 	}
 	else {
 
@@ -2109,6 +2384,11 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 	return err;
 }
 
+/**
+ * This function use to tracking socket activity.
+ * Trigger during connect
+ * Tracking info: user id / interface / address / address length
+ */
 static int honeybest_socket_connect(struct socket *sock, struct sockaddr *address, int addrlen)
 {
        	const struct task_struct *task = current;
@@ -2124,7 +2404,7 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 	record = search_socket_record(HB_SOCKET_CONNECT, task->cred->uid.val, 0, 0, 0, 0, 0, 0, 0, sock, address, addrlen);
 
 	if (record) {
-	       	printk(KERN_INFO "Found socket bind record func=%u, port=[%d]\n", record->fid, record->port);
+	       	;//printk(KERN_INFO "Found socket bind record func=%u, port=[%d]\n", record->fid, record->port);
 	}
 	else {
 
@@ -2183,6 +2463,11 @@ static int honeybest_socket_getpeername(struct socket *sock)
 	return 0;
 }
 
+/**
+ * This function use to tracking socket activity.
+ * Trigger during set socket attribute
+ * Tracking info: user id / level / options
+ */
 static int honeybest_socket_setsockopt(struct socket *sock, int level, int optname)
 {
        	const struct task_struct *task = current;
@@ -2198,7 +2483,7 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 	record = search_socket_record(HB_SOCKET_SETSOCKOPT, task->cred->uid.val, 0, 0, 0, 0, 0, level, optname, NULL, NULL, 0);
 
 	if (record) {
-	       	printk(KERN_INFO "Found socket setsockopt record func=%u, level=%d, optname=%d\n", record->fid, level, optname);
+	       	;//printk(KERN_INFO "Found socket setsockopt record func=%u, level=%d, optname=%d\n", record->fid, level, optname);
 	}
 	else {
 
@@ -2650,6 +2935,7 @@ static int honeybest_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid
 	return -EOPNOTSUPP;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static void honeybest_release_secctx(char *secdata, u32 seclen)
 {
 }
@@ -2672,6 +2958,7 @@ static int honeybest_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxle
 {
 	return 0;
 }
+#endif
 
 #ifdef CONFIG_KEYS
 static int honeybest_key_alloc(struct key *k, const struct cred *cred,
@@ -2708,11 +2995,13 @@ static int honeybest_key_permission(key_ref_t key_ref,
 	return 0;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
 static int honeybest_key_getsecurity(struct key *key, char **_buffer)
 {
 	*_buffer = NULL;
 	return 0;
 }
+#endif
 
 #endif /* CONFIG_KEYS */
 
@@ -2812,7 +3101,9 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(sb_clone_mnt_opts, honeybest_sb_clone_mnt_opts),
         LSM_HOOK_INIT(sb_parse_opts_str, honeybest_parse_opts_str),
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
         LSM_HOOK_INIT(dentry_init_security, honeybest_dentry_init_security),
+#endif
 
 #ifdef CONFIG_SECURITY_PATH
 	LSM_HOOK_INIT(path_link, honeybest_path_link),
@@ -2848,10 +3139,12 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(inode_getxattr, honeybest_inode_getxattr),
         LSM_HOOK_INIT(inode_listxattr, honeybest_inode_listxattr),
         LSM_HOOK_INIT(inode_removexattr, honeybest_inode_removexattr),
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
         LSM_HOOK_INIT(inode_getsecurity, honeybest_inode_getsecurity),
         LSM_HOOK_INIT(inode_setsecurity, honeybest_inode_setsecurity),
         LSM_HOOK_INIT(inode_listsecurity, honeybest_inode_listsecurity),
         LSM_HOOK_INIT(inode_getsecid, honeybest_inode_getsecid),
+#endif
 
         LSM_HOOK_INIT(file_permission, honeybest_file_permission),
         LSM_HOOK_INIT(file_alloc_security, honeybest_file_alloc_security),
@@ -2875,7 +3168,9 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(kernel_act_as, honeybest_kernel_act_as),
         LSM_HOOK_INIT(kernel_create_files_as, honeybest_kernel_create_files_as),
         LSM_HOOK_INIT(kernel_module_request, honeybest_kernel_module_request),
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
         LSM_HOOK_INIT(kernel_read_file, honeybest_kernel_read_file),
+#endif
         LSM_HOOK_INIT(task_setpgid, honeybest_task_setpgid),
         LSM_HOOK_INIT(task_getpgid, honeybest_task_getpgid),
         LSM_HOOK_INIT(task_getsid, honeybest_task_getsid),
@@ -2925,11 +3220,13 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(ismaclabel, honeybest_ismaclabel),
         LSM_HOOK_INIT(secid_to_secctx, honeybest_secid_to_secctx),
         LSM_HOOK_INIT(secctx_to_secid, honeybest_secctx_to_secid),
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
         LSM_HOOK_INIT(release_secctx, honeybest_release_secctx),
         LSM_HOOK_INIT(inode_invalidate_secctx, honeybest_inode_invalidate_secctx),
 	LSM_HOOK_INIT(inode_notifysecctx, honeybest_inode_notifysecctx),
         LSM_HOOK_INIT(inode_setsecctx, honeybest_inode_setsecctx),
         LSM_HOOK_INIT(inode_getsecctx, honeybest_inode_getsecctx),
+#endif
 
         LSM_HOOK_INIT(unix_stream_connect, honeybest_socket_unix_stream_connect),
         LSM_HOOK_INIT(unix_may_send, honeybest_socket_unix_may_send),
@@ -2989,7 +3286,9 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(key_alloc, honeybest_key_alloc),
         LSM_HOOK_INIT(key_free, honeybest_key_free),
         LSM_HOOK_INIT(key_permission, honeybest_key_permission),
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
         LSM_HOOK_INIT(key_getsecurity, honeybest_key_getsecurity),
+#endif
 #endif
 
 #ifdef CONFIG_AUDIT
@@ -3011,5 +3310,6 @@ void __init honeybest_add_hooks(void)
 module_param(enabled, int, 0);
 module_param(locking, int, 0);
 MODULE_PARM_DESC(enabled, "HoneyBest module/firmware loading (default: true)");
+MODULE_LICENSE("GPL");
 
 #endif /* CONFIG_SECURITY_HONEYBEST */

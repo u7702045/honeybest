@@ -1,3 +1,19 @@
+/*
+ * Security Hash Locking Module
+ *
+ * Copyright 2020 Moxa Inc.
+ *
+ * Author: Jimmy Chen <jimmy.chen@moxa.com>
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
 #include <linux/init.h>
 #include <linux/kd.h>
 #include <linux/kernel.h>
@@ -85,7 +101,7 @@ static unsigned short lookup_source_port(struct socket *sock, struct sockaddr *a
 	       	unsigned short snum;
 		struct sockaddr_in *addr4 = NULL;
 		struct sockaddr_in6 *addr6 = NULL;
-		char *addrp;
+		char *addrp = NULL;
 		if (family == PF_INET) {
 			if (addrlen < sizeof(struct sockaddr_in)) {
 				goto out;
@@ -122,20 +138,20 @@ hb_socket_ll *search_socket_record(unsigned int fid, uid_t uid, int family, int 
 			case HB_SOCKET_CREATE:
 			case HB_SOCKET_CONNECT:
 				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->family == family) && (tmp->type == type) && (tmp->protocol == protocol) && (tmp->kern == kern)) {
-					printk(KERN_INFO "Found socket create record !!!!\n");
+					//printk(KERN_INFO "Found socket create record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_SOCKET_BIND:
 				snum = lookup_source_port(sock, address, addrlen);
 				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->port == snum)) {
-					printk(KERN_INFO "Found socket bind record !!!!\n");
+					//printk(KERN_INFO "Found socket bind record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_SOCKET_SETSOCKOPT:
 				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->level == level) && (tmp->optname == optname)) {
-					printk(KERN_INFO "Found socket setsockopt record !!!!\n");
+					//printk(KERN_INFO "Found socket setsockopt record !!!!\n");
 					return tmp;
 				}
 				break;
@@ -183,7 +199,10 @@ int add_socket_record(unsigned int fid, uid_t uid, int family, int type,
 				tmp->kern = kern;
 			       	break;
 			case HB_SOCKET_BIND:
-				tmp->port = lookup_source_port(sock, address, addrlen);
+				if (interact == 0)
+					tmp->port = 0;
+				else
+				       	tmp->port = lookup_source_port(sock, address, addrlen);
 				break;
 			case HB_SOCKET_SETSOCKOPT:
 				tmp->level = level;

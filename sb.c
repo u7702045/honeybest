@@ -1,3 +1,19 @@
+/*
+ * Security Hash Locking Module
+ *
+ * Copyright 2020 Moxa Inc.
+ *
+ * Author: Jimmy Chen <jimmy.chen@moxa.com>
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
 #include <linux/init.h>
 #include <linux/kd.h>
 #include <linux/kernel.h>
@@ -88,29 +104,29 @@ hb_sb_ll *search_sb_record(unsigned int fid, uid_t uid, char *s_id, char *name, 
 			case HB_SB_COPY_DATA:
 				if ((tmp->fid == fid) && (uid == tmp->uid)) {
 					/* we find the record */
-					printk(KERN_INFO "Found sb copy data record !!!!\n");
+					//printk(KERN_INFO "Found sb copy data record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_SB_STATFS:
 			case HB_SB_REMOUNT:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_id, s_id, strlen(s_id)) && !compare_regex(tmp->name, name, strlen(name))) {
+				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_id, s_id, strlen(tmp->s_id)) && !compare_regex(tmp->name, name, strlen(tmp->name))) {
 					/* we find the record */
-					printk(KERN_INFO "Found sb remount/statfs data record !!!!\n");
+					//printk(KERN_INFO "Found sb remount/statfs data record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_SB_UMOUNT:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_id, s_id, strlen(s_id)) && !compare_regex(tmp->name, name, strlen(name)) && (tmp->flags == flags)) {
+				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_id, s_id, strlen(tmp->s_id)) && !compare_regex(tmp->name, name, strlen(tmp->name)) && (tmp->flags == flags)) {
 					/* we find the record */
-					printk(KERN_INFO "Found sb umount data record !!!!\n");
+					//printk(KERN_INFO "Found sb umount data record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_SB_MOUNT:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->dev_name, dev_name, strlen(dev_name)) && !strncmp(tmp->type, type, strlen(type)) && (tmp->flags == flags)) {
+				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->dev_name, dev_name, strlen(tmp->dev_name)) && !strncmp(tmp->type, type, strlen(type)) && (tmp->flags == flags)) {
 					/* we find the record */
-					printk(KERN_INFO "Found sb mount data record !!!!\n");
+					//printk(KERN_INFO "Found sb mount data record !!!!\n");
 					return tmp;
 				}
 				break;
@@ -162,10 +178,15 @@ int add_sb_record(unsigned int fid, uid_t uid, char *s_id, char *name, \
 		}
 		memset(tmp->type, '\0', strlen(type)+1);
 
-		strncpy(tmp->s_id, s_id, strlen(s_id));
-		strncpy(tmp->name, name, strlen(name));
-		strncpy(tmp->dev_name, dev_name, strlen(dev_name));
-		strncpy(tmp->type, type, strlen(type));
+		if(s_id != NULL)
+		       	strncpy(tmp->s_id, s_id, strlen(s_id));
+		if(name != NULL)
+			strncpy(tmp->name, name, strlen(name));
+		if(dev_name != NULL)
+			strncpy(tmp->dev_name, dev_name, strlen(dev_name));
+		if(type != NULL)
+			strncpy(tmp->type, type, strlen(type));
+
 		tmp->flags = flags;
 
 		printk(KERN_DEBUG "%s, %s, %s, %s, %s, %d\n", __FUNCTION__, tmp->s_id, tmp->name, tmp->dev_name, tmp->type, tmp->flags);
