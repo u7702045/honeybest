@@ -1830,7 +1830,7 @@ static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
 	if (inject_honeybest_tracker(cred, HB_INODE_SETXATTR))
 	       	err = -ENOMEM;
 
-	record = search_inode_record(HB_INODE_SETXATTR, current->cred->uid.val, (char *)name, (char *)dname, 0);
+	record = search_inode_record(HB_INODE_SETXATTR, current->cred->uid.val, (char *)name, (char *)dname);
 
 	if (record) {
 		;//printk(KERN_INFO "Found inode setxattr name %s, dname %s\n", name, dname);
@@ -1838,7 +1838,7 @@ static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
 	else {
 
 		if (locking == 0) 
-			err = add_inode_record(HB_INODE_SETXATTR, current->cred->uid.val, (char *)name, (char *)dname, 0, interact);
+			err = add_inode_record(HB_INODE_SETXATTR, current->cred->uid.val, (char *)name, (char *)dname, interact);
 
 		if (locking == 1) {
 			/* detect mode */
@@ -1873,13 +1873,10 @@ static int honeybest_inode_getxattr(struct dentry *dentry, const char *name)
 	if (!enabled)
 		return err;
 
-	if (!current->cred)
-	       	return err;
-
 	if (inject_honeybest_tracker(cred, HB_INODE_GETXATTR))
 	       	err = -ENOMEM;
 
-	record = search_inode_record(HB_INODE_GETXATTR, current->cred->uid.val, (char *)name, (char *)dname, 0);
+	record = search_inode_record(HB_INODE_GETXATTR, current->cred->uid.val, (char *)name, (char *)dname);
 
 	if (record) {
 		;//printk(KERN_INFO "Found inode getxattr name %s, dname %s\n", name, dname);
@@ -1887,7 +1884,7 @@ static int honeybest_inode_getxattr(struct dentry *dentry, const char *name)
 	else {
 
 		if (locking == 0) 
-			err = add_inode_record(HB_INODE_GETXATTR, current->cred->uid.val, (char *)name, (char *)dname, 0, interact);
+			err = add_inode_record(HB_INODE_GETXATTR, current->cred->uid.val, (char *)name, (char *)dname, interact);
 
 		if (locking == 1) {
 			/* detect mode */
@@ -1927,7 +1924,7 @@ static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
 	if (inject_honeybest_tracker(cred, HB_INODE_REMOVEXATTR))
 	       	err = -ENOMEM;
 
-	record = search_inode_record(HB_INODE_REMOVEXATTR, current->cred->uid.val, (char *)name, (char *)dname, 0);
+	record = search_inode_record(HB_INODE_REMOVEXATTR, current->cred->uid.val, (char *)name, (char *)dname);
 
 	if (record) {
 		;//printk(KERN_INFO "Found inode removexattr name %s, dname %s\n", name, dname);
@@ -1935,7 +1932,7 @@ static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
 	else {
 
 		if (locking == 0) 
-			err = add_inode_record(HB_INODE_REMOVEXATTR, current->cred->uid.val, (char *)name, (char *)dname, 0, interact);
+			err = add_inode_record(HB_INODE_REMOVEXATTR, current->cred->uid.val, (char *)name, (char *)dname, interact);
 
 		if (locking == 1) {
 			/* detect mode */

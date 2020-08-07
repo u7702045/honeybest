@@ -92,7 +92,7 @@
 
 struct proc_dir_entry *hb_proc_inode_entry;
 hb_inode_ll hb_inode_list_head;
-hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *name, char *dname, umode_t mode)
+hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *name, char *dname)
 {
 	hb_inode_ll *tmp = NULL;
 	struct list_head *pos = NULL;
@@ -103,10 +103,10 @@ hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *name, char *
 	list_for_each(pos, &hb_inode_list_head.list) {
 		tmp = list_entry(pos, hb_inode_ll, list);
 		switch (fid) {
-			case HB_INODE_REMOVEXATTR:
 			case HB_INODE_GETXATTR:
+			case HB_INODE_REMOVEXATTR:
 			case HB_INODE_SETXATTR:
-				if ((fid == tmp->fid) && (uid == tmp->uid) && (tmp->mode == mode) && !compare_regex(tmp->name, name, strlen(tmp->name)) && !compare_regex(tmp->dname, dname, strlen(tmp->dname))) {
+				if ((fid == tmp->fid) && (uid == tmp->uid) && !compare_regex(tmp->name, name, strlen(tmp->name)) && !compare_regex(tmp->dname, dname, strlen(tmp->dname))) {
 					/* we find the record */
 					//printk(KERN_INFO "Found inode open record !!!!\n");
 					return tmp;
@@ -119,7 +119,7 @@ hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *name, char *
 	return NULL;
 }
 
-int add_inode_record(unsigned int fid, uid_t uid, char *name, char *dname, umode_t mode, int interact)
+int add_inode_record(unsigned int fid, uid_t uid, char *name, char *dname, int interact)
 {
 	int err = 0;
 	hb_inode_ll *tmp = NULL;
@@ -182,7 +182,7 @@ int read_inode_record(struct seq_file *m, void *v)
 
 	list_for_each(pos, &hb_inode_list_head.list) {
 		tmp = list_entry(pos, hb_inode_ll, list);
-		seq_printf(m, "%lu\t%u\t%u\t%u\t%s\t%s\n", total++, tmp->fid, tmp->uid, tmp->mode, tmp->name, tmp->dname);
+		seq_printf(m, "%lu\t%u\t%u\t%s\t%s\n", total++, tmp->fid, tmp->uid, tmp->name, tmp->dname);
 	}
 
 	return 0;
@@ -232,7 +232,6 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 	while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
 		uid_t uid = 0;
 		unsigned int fid = 0;
-		umode_t mode = 0;
 		char *filename = NULL;
 		char *dirname = NULL;
 
@@ -247,8 +246,8 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 			continue;
 		}
 
-		sscanf(token, "%u %u %hd %s %s", &fid, &uid, &mode, filename, dirname);
-		if (add_inode_record(fid, uid, filename, dirname, mode, 0) != 0) {
+		sscanf(token, "%u %u %s %s", &fid, &uid, filename, dirname);
+		if (add_inode_record(fid, uid, filename, dirname, 0) != 0) {
 			//printk(KERN_WARNING "Failure to add inode record %u, %s, %s\n", uid, filename, dirname);
 		}
 		kfree(filename);
