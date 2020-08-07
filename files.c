@@ -101,7 +101,7 @@ hb_file_ll *search_file_record(unsigned int fid, uid_t uid, char *pathname)
 		tmp = list_entry(pos, hb_file_ll, list);
 		if ((tmp->fid == HB_FILE_OPEN) && (uid == tmp->uid) && !compare_regex(tmp->pathname, pathname, strlen(tmp->pathname))) {
 			/* we find the record */
-			//printk(KERN_INFO "Found file set record !!!!\n");
+			;//printk(KERN_INFO "Found file set record !!!!\n");
 			return tmp;
 		}
 	}

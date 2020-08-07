@@ -97,6 +97,9 @@ hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *name, char *
 	hb_inode_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 
+	if (!name || !dname)
+		return NULL;
+
 	list_for_each(pos, &hb_inode_list_head.list) {
 		tmp = list_entry(pos, hb_inode_ll, list);
 		switch (fid) {
@@ -120,6 +123,9 @@ int add_inode_record(unsigned int fid, uid_t uid, char *name, char *dname, umode
 {
 	int err = 0;
 	hb_inode_ll *tmp = NULL;
+
+	if (!name || !dname)
+		return err;
 
 	tmp = (hb_inode_ll *)kmalloc(sizeof(hb_inode_ll), GFP_KERNEL);
 	if (tmp) {

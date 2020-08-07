@@ -135,7 +135,7 @@ int compare_regex(char *str1, char *str2, int len)
 			;//printk(KERN_ERR "str1 leftover is bigger than str2 len!!\n");
 		else {
 		       	;//printk(KERN_ERR "str2 %s, str2 leftover offset %d, leftover compare %s\n", str2, str2_offset, str2+str2_offset);
-	       		return ((strncmp(str1, str2, asterik_offset)) || (strncmp(str1+str1_leftover, str2+str2_offset, len-str1_leftover)));
+	       		return ((strncmp(str1, str2, asterik_offset)) && (strncmp(str1+str1_leftover, str2+str2_offset, len-str1_leftover)));
 		}
 	}
 	else if (match == End) {

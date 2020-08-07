@@ -16,7 +16,11 @@
  */
 #define TOTAL_ACT_SIZE			10240
 
-#define HB_BPRM_SET_CREDS		1
+#define HB_INITIALIZE			1000
+
+#define HB_BPRM_SET_CREDS		2000
+#define HB_CRED_ALLOC_BLANK		2001
+#define HB_TASK_CREATE			2002
 
 #define HB_FILE_OPEN			2
 

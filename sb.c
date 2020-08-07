@@ -144,6 +144,9 @@ int add_sb_record(unsigned int fid, uid_t uid, char *s_id, char *name, \
 	int err = 0;
 	hb_sb_ll *tmp = NULL;
 
+	if (!s_id || !name || !dev_name || !type)
+		return err;
+
 	tmp = (hb_sb_ll *)kmalloc(sizeof(hb_sb_ll), GFP_KERNEL);
 	if (tmp) {
 		memset(tmp, 0, sizeof(hb_sb_ll));
