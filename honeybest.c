@@ -687,6 +687,9 @@ static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 		}
 	}
 
+	if (pathname)
+		kfree(pathname);
+
 	return err;
 }
 
