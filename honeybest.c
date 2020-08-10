@@ -256,14 +256,14 @@ char *kstrdup_quotable_file(struct file *file, gfp_t gfp)
 #endif
 
 /**
- * Free track memory from current task cred->security pointer
+ * Free track memory from current task cred_cxt(cred) pointer
  * reference track memory allocation inject_honeybest_tracker()
  * 
  */
 int free_honeybest_tracker(struct cred *cred)
 {
 	int err = 0;
-	hb_track_info *sec = cred->security;
+	hb_track_info *sec = cred_cxt(cred);
 
 	if (sec) {
 		;//printk(KERN_ERR "free %lu\n", sec->tsid);
@@ -291,7 +291,7 @@ int inject_honeybest_tracker(struct cred *cred, unsigned int fid)
 		return -ENOMEM;
 
 	uid = cred->uid;
-	sec = cred->security;
+	sec = cred_cxt(cred);
 	       	
 	if (sec)
 	{
@@ -309,7 +309,7 @@ int inject_honeybest_tracker(struct cred *cred, unsigned int fid)
 			sec->prev_fid = fid;
 			sec->curr_fid = fid;
 			sec->uid = uid;
-			cred->security = (hb_track_info *)sec;
+			cred_cxt(cred) = (hb_track_info *)sec;
 			//printk(KERN_ERR "%s(%d) alloc %lu\n", __FUNCTION__, __LINE__, sec->tsid);
 		}
 		else 
@@ -464,7 +464,7 @@ static const struct file_operations hb_proc_kmod_fops = {
 static void __init honeybest_init_sysctl(void)
 {
        	struct proc_dir_entry *honeybest_dir = proc_mkdir("honeybest", NULL);
-	struct cred *cred = current->cred;
+	struct cred *cred = (struct cred *) current->real_cred;
 
 #ifdef CONFIG_SYSCTL
 	if (!register_sysctl_paths(honeybest_sysctl_path, honeybest_sysctl_table))
@@ -647,16 +647,13 @@ static int honeybest_vm_enough_memory(struct mm_struct *mm, long pages)
 static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 {
 	int err = 0;
-       	struct cred *cred = current->cred;
+	struct cred *cred = (struct cred *) current->real_cred;
 	char digest[SHA1_HONEYBEST_DIGEST_SIZE];
 	hb_binprm_ll *record = NULL;
 	char *pathname;
 
 	if (!enabled)
 		return err;
-
-	if (!current->cred)
-	       	return err;
 
 	if (inject_honeybest_tracker(cred, HB_BPRM_SET_CREDS))
 	       	err = -ENOMEM;
@@ -761,8 +758,7 @@ static int honeybest_sb_remount(struct super_block *sb, void *data)
 	int i = 0;
 	char *na = "N/A";
 	hb_sb_ll *record = NULL;
-       	const struct task_struct *task = current;
-	struct cred *cred = task->cred;
+	struct cred *cred = (struct cred *) current->real_cred;
 
 	if (!enabled)
 		return err;
@@ -813,8 +809,7 @@ static int honeybest_sb_kern_mount(struct super_block *sb, int flags, void *data
 static int honeybest_sb_statfs(struct dentry *dentry)
 {
 	int err = 0;
-       	const struct task_struct *task = current;
-	struct cred *cred = task->cred;
+	struct cred *cred = (struct cred *) current->real_cred;
        	struct super_block *sb = dentry->d_sb;
 	char *na = "N/A";
 	hb_sb_ll *record = NULL;
@@ -890,8 +885,7 @@ static int honeybest_mount(const char *dev_name, struct path *path,
 #endif
 {
 	int err = 0;
-       	const struct task_struct *task = current;
-	struct cred *cred = task->cred;
+	struct cred *cred = (struct cred *) current->real_cred;
 	char *na = "N/A";
 	hb_sb_ll *record = NULL;
 
@@ -925,8 +919,7 @@ static int honeybest_mount(const char *dev_name, struct path *path,
 static int honeybest_umount(struct vfsmount *mnt, int flags)
 {
 	int err = 0;
-       	const struct task_struct *task = current;
-	struct cred *cred = task->cred;
+	struct cred *cred = (struct cred *) current->real_cred;
        	struct super_block *sb = mnt->mnt_sb;
 	char *na = "N/A";
 	hb_sb_ll *record = NULL;
@@ -1000,8 +993,7 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 {
 
 	int err = 0;
-       	const struct task_struct *task = current;
-	struct cred *cred = task->cred;
+	struct cred *cred = (struct cred *) current->real_cred;
 	struct path source = { dir->mnt, dentry };
 	char *source_pathname = NULL;
        	char *target_pathname = "N/A";
@@ -1069,8 +1061,7 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 {
 
 	int err = 0;
-       	const struct task_struct *task = current;
-	struct cred *cred = task->cred;
+	struct cred *cred = (struct cred *) current->real_cred;
 	struct path source = { dir->mnt, dentry };
 	char *source_pathname = NULL;
        	char *target_pathname = "N/A";
@@ -1136,8 +1127,7 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 {
 
 	int err = 0;
-       	const struct task_struct *task = current;
-	struct cred *cred = task->cred;
+	struct cred *cred = (struct cred *) current->real_cred;
 	struct path source = { dir->mnt, dentry };
 	char *source_pathname = NULL;
        	char *target_pathname = "N/A";
@@ -1201,8 +1191,7 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 {
 
 	int err = 0;
-       	const struct task_struct *task = current;
-	struct cred *cred = task->cred;
+	struct cred *cred = (struct cred *) current->real_cred;
 	struct path source = { dir->mnt, dentry };
 	char *source_pathname = NULL;
        	char *target_pathname = "N/A";
@@ -1267,8 +1256,7 @@ static int honeybest_path_truncate(struct path *path)
 #endif
 {
 	int err = 0;
-       	const struct task_struct *task = current;
-	struct cred *cred = task->cred;
+	struct cred *cred = (struct cred *) current->real_cred;
 	char *source_pathname = NULL;
        	char *target_pathname = "N/A";
 	char *source_buff = NULL;
@@ -1335,8 +1323,7 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 {
 
 	int err = 0;
-       	const struct task_struct *task = current;
-	struct cred *cred = task->cred;
+	struct cred *cred = (struct cred *) current->real_cred;
 	struct path target = { dir->mnt, dentry };
 	char *source_pathname = (char *)old_name;
        	char *target_pathname = NULL;
@@ -1400,8 +1387,7 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 #endif
 {
 	int err = 0;
-       	const struct task_struct *task = current;
-	struct cred *cred = task->cred;
+	struct cred *cred = (struct cred *) current->real_cred;
 	struct path source = { new_dir->mnt, new_dentry };
 	struct path target = { new_dir->mnt, old_dentry };
 	char *source_pathname = NULL;
@@ -1483,8 +1469,7 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 #endif
 {
 	int err = 0;
-       	const struct task_struct *task = current;
-	struct cred *cred = task->cred;
+	struct cred *cred = (struct cred *) current->real_cred;
 	struct path target = { new_dir->mnt, new_dentry };
 	struct path source = { old_dir->mnt, old_dentry };
 	char *source_pathname = NULL;
@@ -1561,8 +1546,7 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 #endif
 {
 	int err = 0;
-       	const struct task_struct *task = current;
-	struct cred *cred = task->cred;
+	struct cred *cred = (struct cred *) current->real_cred;
 	char *source_pathname = NULL;
        	char *target_pathname = "N/A";
 	char *source_buff = NULL;
@@ -1622,8 +1606,7 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 #endif
 {
 	int err = 0;
-       	const struct task_struct *task = current;
-	struct cred *cred = task->cred;
+	struct cred *cred = (struct cred *) current->real_cred;
 	char *source_pathname = NULL;
        	char *target_pathname = "N/A";
 	char *source_buff = NULL;
@@ -1825,8 +1808,7 @@ static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
                                   const void *value, size_t size, int flags)
 {
 	int err = 0;
-       	const struct task_struct *task = current;
-	struct cred *cred = task->cred;
+	struct cred *cred = (struct cred *) current->real_cred;
 	const struct qstr *d_name = &dentry->d_name;
 	const unsigned char *dname = d_name->name;
 	hb_inode_ll *record;
@@ -1871,8 +1853,7 @@ static void honeybest_inode_post_setxattr(struct dentry *dentry, const char *nam
 static int honeybest_inode_getxattr(struct dentry *dentry, const char *name)
 {
 	int err = 0;
-       	const struct task_struct *task = current;
-	struct cred *cred = task->cred;
+	struct cred *cred = (struct cred *) current->real_cred;
 	const struct qstr *d_name = &dentry->d_name;
 	const unsigned char *dname = d_name->name;
 	hb_inode_ll *record;
@@ -1919,8 +1900,7 @@ static int honeybest_inode_listxattr(struct dentry *dentry)
 static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
 {
 	int err = 0;
-       	const struct task_struct *task = current;
-	struct cred *cred = task->cred;
+	struct cred *cred = (struct cred *) current->real_cred;
 	const struct qstr *d_name = &dentry->d_name;
 	const unsigned char *dname = d_name->name;
 	hb_inode_ll *record;
@@ -2058,16 +2038,14 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 {
 	int err = 0;
 	hb_file_ll *record = NULL;
+	struct cred *file_cred = (struct cred *)cred;
 	char *pathname = NULL;
 
 	if (!enabled) {
 		return err;
 	}
 
-	if (!current->cred)
-	       	return err;
-
-	if (inject_honeybest_tracker(cred, HB_FILE_OPEN))
+	if (inject_honeybest_tracker(file_cred, HB_FILE_OPEN))
 	       	err = -ENOMEM;
 
 	pathname = kstrdup_quotable_file(file, GFP_KERNEL);
@@ -2102,15 +2080,10 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 static int honeybest_task_create(unsigned long clone_flags)
 {
 	int err = 0;
-       	const struct task_struct *task = current;
-	struct cred *cred = task->cred;
 
 	if (!enabled) {
 		return err;
 	}
-
-	if (inject_honeybest_tracker(cred, HB_CRED_ALLOC_BLANK))
-	       	err = -ENOMEM;
 
         return err;
 }
@@ -2118,7 +2091,6 @@ static int honeybest_task_create(unsigned long clone_flags)
 static int honeybest_cred_alloc_blank(struct cred *cred, gfp_t gfp)
 {
 	int err = 0;
-       	const struct task_struct *task = current;
 
 	if (!enabled) {
 		return err;
@@ -2204,8 +2176,7 @@ static int honeybest_kernel_create_files_as(struct cred *new, struct inode *inod
 static int honeybest_kernel_module_request(char *kmod_name)
 {
 	int err = 0;
-       	const struct task_struct *task = current;
-	struct cred *cred = task->cred;
+	struct cred *cred = (struct cred *) current->real_cred;
 	hb_kmod_ll *record = NULL;
 
 	if (!enabled) {
@@ -2303,18 +2274,15 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
                                 int sig, u32 secid)
 {
 	int err = 0;
-       	const struct task_struct *task = current;
+	struct cred *cred = (struct cred *) current->real_cred;
 	hb_task_ll *record;
 
 	if (!enabled) {
 		return err;
 	}
 
-	if (!current->cred)
-	       	return err;
-
-	//if (inject_honeybest_tracker(task, HB_TASK_SIGNAL))
-	//       	err = -ENOMEM;
+	if (inject_honeybest_tracker(cred, HB_TASK_SIGNAL))
+	       	err = -ENOMEM;
 
 	record = search_task_record(HB_TASK_SIGNAL, current->cred->uid.val, info, sig, secid);
 

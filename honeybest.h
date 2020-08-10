@@ -14,6 +14,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+
+/** prevent compiler shout due to const */
+#define cred_cxt(X) (X)->security
+
 #define TOTAL_ACT_SIZE			10240
 
 #define HB_INITIALIZE			1000
