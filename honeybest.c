@@ -973,7 +973,6 @@ static int honeybest_dentry_init_security(struct dentry *dentry, int mode,
                                         u32 *ctxlen)
 {
 	int err = 0;
-       	const struct task_struct *task = current;
 
 	if (!enabled)
 		return err;
