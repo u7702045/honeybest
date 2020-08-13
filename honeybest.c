@@ -2506,6 +2506,9 @@ static int honeybest_socket_create(int family, int type,
 	int err = 0;
        	const struct task_struct *task = current;
 	struct cred *cred = (struct cred *)task->cred;
+	struct mm_struct *mm = current->mm;
+	char *path_buff = NULL;
+	char *binprm = NULL;
 	hb_socket_ll *record;
 
 	if (!enabled)
@@ -2514,7 +2517,18 @@ static int honeybest_socket_create(int family, int type,
 	if (inject_honeybest_tracker(cred, HB_SOCKET_CREATE))
 		err = -ENOMEM;
 
-	record = search_socket_record(HB_SOCKET_CREATE, current->cred->uid.val, family, type, protocol, 0, 0, 0);
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			path_buff = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (path_buff) {
+				binprm = d_path(&mm->exe_file->f_path, path_buff, PATH_MAX);
+			}
+		}
+		up_read(&mm->mmap_sem);
+	}
+
+	record = search_socket_record(HB_SOCKET_CREATE, current->cred->uid.val, family, type, protocol, 0, 0, 0, binprm);
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found socket create record func=%u, family %d, type %d, protocol %d, kern %d\n", record->fid, family, type, protocol, kern);
@@ -2522,11 +2536,13 @@ static int honeybest_socket_create(int family, int type,
 	else {
 
 		if (locking == 0) 
-			err = add_socket_record(HB_SOCKET_CREATE, current->cred->uid.val, family, type, protocol, 0, 0, 0, interact);
+			err = add_socket_record(HB_SOCKET_CREATE, current->cred->uid.val, family, type, protocol, 0, 0, 0, binprm, interact);
 
 		if (locking == 1)
 			err = -EOPNOTSUPP;
 	}
+
+	kfree(path_buff);
 
 	return err;
 }
@@ -2546,6 +2562,9 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 {
        	const struct task_struct *task = current;
 	struct cred *cred = (struct cred *)task->cred;
+	struct mm_struct *mm = current->mm;
+	char *path_buff = NULL;
+	char *binprm = NULL;
 	hb_socket_ll *record;
 	int port = 0;
 	int err = 0;
@@ -2553,15 +2572,23 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 	if (!enabled)
 	       	return err;
 
-	if (!current->cred)
-	       	return err;
-
 	if (inject_honeybest_tracker(cred, HB_SOCKET_BIND))
 		err = -ENOMEM;
 
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			path_buff = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (path_buff) {
+				binprm = d_path(&mm->exe_file->f_path, path_buff, PATH_MAX);
+			}
+		}
+		up_read(&mm->mmap_sem);
+	}
+
 	port = lookup_source_port(sock, address, addrlen);
 
-	record = search_socket_record(HB_SOCKET_BIND, current->cred->uid.val, 0, 0, 0, port, 0, 0);
+	record = search_socket_record(HB_SOCKET_BIND, current->cred->uid.val, 0, 0, 0, port, 0, 0, binprm);
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found socket bind record func=%u, port=[%d]\n", record->fid, record->port);
@@ -2570,13 +2597,15 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 
 		if (locking == 0) 
 			err = add_socket_record(HB_SOCKET_BIND, current->cred->uid.val, 0, 0, 0, \
-					port, 0, 0, interact);
+					port, 0, 0, binprm, interact);
 
 		if (locking == 1) {
 			/* detect mode */
 			err = -EOPNOTSUPP;
 		}
 	}
+
+	kfree(path_buff);
 
 	return err;
 }
@@ -2590,6 +2619,9 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 {
        	const struct task_struct *task = current;
 	struct cred *cred = (struct cred *)task->cred;
+	struct mm_struct *mm = current->mm;
+	char *path_buff = NULL;
+	char *binprm = NULL;
 	hb_socket_ll *record;
 	int port = 0;
 	int err = 0;
@@ -2600,9 +2632,20 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 	if (inject_honeybest_tracker(cred, HB_SOCKET_CONNECT))
 		err = -ENOMEM;
 
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			path_buff = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (path_buff) {
+				binprm = d_path(&mm->exe_file->f_path, path_buff, PATH_MAX);
+			}
+		}
+		up_read(&mm->mmap_sem);
+	}
+
 	port = lookup_source_port(sock, address, addrlen);
 
-	record = search_socket_record(HB_SOCKET_CONNECT, current->cred->uid.val, 0, 0, 0, port, 0, 0);
+	record = search_socket_record(HB_SOCKET_CONNECT, current->cred->uid.val, 0, 0, 0, port, 0, 0, binprm);
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found socket bind record func=%u, port=[%d]\n", record->fid, record->port);
@@ -2610,13 +2653,15 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 	else {
 
 		if (locking == 0) 
-			err = add_socket_record(HB_SOCKET_CONNECT, current->cred->uid.val, 0, 0, 0, port, 0, 0, interact);
+			err = add_socket_record(HB_SOCKET_CONNECT, current->cred->uid.val, 0, 0, 0, port, 0, 0, binprm, interact);
 
 		if (locking == 1) {
 			/* detect mode */
 			err = -EOPNOTSUPP;
 		}
 	}
+
+	kfree(path_buff);
 
 	return err;
 }
@@ -2672,6 +2717,9 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 {
        	const struct task_struct *task = current;
 	struct cred *cred = (struct cred *)task->cred;
+	struct mm_struct *mm = current->mm;
+	char *path_buff = NULL;
+	char *binprm = NULL;
 	hb_socket_ll *record;
 	int err = 0;
 
@@ -2681,7 +2729,18 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 	if (inject_honeybest_tracker(cred, HB_SOCKET_SETSOCKOPT))
 		err = -ENOMEM;
 
-	record = search_socket_record(HB_SOCKET_SETSOCKOPT, current->cred->uid.val, 0, 0, 0, 0, level, optname);
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			path_buff = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (path_buff) {
+				binprm = d_path(&mm->exe_file->f_path, path_buff, PATH_MAX);
+			}
+		}
+		up_read(&mm->mmap_sem);
+	}
+
+	record = search_socket_record(HB_SOCKET_SETSOCKOPT, current->cred->uid.val, 0, 0, 0, 0, level, optname, binprm);
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found socket setsockopt record func=%u, level=%d, optname=%d\n", record->fid, level, optname);
@@ -2689,11 +2748,13 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 	else {
 
 		if (locking == 0) 
-			err = add_socket_record(HB_SOCKET_SETSOCKOPT, current->cred->uid.val, 0, 0, 0, 0, level, optname, interact);
+			err = add_socket_record(HB_SOCKET_SETSOCKOPT, current->cred->uid.val, 0, 0, 0, 0, level, optname, binprm, interact);
 
 		if (locking == 1)
 			err = -EOPNOTSUPP;
 	}
+
+	kfree(path_buff);
 
 	return err;
 }
