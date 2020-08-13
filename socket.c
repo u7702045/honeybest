@@ -92,10 +92,18 @@
 struct proc_dir_entry *hb_proc_socket_entry;
 hb_socket_ll hb_socket_list_head;
 
-static unsigned short lookup_source_port(struct socket *sock, struct sockaddr *address, int addrlen)
+unsigned short lookup_source_port(struct socket *sock, struct sockaddr *address, int addrlen)
 {
-	struct sock *sk = sock->sk;
-	u16 family = sk->sk_family;
+	struct sock *sk = NULL;
+	u16 family = 0;
+
+	if (!sock || !address || (addrlen<=0)) {
+		printk(KERN_ERR "%s is null, %d\n", __FUNCTION__, addrlen);
+		goto out;
+	}
+
+	sk = sock->sk;
+	family = sk->sk_family;
 
 	if (family == PF_INET || family == PF_INET6) {
 	       	unsigned short snum;
@@ -104,6 +112,7 @@ static unsigned short lookup_source_port(struct socket *sock, struct sockaddr *a
 		char *addrp = NULL;
 		if (family == PF_INET) {
 			if (addrlen < sizeof(struct sockaddr_in)) {
+				printk(KERN_ERR "addrlen less than sizeof struct sockaddr_in(%d)\n", sizeof(struct sockaddr_in));
 				goto out;
 			}
 			addr4 = (struct sockaddr_in *)address;
@@ -111,6 +120,7 @@ static unsigned short lookup_source_port(struct socket *sock, struct sockaddr *a
 			addrp = (char *)&addr4->sin_addr.s_addr;
 		} else {
 			if (addrlen < SIN6_LEN_RFC2133) {
+				printk(KERN_ERR "addrlen less than SIN6_LEN_RFC2133(%d)\n", SIN6_LEN_RFC2133);
 				goto out;
 			}
 			addr6 = (struct sockaddr_in6 *)address;
@@ -125,26 +135,28 @@ out:
 	return 0;
 }
 
-hb_socket_ll *search_socket_record(unsigned int fid, uid_t uid, int family, int type, int protocol, int kern,
-		int backlog, int level, int optname, struct socket *sock, struct sockaddr *address, int addrlen)
+hb_socket_ll *search_socket_record(unsigned int fid, uid_t uid, int family, int type, int protocol,
+		int port, int level, int optname)
 {
 	hb_socket_ll *tmp = NULL;
 	struct list_head *pos = NULL;
-       	unsigned short snum = 0;
 
 	list_for_each(pos, &hb_socket_list_head.list) {
 		tmp = list_entry(pos, hb_socket_ll, list);
 		switch (fid) {
-			case HB_SOCKET_CREATE:
 			case HB_SOCKET_CONNECT:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->family == family) && (tmp->type == type) && (tmp->protocol == protocol) && (tmp->kern == kern)) {
+				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->family == family) && (tmp->type == type) && (tmp->protocol == protocol) && (tmp->port == port)) {
+					return tmp;
+				}
+				break;
+			case HB_SOCKET_CREATE:
+				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->family == family) && (tmp->type == type) && (tmp->protocol == protocol)) {
 					//printk(KERN_INFO "Found socket create record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_SOCKET_BIND:
-				snum = lookup_source_port(sock, address, addrlen);
-				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->port == snum)) {
+				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->port == port)) {
 					//printk(KERN_INFO "Found socket bind record !!!!\n");
 					return tmp;
 				}
@@ -169,18 +181,17 @@ int read_socket_record(struct seq_file *m, void *v)
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
-	seq_printf(m, "NO\tFUNC\tUID\tFAMILY\tTYPE\tPROTO\tKERN\tPORT\tBACKLOG\tLEVEL\tOPTNAME\n");
+	seq_printf(m, "NO\tFUNC\tUID\tFAMILY\tTYPE\tPROTO\tPORT\tLEVEL\tOPTNAME\n");
 	list_for_each(pos, &hb_socket_list_head.list) {
 		tmp = list_entry(pos, hb_socket_ll, list);
-		seq_printf(m, "%lu\t%u\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", total++, tmp->fid, tmp->uid, tmp->family, tmp->type, tmp->protocol, tmp->kern, tmp->port, tmp->backlog, tmp->level, tmp->optname);
+		seq_printf(m, "%lu\t%u\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", total++, tmp->fid, tmp->uid, tmp->family, tmp->type, tmp->protocol, tmp->port, tmp->level, tmp->optname);
 	}
 
 	return 0;
 }
 
-int add_socket_record(unsigned int fid, uid_t uid, int family, int type,
-		int protocol, int kern, int port, int backlog, int level, int optname,
-	       	struct socket *sock, struct sockaddr *address, int addrlen, int interact)
+int add_socket_record(unsigned int fid, uid_t uid, int family, int type, int protocol, 
+		int port, int level, int optname, int interact)
 {
 	int err = 0;
 	hb_socket_ll *tmp = NULL;
@@ -196,13 +207,10 @@ int add_socket_record(unsigned int fid, uid_t uid, int family, int type,
 				tmp->family = family;
 				tmp->type = type;
 				tmp->protocol = protocol;
-				tmp->kern = kern;
+			       	tmp->port = port;
 			       	break;
 			case HB_SOCKET_BIND:
-				if (interact == 0)
-					tmp->port = 0;
-				else
-				       	tmp->port = lookup_source_port(sock, address, addrlen);
+			       	tmp->port = port;
 				break;
 			case HB_SOCKET_SETSOCKOPT:
 				tmp->level = level;
@@ -268,16 +276,14 @@ ssize_t write_socket_record(struct file *file, const char __user *buffer, size_t
 		int family = 0;
 		int type = 0;
 		int protocol = 0;
-		int kern = 0;
 		int port = 0;
-		int backlog = 0;
 		int level = 0;
 		int optname = 0;
 
-		sscanf(token, "%u %u %d %d %d %d %d %d %d %d", &fid, &uid, &family, &type, &protocol,
-				&kern, &port, &backlog, &level, &optname);
-		if (add_socket_record(fid, uid, family, type, protocol, kern,
-					port, backlog, level, optname, NULL, NULL, 0, 0) != 0) {
+		sscanf(token, "%u %u %d %d %d %d %d %d", &fid, &uid, &family, &type, &protocol,
+				&port, &level, &optname);
+		if (add_socket_record(fid, uid, family, type, protocol,
+					port, level, optname, 0) != 0) {
 			printk(KERN_WARNING "Failure to add socket record %u, %d, %d, %d\n", uid, family, type, protocol);
 		}
 	} //while

@@ -1031,6 +1031,7 @@ static int honeybest_dentry_init_security(struct dentry *dentry, int mode,
                                         u32 *ctxlen)
 {
 	int err = 0;
+       	const struct task_struct *task = current;
 
 	if (!enabled)
 		return err;
@@ -2513,7 +2514,7 @@ static int honeybest_socket_create(int family, int type,
 	if (inject_honeybest_tracker(cred, HB_SOCKET_CREATE))
 		err = -ENOMEM;
 
-	record = search_socket_record(HB_SOCKET_CREATE, current->cred->uid.val, family, type, protocol, kern, 0, 0 , 0, NULL, NULL, 0);
+	record = search_socket_record(HB_SOCKET_CREATE, current->cred->uid.val, family, type, protocol, 0, 0, 0);
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found socket create record func=%u, family %d, type %d, protocol %d, kern %d\n", record->fid, family, type, protocol, kern);
@@ -2521,8 +2522,7 @@ static int honeybest_socket_create(int family, int type,
 	else {
 
 		if (locking == 0) 
-			err = add_socket_record(HB_SOCKET_CREATE, current->cred->uid.val, family, \
-					type, protocol, kern, 0, 0, 0, 0, NULL, NULL, 0, interact);
+			err = add_socket_record(HB_SOCKET_CREATE, current->cred->uid.val, family, type, protocol, 0, 0, 0, interact);
 
 		if (locking == 1)
 			err = -EOPNOTSUPP;
@@ -2547,6 +2547,7 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
        	const struct task_struct *task = current;
 	struct cred *cred = (struct cred *)task->cred;
 	hb_socket_ll *record;
+	int port = 0;
 	int err = 0;
 
 	if (!enabled)
@@ -2558,7 +2559,9 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 	if (inject_honeybest_tracker(cred, HB_SOCKET_BIND))
 		err = -ENOMEM;
 
-	record = search_socket_record(HB_SOCKET_BIND, current->cred->uid.val, 0, 0, 0, 0, 0, 0 , 0, sock, address, addrlen);
+	port = lookup_source_port(sock, address, addrlen);
+
+	record = search_socket_record(HB_SOCKET_BIND, current->cred->uid.val, 0, 0, 0, port, 0, 0);
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found socket bind record func=%u, port=[%d]\n", record->fid, record->port);
@@ -2566,8 +2569,8 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 	else {
 
 		if (locking == 0) 
-			err = add_socket_record(HB_SOCKET_BIND, current->cred->uid.val, 0, 0, 0, 0, \
-					0, 0, 0, 0, sock, address, addrlen, interact);
+			err = add_socket_record(HB_SOCKET_BIND, current->cred->uid.val, 0, 0, 0, \
+					port, 0, 0, interact);
 
 		if (locking == 1) {
 			/* detect mode */
@@ -2588,6 +2591,7 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
        	const struct task_struct *task = current;
 	struct cred *cred = (struct cred *)task->cred;
 	hb_socket_ll *record;
+	int port = 0;
 	int err = 0;
 
 	if (!enabled)
@@ -2596,7 +2600,9 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 	if (inject_honeybest_tracker(cred, HB_SOCKET_CONNECT))
 		err = -ENOMEM;
 
-	record = search_socket_record(HB_SOCKET_CONNECT, current->cred->uid.val, 0, 0, 0, 0, 0, 0, 0, sock, address, addrlen);
+	port = lookup_source_port(sock, address, addrlen);
+
+	record = search_socket_record(HB_SOCKET_CONNECT, current->cred->uid.val, 0, 0, 0, port, 0, 0);
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found socket bind record func=%u, port=[%d]\n", record->fid, record->port);
@@ -2604,8 +2610,7 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 	else {
 
 		if (locking == 0) 
-			err = add_socket_record(HB_SOCKET_CONNECT, current->cred->uid.val, 0, 0, 0, 0, 0, \
-					0, 0, 0, sock, address, addrlen, interact);
+			err = add_socket_record(HB_SOCKET_CONNECT, current->cred->uid.val, 0, 0, 0, port, 0, 0, interact);
 
 		if (locking == 1) {
 			/* detect mode */
@@ -2676,7 +2681,7 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 	if (inject_honeybest_tracker(cred, HB_SOCKET_SETSOCKOPT))
 		err = -ENOMEM;
 
-	record = search_socket_record(HB_SOCKET_SETSOCKOPT, current->cred->uid.val, 0, 0, 0, 0, 0, level, optname, NULL, NULL, 0);
+	record = search_socket_record(HB_SOCKET_SETSOCKOPT, current->cred->uid.val, 0, 0, 0, 0, level, optname);
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found socket setsockopt record func=%u, level=%d, optname=%d\n", record->fid, level, optname);
@@ -2684,8 +2689,7 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 	else {
 
 		if (locking == 0) 
-			err = add_socket_record(HB_SOCKET_SETSOCKOPT, current->cred->uid.val, 0, 0, 0, 0, \
-					0, 0, level, optname, NULL, NULL, 0, interact);
+			err = add_socket_record(HB_SOCKET_SETSOCKOPT, current->cred->uid.val, 0, 0, 0, 0, level, optname, interact);
 
 		if (locking == 1)
 			err = -EOPNOTSUPP;

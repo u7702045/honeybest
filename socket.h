@@ -21,9 +21,7 @@ typedef struct hb_socket_ll_t {
 	int family;
 	int type;
 	int protocol;
-	int kern;
 	int port;
-	int backlog;
 	int level;
 	int optname;
 	struct socket sock;
@@ -32,12 +30,12 @@ typedef struct hb_socket_ll_t {
 	struct list_head list;
 } hb_socket_ll;
 
-hb_socket_ll *search_socket_record(unsigned int fid, uid_t uid, int family, int type, int protocol, int kern,
-	       	int backlog, int level, int optname, struct socket *sock, struct sockaddr *address, int addrlen);
+hb_socket_ll *search_socket_record(unsigned int fid, uid_t uid, int family, int type, int protocol, int port,
+		int level, int optname);
 
-int add_socket_record(unsigned int fid, uid_t uid, int family, int type, int protocol, int kern,
-	       	int port, int backlog, int level, int optname, struct socket *sock, \
-		struct sockaddr *address, int addrlen, int interact);
+int add_socket_record(unsigned int fid, uid_t uid, int family, int type, int protocol,
+	       	int port, int level, int optname, int interact);
 
 int read_socket_record(struct seq_file *m, void *v);
 ssize_t write_socket_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos);
+unsigned short lookup_source_port(struct socket *sock, struct sockaddr *address, int addrlen);

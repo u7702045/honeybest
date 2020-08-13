@@ -257,7 +257,7 @@ int read_notify_record(struct seq_file *m, void *v)
 			case HB_SOCKET_BIND:
 			case HB_SOCKET_SETSOCKOPT:
 				sockets = (hb_socket_ll *)tmp->data;
-				seq_printf(m, "%lu\t%s\t%u\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", total++, tmp->proc, sockets->fid, sockets->uid, sockets->family, sockets->type, sockets->protocol, sockets->kern, sockets->port, sockets->backlog, sockets->level, sockets->optname);
+				seq_printf(m, "%lu\t%s\t%u\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", total++, tmp->proc, sockets->fid, sockets->uid, sockets->family, sockets->type, sockets->protocol, sockets->port, sockets->level, sockets->optname);
 				break;
 			case HB_PATH_RENAME:
 			case HB_PATH_SYMLINK:

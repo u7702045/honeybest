@@ -28,16 +28,16 @@
 #define HB_CRED_ALLOC_BLANK		2001
 #define HB_TASK_CREATE			2002
 
-#define HB_FILE_OPEN			2
+#define HB_FILE_OPEN			5000
 
-#define HB_SOCKET_CREATE		3
-#define HB_SOCKET_BIND			4
-#define HB_SOCKET_CONNECT		5
-#define HB_SOCKET_LISTEN		6
-#define HB_SOCKET_ACCEPT		7
-#define HB_SOCKET_SETSOCKOPT		8
+#define HB_SOCKET_CREATE		4001
+#define HB_SOCKET_BIND			4002
+#define HB_SOCKET_CONNECT		4003
+#define HB_SOCKET_LISTEN		4004
+#define HB_SOCKET_ACCEPT		4005
+#define HB_SOCKET_SETSOCKOPT		4006
 
-#define HB_TASK_SIGNAL			9
+#define HB_TASK_SIGNAL			9000
 
 #define HB_INODE_CREATE			3010
 #define HB_INODE_INIT_SEC		3011
@@ -61,14 +61,14 @@
 #define HB_PATH_MKDIR			27
 #define HB_PATH_UNLINK			28
 
-#define HB_SB_COPY_DATA			30
-#define HB_SB_REMOUNT			31
-#define HB_SB_KERN_MOUNT		32
-#define HB_SB_STATFS			33
-#define HB_SB_MOUNT			34
-#define HB_SB_UMOUNT			35
+#define HB_SB_COPY_DATA			6030
+#define HB_SB_REMOUNT			6031
+#define HB_SB_KERN_MOUNT		6032
+#define HB_SB_STATFS			6033
+#define HB_SB_MOUNT			6034
+#define HB_SB_UMOUNT			6035
 
-#define HB_KMOD_REQ			40
+#define HB_KMOD_REQ			7040
 
 #define HB_DENTRY_INIT_SEC		160
 
