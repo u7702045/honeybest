@@ -203,8 +203,10 @@ int add_socket_record(unsigned int fid, uid_t uid, int family, int type, int pro
 		tmp->fid = fid;
 		tmp->uid = uid;
 		tmp->binprm = kmalloc(strlen(binprm), GFP_KERNEL);
-		if (!tmp->binprm)
+		if (!tmp->binprm) {
+			kfree(tmp);
 			goto out;
+		}
 		strcpy(tmp->binprm, binprm);
 		switch (fid) {
 			case HB_SOCKET_CREATE:
