@@ -17,6 +17,8 @@
 
 /** prevent compiler shout due to const */
 #define cred_cxt(X) (X)->security
+#define __task_cred(task)	\
+	rcu_dereference((task)->real_cred)
 
 #define TOTAL_ACT_SIZE			10240
 
@@ -37,15 +39,16 @@
 
 #define HB_TASK_SIGNAL			9
 
-#define HB_INODE_CREATE			10
-#define HB_INODE_INIT_SEC		11
-#define HB_INODE_LINK			12
-#define HB_INODE_UNLINK			13
-#define HB_INODE_SYMLINK		14
-#define HB_INODE_MKDIR			15
-#define HB_INODE_SETXATTR		16
-#define HB_INODE_GETXATTR		17
-#define HB_INODE_REMOVEXATTR		18
+#define HB_INODE_CREATE			3010
+#define HB_INODE_INIT_SEC		3011
+#define HB_INODE_LINK			3012
+#define HB_INODE_UNLINK			3013
+#define HB_INODE_SYMLINK		3014
+#define HB_INODE_MKDIR			3015
+#define HB_INODE_SETXATTR		3016
+#define HB_INODE_GETXATTR		3017
+#define HB_INODE_REMOVEXATTR		3018
+#define HB_INODE_LISTXATTR		3019
 
 #define HB_PATH_LINK			19
 #define HB_PATH_RENAME			20

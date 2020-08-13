@@ -92,21 +92,22 @@
 
 struct proc_dir_entry *hb_proc_inode_entry;
 hb_inode_ll hb_inode_list_head;
-hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *name, char *dname)
+hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *name, char *binprm)
 {
 	hb_inode_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 
-	if (!name || !dname)
+	if (!name || !binprm)
 		return NULL;
 
 	list_for_each(pos, &hb_inode_list_head.list) {
 		tmp = list_entry(pos, hb_inode_ll, list);
 		switch (fid) {
 			case HB_INODE_GETXATTR:
+			case HB_INODE_LISTXATTR:
 			case HB_INODE_REMOVEXATTR:
 			case HB_INODE_SETXATTR:
-				if ((fid == tmp->fid) && (uid == tmp->uid) && !compare_regex(tmp->name, name, strlen(tmp->name)) && !compare_regex(tmp->dname, dname, strlen(tmp->dname))) {
+				if ((fid == tmp->fid) && (uid == tmp->uid) && !compare_regex(tmp->name, name, strlen(tmp->name)) && !compare_regex(tmp->binprm, binprm, strlen(tmp->binprm))) {
 					/* we find the record */
 					//printk(KERN_INFO "Found inode open record !!!!\n");
 					return tmp;
@@ -119,12 +120,12 @@ hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *name, char *
 	return NULL;
 }
 
-int add_inode_record(unsigned int fid, uid_t uid, char *name, char *dname, int interact)
+int add_inode_record(unsigned int fid, uid_t uid, char *name, char *binprm, int interact)
 {
 	int err = 0;
 	hb_inode_ll *tmp = NULL;
 
-	if (!name || !dname)
+	if (!name || !binprm)
 		return err;
 
 	tmp = (hb_inode_ll *)kmalloc(sizeof(hb_inode_ll), GFP_KERNEL);
@@ -132,12 +133,12 @@ int add_inode_record(unsigned int fid, uid_t uid, char *name, char *dname, int i
 		tmp->fid = fid;
 		tmp->uid = uid;
 		tmp->name = kmalloc(strlen(name)+1, GFP_KERNEL);
-	       	tmp->dname = kmalloc(strlen(dname)+1, GFP_KERNEL);
 		if (tmp->name == NULL) {
 			err = -EOPNOTSUPP;
 			goto out;
 		}
-		if (tmp->dname == NULL) {
+	       	tmp->binprm = kmalloc(strlen(binprm)+1, GFP_KERNEL);
+		if (tmp->binprm == NULL) {
 			kfree(tmp->name);
 			err = -EOPNOTSUPP;
 			goto out;
@@ -145,10 +146,11 @@ int add_inode_record(unsigned int fid, uid_t uid, char *name, char *dname, int i
 
 		switch (fid) {
 			case HB_INODE_REMOVEXATTR:
+			case HB_INODE_LISTXATTR:
 			case HB_INODE_GETXATTR:
 			case HB_INODE_SETXATTR:
 				strcpy(tmp->name, name);
-				strcpy(tmp->dname, dname);
+				strcpy(tmp->binprm, binprm);
 				break;
 			default:
 				break;
@@ -173,7 +175,7 @@ int read_inode_record(struct seq_file *m, void *v)
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
-	seq_printf(m, "NO\tFUNC\tUID\tMODE\tNAME\t\t\tDENTRY NAME\n");
+	seq_printf(m, "NO\tFUNC\tUID\tXATTR\t\t\tBINPRM\n");
 
 	if (list_empty(&hb_inode_list_head.list)) {
 		printk(KERN_WARNING "List is empty!!\n");
@@ -182,7 +184,7 @@ int read_inode_record(struct seq_file *m, void *v)
 
 	list_for_each(pos, &hb_inode_list_head.list) {
 		tmp = list_entry(pos, hb_inode_ll, list);
-		seq_printf(m, "%lu\t%u\t%u\t%s\t%s\n", total++, tmp->fid, tmp->uid, tmp->name, tmp->dname);
+		seq_printf(m, "%lu\t%u\t%u\t%s\t%s\n", total++, tmp->fid, tmp->uid, tmp->name, tmp->binprm);
 	}
 
 	return 0;
@@ -222,7 +224,7 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 		tmp = list_entry(pos, hb_inode_ll, list);
 		list_del(pos);
 		kfree(tmp->name);
-		kfree(tmp->dname);
+		kfree(tmp->binprm);
 		kfree(tmp);
 		tmp = NULL;
 	}

@@ -279,7 +279,7 @@ int read_notify_record(struct seq_file *m, void *v)
 			case HB_INODE_SETXATTR:
 				inodes = (hb_inode_ll *)tmp->data;
 				seq_printf(m, "%lu\t%s\t%u\t%u\t%s\t%s\n", total++, tmp->proc, inodes->fid\
-						, inodes->uid, inodes->name, inodes->dname);
+						, inodes->uid, inodes->name, inodes->binprm);
 				break;
 			case HB_SB_COPY_DATA:
 			case HB_SB_STATFS:

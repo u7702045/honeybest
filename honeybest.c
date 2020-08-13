@@ -603,7 +603,37 @@ static int honeybest_ptrace_traceme(struct task_struct *parent)
 static int honeybest_capget(struct task_struct *target, kernel_cap_t *effective,
                           kernel_cap_t *inheritable, kernel_cap_t *permitted)
 {
-	return 0;
+	int err = 0;
+
+	if (!enabled)
+		return err;
+#if 0
+	kernel_cap_t dest, a, b;
+	struct cred *cred = NULL;
+	char *pathname,*p;
+	struct mm_struct *mm = target->mm;
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			pathname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (pathname) {
+				p = d_path(&mm->exe_file->f_path, pathname, PATH_MAX);
+			}
+		}
+		up_read(&mm->mmap_sem);
+	}
+
+	cap_clear(dest);
+	rcu_read_lock();
+	cred = (struct cred *) current->real_cred;
+
+	a = *effective;
+	b = *permitted;
+	CAP_BOP_ALL(dest, a, b, |);
+	//printk(KERN_ERR "target %s, uid=%u, effec=%u, inherit=%u, permit=%u, dest=%u\n", p, cred->uid.val, (u32)effective->cap, (u32)inheritable->cap, (u32)permitted->cap, (u32)dest.cap); rcu_read_unlock();
+#endif
+
+	return err;
 }
 
 static int honeybest_capset(struct cred *new, const struct cred *old,
@@ -611,7 +641,35 @@ static int honeybest_capset(struct cred *new, const struct cred *old,
                           const kernel_cap_t *inheritable,
                           const kernel_cap_t *permitted)
 {
-	return 0;
+	int err = 0;
+	kernel_cap_t dest, a, b;
+	char *pathname,*p;
+	struct mm_struct *mm = current->mm;
+
+	if (!enabled)
+		return err;
+
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			pathname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (pathname) {
+				p = d_path(&mm->exe_file->f_path, pathname, PATH_MAX);
+			}
+		}
+		up_read(&mm->mmap_sem);
+	}
+
+	cap_clear(dest);
+	rcu_read_lock();
+
+	a = *effective;
+	b = *permitted;
+	CAP_BOP_ALL(dest, a, b, |);
+	//printk(KERN_ERR "program %s, old uid=%u, new uid=%u, effec=%u, inherit=%u, permit=%u, dest=%u\n", p, old->uid.val, new->uid.val, (u32)effective->cap, (u32)inheritable->cap, (u32)permitted->cap, (u32)dest.cap); rcu_read_unlock();
+	kfree(pathname);
+
+	return err;
 }
 
 static int honeybest_capable(const struct cred *cred, struct user_namespace *ns,
@@ -1407,28 +1465,29 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 
 	/* extract full path */
 	source_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
-	target_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
 	source_pathname = d_absolute_path(&source, source_buff, PATH_MAX);
-	target_pathname = d_absolute_path(&target, target_buff, PATH_MAX);
 
-	if (source_buff == NULL) {
+	if (!source_buff) {
 		err = -EOPNOTSUPP;
 		goto out;
 	}
 
-	if (target_buff == NULL) {
+	if (!source_pathname) {
+		err = -EOPNOTSUPP;
+		goto out;
+	}
+
+	target_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	target_pathname = d_absolute_path(&target, target_buff, PATH_MAX);
+
+	if (!target_buff) {
 		err = -EOPNOTSUPP;
 		goto out1;
 	}
 
-	if (!source_pathname) {
-		err = -EOPNOTSUPP;
-		goto out2;
-	}
-
 	if (!target_pathname) {
 		err = -EOPNOTSUPP;
-		goto out2;
+		goto out1;
 	}
 
 	if (!source_pathname || allow_file_whitelist(source_pathname)) {
@@ -1489,28 +1548,29 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 
 	/* extract full path */
 	source_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
-	target_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
 	source_pathname = d_absolute_path(&source, source_buff, PATH_MAX);
-	target_pathname = d_absolute_path(&target, target_buff, PATH_MAX);
 
-	if (source_buff == NULL) {
+	if (!source_buff) {
 		err = -EOPNOTSUPP;
 		goto out;
 	}
 
-	if (target_buff == NULL) {
+	if (!source_pathname) {
+		err = -EOPNOTSUPP;
+		goto out;
+	}
+
+	target_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	target_pathname = d_absolute_path(&target, target_buff, PATH_MAX);
+
+	if (!target_buff) {
 		err = -EOPNOTSUPP;
 		goto out1;
 	}
 
-	if (!source_pathname) {
-		err = -EOPNOTSUPP;
-		goto out2;
-	}
-
 	if (!target_pathname) {
 		err = -EOPNOTSUPP;
-		goto out2;
+		goto out1;
 	}
 
 	record = search_path_record(HB_PATH_RENAME, current->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
@@ -1526,7 +1586,6 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 			err = -EOPNOTSUPP;
 	}
 
-out2:
 	kfree(target_buff);
 out1:
 	kfree(source_buff);
@@ -1809,8 +1868,8 @@ static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
 {
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
-	const struct qstr *d_name = &dentry->d_name;
-	const unsigned char *dname = d_name->name;
+	char *pathname = NULL;
+       	char *binprm = NULL;
 	hb_inode_ll *record;
 
 	if (!enabled)
@@ -1819,7 +1878,16 @@ static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
 	if (inject_honeybest_tracker(cred, HB_INODE_SETXATTR))
 	       	err = -ENOMEM;
 
-	record = search_inode_record(HB_INODE_SETXATTR, current->cred->uid.val, (char *)name, (char *)dname);
+	pathname = kmalloc(PATH_MAX, GFP_ATOMIC);
+	binprm = dentry_path_raw(dentry, pathname, PATH_MAX);
+
+	if (!pathname)
+		goto out;
+
+	if (!binprm)
+		goto out1;
+
+	record = search_inode_record(HB_INODE_SETXATTR, current->cred->uid.val, (char *)name, binprm);
 
 	if (record) {
 		;//printk(KERN_INFO "Found inode setxattr name %s, dname %s\n", name, dname);
@@ -1827,7 +1895,7 @@ static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
 	else {
 
 		if (locking == 0) 
-			err = add_inode_record(HB_INODE_SETXATTR, current->cred->uid.val, (char *)name, (char *)dname, interact);
+			err = add_inode_record(HB_INODE_SETXATTR, current->cred->uid.val, (char *)name, binprm, interact);
 
 		if (locking == 1) {
 			/* detect mode */
@@ -1835,6 +1903,9 @@ static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
 		}
 	}
 
+out1:
+	kfree(pathname);
+out:
         return err;
 }
 
@@ -1854,8 +1925,8 @@ static int honeybest_inode_getxattr(struct dentry *dentry, const char *name)
 {
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
-	const struct qstr *d_name = &dentry->d_name;
-	const unsigned char *dname = d_name->name;
+	char *pathname = NULL;
+       	char *binprm = NULL;
 	hb_inode_ll *record;
 
 	if (!enabled)
@@ -1864,15 +1935,24 @@ static int honeybest_inode_getxattr(struct dentry *dentry, const char *name)
 	if (inject_honeybest_tracker(cred, HB_INODE_GETXATTR))
 	       	err = -ENOMEM;
 
-	record = search_inode_record(HB_INODE_GETXATTR, current->cred->uid.val, (char *)name, (char *)dname);
+	pathname = kmalloc(PATH_MAX, GFP_ATOMIC);
+	binprm = dentry_path_raw(dentry, pathname, PATH_MAX);
+
+	if (!pathname)
+		goto out;
+
+	if (!binprm)
+		goto out1;
+
+	record = search_inode_record(HB_INODE_GETXATTR, current->cred->uid.val, (char *)name, binprm);
 
 	if (record) {
-		;//printk(KERN_INFO "Found inode getxattr name %s, dname %s\n", name, dname);
+		;//printk(KERN_ERR "Found inode getxattr name %s, dname %s\n", name, binprm);
 	}
 	else {
 
 		if (locking == 0) 
-			err = add_inode_record(HB_INODE_GETXATTR, current->cred->uid.val, (char *)name, (char *)dname, interact);
+			err = add_inode_record(HB_INODE_GETXATTR, current->cred->uid.val, (char *)name, binprm, interact);
 
 		if (locking == 1) {
 			/* detect mode */
@@ -1880,14 +1960,55 @@ static int honeybest_inode_getxattr(struct dentry *dentry, const char *name)
 		}
 	}
 
+out1:
+	kfree(pathname);
+out:
         return err;
 }
+
 static int honeybest_inode_listxattr(struct dentry *dentry)
 {
 	int err = 0;
+	struct cred *cred = (struct cred *) current->real_cred;
+	char *name = "N/A";
+	char *pathname = NULL;
+       	char *binprm = NULL;
+	hb_inode_ll *record;
 
 	if (!enabled)
 		return err;
+
+	if (inject_honeybest_tracker(cred, HB_INODE_LISTXATTR))
+	       	err = -ENOMEM;
+
+	pathname = kmalloc(PATH_MAX, GFP_ATOMIC);
+	binprm = dentry_path_raw(dentry, pathname, PATH_MAX);
+
+	if (!pathname)
+		goto out;
+
+	if (!binprm)
+		goto out1;
+
+	record = search_inode_record(HB_INODE_LISTXATTR, current->cred->uid.val, (char *)name, binprm);
+
+	if (record) {
+		;//printk(KERN_INFO "Found inode setxattr name %s, dname %s\n", name, dname);
+	}
+	else {
+
+		if (locking == 0) 
+			err = add_inode_record(HB_INODE_LISTXATTR, current->cred->uid.val, (char *)name, binprm, interact);
+
+		if (locking == 1) {
+			/* detect mode */
+			err = -EOPNOTSUPP;
+		}
+	}
+
+out1:
+	kfree(pathname);
+out:
 
         return err;
 }
@@ -1901,8 +2022,8 @@ static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
 {
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
-	const struct qstr *d_name = &dentry->d_name;
-	const unsigned char *dname = d_name->name;
+	char *pathname = NULL;
+       	char *binprm = NULL;
 	hb_inode_ll *record;
 
 	if (!enabled)
@@ -1911,7 +2032,16 @@ static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
 	if (inject_honeybest_tracker(cred, HB_INODE_REMOVEXATTR))
 	       	err = -ENOMEM;
 
-	record = search_inode_record(HB_INODE_REMOVEXATTR, current->cred->uid.val, (char *)name, (char *)dname);
+	pathname = kmalloc(PATH_MAX, GFP_ATOMIC);
+	binprm = dentry_path_raw(dentry, pathname, PATH_MAX);
+
+	if (!pathname)
+		goto out;
+
+	if (!binprm)
+		goto out1;
+
+	record = search_inode_record(HB_INODE_REMOVEXATTR, current->cred->uid.val, (char *)name, binprm);
 
 	if (record) {
 		;//printk(KERN_INFO "Found inode removexattr name %s, dname %s\n", name, dname);
@@ -1919,14 +2049,16 @@ static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
 	else {
 
 		if (locking == 0) 
-			err = add_inode_record(HB_INODE_REMOVEXATTR, current->cred->uid.val, (char *)name, (char *)dname, interact);
+			err = add_inode_record(HB_INODE_REMOVEXATTR, current->cred->uid.val, (char *)name, binprm, interact);
 
 		if (locking == 1) {
 			/* detect mode */
 			err = -EOPNOTSUPP;
 		}
 	}
-
+out1:
+	kfree(pathname);
+out:
         return err;
 }
 
@@ -2318,9 +2450,49 @@ static int honeybest_task_wait(struct task_struct *p)
 static void honeybest_task_to_inode(struct task_struct *p,
                                   struct inode *inode)
 {
+#if 0
+	struct dentry *dentry;
+	struct mm_struct *mm = p->mm;
+	char *pathname = NULL;
+       	char *binprm = NULL;
+	char *taskpath = NULL;
+	char *taskbuff = NULL;
+#endif
 
 	if (!enabled)
-	       	return;
+		return;
+
+#if 0
+	/* inode */
+	dentry = d_find_alias(inode);
+	if (!dentry)
+		goto out;
+
+	pathname = kmalloc(PATH_MAX, GFP_ATOMIC);
+	binprm = dentry_path_raw(dentry, pathname, PATH_MAX);
+
+	if(!binprm) {
+		goto out1;
+	}
+
+	/* task */
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			taskbuff = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (taskbuff) {
+				taskpath = d_path(&mm->exe_file->f_path, taskbuff, PATH_MAX);
+				printk(KERN_ERR "%s --> pid %d, tgid %d, inode %s, pathname %s\n", __FUNCTION__, p->pid, p->tgid, binprm, taskpath);
+				kfree(taskbuff);
+			}
+		}
+		up_read(&mm->mmap_sem);
+	}
+out1:
+	kfree(pathname);
+out:
+#endif
+	return;
 }
 
 /**
