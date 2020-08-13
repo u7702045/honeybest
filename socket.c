@@ -291,7 +291,7 @@ ssize_t write_socket_record(struct file *file, const char __user *buffer, size_t
 
 		binprm = kmalloc(PATH_MAX, GFP_KERNEL);
 		if (!binprm)
-			goto out;
+			goto out1;
 
 		sscanf(token, "%u %u %d %d %d %d %d %d %s", &fid, &uid, &family, &type, &protocol,
 				&port, &level, &optname, binprm);
