@@ -272,7 +272,7 @@ int read_notify_record(struct seq_file *m, void *v)
 				paths = (hb_path_ll *)tmp->data;
 				seq_printf(m, "%lu\t%s\t%u\t%d\t%u\t%u\t%u\t%u\t%s\t\t%s\n", total++, tmp->proc, paths->fid\
 						, paths->uid, paths->mode, paths->suid, paths->sgid \
-						, paths->dev, paths->source_pathname, paths->target_pathname);
+						, paths->dev, paths->s_path, paths->t_path);
 				break;
 			case HB_INODE_REMOVEXATTR:
 			case HB_INODE_GETXATTR:

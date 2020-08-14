@@ -89,7 +89,7 @@
 #include "honeybest.h"
 
 // support only 1 * at the last,middle & full match, example /home/files.* or /proc/*maps
-int compare_regex(char *str1, char *str2, int len)
+int compare_regex(char *str1, int len1, char *str2, int len2)
 {
 	int i = 0;
 	int asterik_offset = 0;
@@ -97,11 +97,11 @@ int compare_regex(char *str1, char *str2, int len)
 	int str1_leftover = 0;
 	enum regex_match match = End;
 
-	if (len <= 0)
+	if ((len1 <= 0) || (len2 <= 0))
 		return 1;
 
 	// check * offset
-	for(i=0; i<len; i++) {
+	for(i=0; i<len1; i++) {
 		asterik_offset = i;
 		if(str1[i] == '*') {
 			have_asterik = 1;
@@ -113,7 +113,7 @@ int compare_regex(char *str1, char *str2, int len)
 		match = Full;
 	else {
 		// verify if * is in the middle of the str1
-		if (asterik_offset == len-1)
+		if (asterik_offset == len1-1)
 			match = End;
 		else {
 			match = Middle;
@@ -121,29 +121,40 @@ int compare_regex(char *str1, char *str2, int len)
 		}
 	}
 
-	//printk(KERN_ERR "Match is [%d], len %d", match, len);
+	;//printk(KERN_ERR  "Match is [%d], len %d, ", match, len1);
 
 	if (match == Full) {
-	       	;//printk(KERN_ERR "str1 %s, compare %d bytes\n", str1, len);
-		return strncmp(str1, str2, len);
+	       	;//printk(KERN_ERR  "str1 %s, compare %d bytes\n", str1, len1>len2?len1:len2);
+		if (len1 > len2)
+		       	return strncmp(str1, str2, len1) && 1;
+		else
+		       	return strncmp(str1, str2, len2) && 1;
 	}
 	else if (match == Middle) {
-		int str2_len = strlen(str2);
-		int str2_offset = str2_len - (str1_leftover - 2); //offset to str2 with str1 leftover
-	       	;//printk(KERN_ERR "str1 %s, compare %d bytes, compare leftover %d bytes, leftover offset start %s\n", str1, asterik_offset, (len-str1_leftover), str1+str1_leftover);
-		if (str2_offset < 0)
-			;//printk(KERN_ERR "str1 leftover is bigger than str2 len!!\n");
-		else {
-		       	;//printk(KERN_ERR "str2 %s, str2 leftover offset %d, leftover compare %s\n", str2, str2_offset, str2+str2_offset);
-	       		return ((strncmp(str1, str2, asterik_offset)) && (strncmp(str1+str1_leftover, str2+str2_offset, len-str1_leftover)));
-		}
+			int ret = 1;
+			int ret1 = 1;
+			char *p = NULL;
+
+			ret = strncmp(str1, str2, asterik_offset) && 1;
+
+			p = strstr(str2, str1+str1_leftover);
+			if (p) {
+				/**< find the leftover only if match last char */
+				if (p[strlen(str1+str1_leftover)] == '\0') {
+					ret1 = 0;
+				}
+			}
+
+	       		return (ret || ret1);
 	}
 	else if (match == End) {
-	       	;//printk(KERN_ERR "str1 %s, compare %d bytes\n", str1, asterik_offset);
-	       	return strncmp(str1, str2, asterik_offset);
+	       	;//printk(KERN_ERR  "str1 %s, compare %d bytes\n", str1, asterik_offset);
+	       	return strncmp(str1, str2, asterik_offset) && 1;
 	}
 	else
-	       	printk(KERN_ERR "Unknown regular expression.\n");
+	       	printk(KERN_ERR  "Unknown regular expression.\n");
 
 	return 1;
 }
+
+

@@ -146,24 +146,24 @@ hb_socket_ll *search_socket_record(unsigned int fid, uid_t uid, int family, int 
 		tmp = list_entry(pos, hb_socket_ll, list);
 		switch (fid) {
 			case HB_SOCKET_CONNECT:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->family == family) && (tmp->type == type) && (tmp->protocol == protocol) && (tmp->port == port) && !compare_regex(tmp->binprm, binprm, strlen(tmp->binprm))) {
+				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->family == family) && (tmp->type == type) && (tmp->protocol == protocol) && (tmp->port == port) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
 					return tmp;
 				}
 				break;
 			case HB_SOCKET_CREATE:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->family == family) && (tmp->type == type) && (tmp->protocol == protocol) && !compare_regex(tmp->binprm, binprm, strlen(tmp->binprm))) {
+				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->family == family) && (tmp->type == type) && (tmp->protocol == protocol) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
 					//printk(KERN_INFO "Found socket create record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_SOCKET_BIND:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->port == port) && !compare_regex(tmp->binprm, binprm, strlen(tmp->binprm))) {
+				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->port == port) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
 					//printk(KERN_INFO "Found socket bind record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_SOCKET_SETSOCKOPT:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->level == level) && (tmp->optname == optname) && !compare_regex(tmp->binprm, binprm, strlen(tmp->binprm))) {
+				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->level == level) && (tmp->optname == optname) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
 					//printk(KERN_INFO "Found socket setsockopt record !!!!\n");
 					return tmp;
 				}
