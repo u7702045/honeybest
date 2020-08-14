@@ -120,6 +120,7 @@
 #ifdef CONFIG_SECURITY_HONEYBEST
 static int enabled = IS_ENABLED(CONFIG_SECURITY_HONEYBEST_ENABLED);
 static int locking = 0;		// detect mode
+static int bl = 0;		// white list vs black list
 static int interact = 0;	// interaction mode
 static int level = 1;		// fine grain granularity
 static unsigned long task_seq = 0;
@@ -199,6 +200,15 @@ static struct ctl_table honeybest_sysctl_table[] = {
 		.proc_handler   = proc_dointvec_minmax,
 		.extra1         = &one,
 		.extra2         = &two,
+	},
+	{
+		.procname       = "bl",	/**< bl = 0, item in record is allow; bl = 1, item in record is not allow */
+		.data           = &bl,
+		.maxlen         = sizeof(int),
+		.mode           = 0644,
+		.proc_handler   = proc_dointvec_minmax,
+		.extra1         = &zero,
+		.extra2         = &one,
 	},
 	{ }
 };
@@ -730,13 +740,15 @@ static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found set creds record func=%u, hash=[%s]\n", record->fid, record->digest);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
 
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_binprm_record(HB_BPRM_SET_CREDS, current->cred->uid.val , pathname, digest, interact);
 
-		if (locking == 1) {
+		if ((locking == 1) && (bl == 0)) {
 			/* detect mode */
 			err = -EOPNOTSUPP;
 		}
@@ -835,12 +847,14 @@ static int honeybest_sb_remount(struct super_block *sb, void *data)
 
 		if (record) {
 			;//printk(KERN_INFO "Found sb remount record func=%u, uid %u, s_id=%s, type name=%s\n", record->fid, record->uid, record->s_id, record->name);
+			if (bl == 1)
+				return -EOPNOTSUPP;
 		}
 		else {
-			if (locking == 0) 
+			if ((locking == 0) && (bl == 0)) 
 				err = add_sb_record(HB_SB_REMOUNT, current->cred->uid.val, sb->s_id, (char *)sb->s_type->name, na, na, 0, interact);
 
-			if (locking == 1)
+			if ((locking == 1) && (bl == 0))
 				err = -EOPNOTSUPP;
 		}
 	}
@@ -885,12 +899,14 @@ static int honeybest_sb_statfs(struct dentry *dentry)
 
 	if (record) {
 		;//printk(KERN_INFO "Found sb statfs record func=%u, uid %u, s_id=%s, type name=%s\n", record->fid, record->uid, record->s_id, record->name);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_sb_record(HB_SB_STATFS, current->cred->uid.val, sb->s_id, (char *)sb->s_type->name, na, na, 0, interact);
 
-		if (locking == 1)
+		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 	return err;
@@ -957,12 +973,14 @@ static int honeybest_mount(const char *dev_name, struct path *path,
 
 	if (record) {
 		;//printk(KERN_INFO "Found sb mount record func=%u, uid %u, dev_name=%s, type name=%s, flags=%d\n", record->fid, record->uid, record->dev_name, record->type, record->flags);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_sb_record(HB_SB_MOUNT, current->cred->uid.val, na, na, (char *)dev_name, (char *)type, flags, interact);
 
-		if (locking == 1)
+		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
@@ -995,12 +1013,14 @@ static int honeybest_umount(struct vfsmount *mnt, int flags)
 
 	if (record) {
 		;//printk(KERN_INFO "Found sb umount record func=%u, uid %u, dev_name=%s, type name=%s, flags=%d\n", record->fid, record->uid, record->dev_name, record->type, record->flags);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_sb_record(HB_SB_UMOUNT, current->cred->uid.val, sb->s_id, (char *)sb->s_type->name, na, na, flags, interact);
 
-		if (locking == 1)
+		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
@@ -1089,12 +1109,14 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found path unlink record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_path_record(HB_PATH_UNLINK, current->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0, interact);
 
-		if (locking == 1)
+		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
@@ -1157,12 +1179,14 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found path mkdir record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_path_record(HB_PATH_MKDIR, current->cred->uid.val, mode, source_pathname, target_pathname, 0, 0, 0, interact);
 
-		if (locking == 1)
+		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
@@ -1219,12 +1243,14 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found path rmdir record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_path_record(HB_PATH_RMDIR, current->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0, interact);
 
-		if (locking == 1)
+		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
@@ -1287,12 +1313,14 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found path mknod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_path_record(HB_PATH_MKNOD, current->cred->uid.val, mode, source_pathname, target_pathname, 0, 0, dev, interact);
 
-		if (locking == 1)
+		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
@@ -1351,12 +1379,14 @@ static int honeybest_path_truncate(struct path *path)
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found path truncate record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_path_record(HB_PATH_TRUNCATE, current->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0, interact);
 
-		if (locking == 1)
+		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
@@ -1415,12 +1445,14 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found path symlink record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_path_record(HB_PATH_SYMLINK, current->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0, interact);
 
-		if (locking == 1)
+		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
@@ -1498,12 +1530,14 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found path link record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_path_record(HB_PATH_LINK, current->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0, interact);
 
-		if (locking == 1)
+		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 out2:
@@ -1577,12 +1611,14 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found path rename record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_path_record(HB_PATH_RENAME, current->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0, interact);
 
-		if (locking == 1)
+		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
@@ -1638,12 +1674,14 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found path chmod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_path_record(HB_PATH_CHMOD, current->cred->uid.val, mode, source_pathname, target_pathname, 0, 0, 0, interact);
 
-		if (locking == 1)
+		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
@@ -1698,12 +1736,14 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found path chmod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_path_record(HB_PATH_CHOWN, current->cred->uid.val, 0, source_pathname, target_pathname, uid.val, gid.val, 0, interact);
 
-		if (locking == 1)
+		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
@@ -1891,13 +1931,15 @@ static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
 
 	if (record) {
 		;//printk(KERN_INFO "Found inode setxattr name %s, dname %s\n", name, dname);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
 
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_inode_record(HB_INODE_SETXATTR, current->cred->uid.val, (char *)name, binprm, interact);
 
-		if (locking == 1) {
+		if ((locking == 1) && (bl == 0)) {
 			/* detect mode */
 			err = -EOPNOTSUPP;
 		}
@@ -1948,13 +1990,15 @@ static int honeybest_inode_getxattr(struct dentry *dentry, const char *name)
 
 	if (record) {
 		;//printk(KERN_ERR "Found inode getxattr name %s, dname %s\n", name, binprm);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
 
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0))
 			err = add_inode_record(HB_INODE_GETXATTR, current->cred->uid.val, (char *)name, binprm, interact);
 
-		if (locking == 1) {
+		if ((locking == 1) && (bl == 0)) {
 			/* detect mode */
 			err = -EOPNOTSUPP;
 		}
@@ -1994,13 +2038,15 @@ static int honeybest_inode_listxattr(struct dentry *dentry)
 
 	if (record) {
 		;//printk(KERN_INFO "Found inode setxattr name %s, dname %s\n", name, dname);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
 
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_inode_record(HB_INODE_LISTXATTR, current->cred->uid.val, (char *)name, binprm, interact);
 
-		if (locking == 1) {
+		if ((locking == 1) && (bl == 0)) {
 			/* detect mode */
 			err = -EOPNOTSUPP;
 		}
@@ -2045,13 +2091,15 @@ static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
 
 	if (record) {
 		;//printk(KERN_INFO "Found inode removexattr name %s, dname %s\n", name, dname);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
 
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_inode_record(HB_INODE_REMOVEXATTR, current->cred->uid.val, (char *)name, binprm, interact);
 
-		if (locking == 1) {
+		if ((locking == 1) && (bl == 0)) {
 			/* detect mode */
 			err = -EOPNOTSUPP;
 		}
@@ -2190,13 +2238,15 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->pathname);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
 
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_file_record(HB_FILE_OPEN, current->cred->uid.val , pathname, interact);
 
-		if (locking == 1) {
+		if ((locking == 1) && (bl == 0)) {
 			/* detect mode */
 			err = -EOPNOTSUPP;
 		}
@@ -2322,12 +2372,14 @@ static int honeybest_kernel_module_request(char *kmod_name)
 
 	if (record) {
 		;//printk(KERN_INFO "Found kmod record func=%u, uid %u, name=%s\n", record->fid, record->uid, record->name);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_kmod_record(HB_KMOD_REQ, current->cred->uid.val, kmod_name, interact);
 
-		if (locking == 1)
+		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
@@ -2420,10 +2472,12 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 
 	if (record) {
 		;//printk(KERN_INFO "Found task struct sig %d, secid %d, signo %d, errno %d\n", record->sig, record->secid, record->si_signo, record->si_errno);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
 
-		if (locking == 0) {
+		if ((locking == 0) && (bl == 0)) {
 			if (info == NULL)
 				err = add_task_record(HB_TASK_SIGNAL, current->cred->uid.val, 0, 0, sig, secid, interact);
 			else
@@ -2431,7 +2485,7 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 						, info->si_errno, sig, secid, interact);
 		}
 
-		if (locking == 1) {
+		if ((locking == 1) && (bl == 0)) {
 			/* detect mode */
 			err = -EOPNOTSUPP;
 		}
@@ -2532,13 +2586,15 @@ static int honeybest_socket_create(int family, int type,
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found socket create record func=%u, family %d, type %d, protocol %d, kern %d\n", record->fid, family, type, protocol, kern);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
 
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_socket_record(HB_SOCKET_CREATE, current->cred->uid.val, family, type, protocol, 0, 0, 0, binprm, interact);
 
-		if (locking == 1)
+		if ((locking == 1) && (bl == 0)) 
 			err = -EOPNOTSUPP;
 	}
 
@@ -2592,14 +2648,16 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found socket bind record func=%u, port=[%d]\n", record->fid, record->port);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
 
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_socket_record(HB_SOCKET_BIND, current->cred->uid.val, 0, 0, 0, \
 					port, 0, 0, binprm, interact);
 
-		if (locking == 1) {
+		if ((locking == 1) && (bl == 0)) {
 			/* detect mode */
 			err = -EOPNOTSUPP;
 		}
@@ -2649,13 +2707,15 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found socket bind record func=%u, port=[%d]\n", record->fid, record->port);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
 
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_socket_record(HB_SOCKET_CONNECT, current->cred->uid.val, 0, 0, 0, port, 0, 0, binprm, interact);
 
-		if (locking == 1) {
+		if ((locking == 1) && (bl == 0)) {
 			/* detect mode */
 			err = -EOPNOTSUPP;
 		}
@@ -2744,13 +2804,15 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found socket setsockopt record func=%u, level=%d, optname=%d\n", record->fid, level, optname);
+		if (bl == 1)
+			return -EOPNOTSUPP;
 	}
 	else {
 
-		if (locking == 0) 
+		if ((locking == 0) && (bl == 0)) 
 			err = add_socket_record(HB_SOCKET_SETSOCKOPT, current->cred->uid.val, 0, 0, 0, 0, level, optname, binprm, interact);
 
-		if (locking == 1)
+		if ((locking == 1) && (bl == 0)) 
 			err = -EOPNOTSUPP;
 	}
 
