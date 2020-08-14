@@ -281,7 +281,6 @@ ssize_t write_binprm_record(struct file *file, const char __user *buffer, size_t
 	list_for_each_safe(pos, q, &hb_binprm_list_head.list) {
 		tmp = list_entry(pos, hb_binprm_ll, list);
 		list_del(pos);
-		kfree(tmp->digest);
 		kfree(tmp->pathname);
 		kfree(tmp);
 		tmp = NULL;
