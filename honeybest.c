@@ -1073,9 +1073,9 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
 	struct path source = { dir->mnt, dentry };
-	char *source_pathname = NULL;
-       	char *target_pathname = "N/A";
-	char *source_buff = NULL;
+	char *s_path = NULL;
+       	char *t_path = "N/A";
+	char *s_buff = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1088,40 +1088,40 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 	       	err = -ENOMEM;
 
 	/* extract full path */
-	source_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
-	source_pathname = d_absolute_path(&source, source_buff, PATH_MAX);
+	s_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	s_path = d_absolute_path(&source, s_buff, PATH_MAX);
 
-	if (source_buff == NULL) {
+	if (s_buff == NULL) {
 		err = -EOPNOTSUPP;
 		goto out;
 	}
 
-	if (!source_pathname) {
+	if (!s_path) {
 		err = -EOPNOTSUPP;
 		goto out1;
 	}
 
-	if (!source_pathname || allow_file_whitelist(source_pathname)) {
+	if (!s_path || allow_file_whitelist(s_path)) {
 		goto out1;
 	}
 
-	record = search_path_record(HB_PATH_UNLINK, current->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
+	record = search_path_record(HB_PATH_UNLINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found path unlink record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+	       	;//printk(KERN_INFO "Found path unlink record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
 		if (bl == 1)
 			err = -EOPNOTSUPP;
 	}
 	else {
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_UNLINK, current->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0, interact);
+			err = add_path_record(HB_PATH_UNLINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
 out1:
-	kfree(source_buff);
+	kfree(s_buff);
 out:
 	return err;
 }
@@ -1143,9 +1143,9 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
 	struct path source = { dir->mnt, dentry };
-	char *source_pathname = NULL;
-       	char *target_pathname = "N/A";
-	char *source_buff = NULL;
+	char *s_path = NULL;
+       	char *t_path = "N/A";
+	char *s_buff = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1158,40 +1158,40 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 	       	err = -ENOMEM;
 
 	/* extract full path */
-	source_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
-	source_pathname = d_absolute_path(&source, source_buff, PATH_MAX);
+	s_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	s_path = d_absolute_path(&source, s_buff, PATH_MAX);
 
-	if (!source_pathname) {
+	if (!s_path) {
 		err = -EOPNOTSUPP;
 		goto out;
 	}
 
-	if (!source_pathname) {
+	if (!s_path) {
 		err = -EOPNOTSUPP;
 		goto out1;
 	}
 
-	if (!source_pathname || allow_file_whitelist(source_pathname)) {
+	if (!s_path || allow_file_whitelist(s_path)) {
 		goto out1;
 	}
 
-	record = search_path_record(HB_PATH_MKDIR, current->cred->uid.val, mode, source_pathname, target_pathname, 0, 0, 0);
+	record = search_path_record(HB_PATH_MKDIR, current->cred->uid.val, mode, s_path, t_path, 0, 0, 0);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found path mkdir record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+	       	;//printk(KERN_INFO "Found path mkdir record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
 		if (bl == 1)
 			err = -EOPNOTSUPP;
 	}
 	else {
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_MKDIR, current->cred->uid.val, mode, source_pathname, target_pathname, 0, 0, 0, interact);
+			err = add_path_record(HB_PATH_MKDIR, current->cred->uid.val, mode, s_path, t_path, 0, 0, 0, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
 out1:
-	kfree(source_buff);
+	kfree(s_buff);
 out:
 	return err;
 }
@@ -1211,9 +1211,9 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
 	struct path source = { dir->mnt, dentry };
-	char *source_pathname = NULL;
-       	char *target_pathname = "N/A";
-	char *source_buff = NULL;
+	char *s_path = NULL;
+       	char *t_path = "N/A";
+	char *s_buff = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1226,36 +1226,36 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 	       	err = -ENOMEM;
 
 	/* extract full path */
-	source_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
-	source_pathname = d_absolute_path(&source, source_buff, PATH_MAX);
+	s_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	s_path = d_absolute_path(&source, s_buff, PATH_MAX);
 
-	if (!source_buff) {
+	if (!s_buff) {
 		err = -EOPNOTSUPP;
 		goto out;
 	}
 
-	if (!source_pathname) {
+	if (!s_path) {
 		err = -EOPNOTSUPP;
 		goto out1;
 	}
 
-	record = search_path_record(HB_PATH_RMDIR, current->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
+	record = search_path_record(HB_PATH_RMDIR, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found path rmdir record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+	       	;//printk(KERN_INFO "Found path rmdir record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
 		if (bl == 1)
 			err = -EOPNOTSUPP;
 	}
 	else {
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_RMDIR, current->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0, interact);
+			err = add_path_record(HB_PATH_RMDIR, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
 out1:
-	kfree(source_buff);
+	kfree(s_buff);
 out:
 	return err;
 }
@@ -1277,9 +1277,9 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
 	struct path source = { dir->mnt, dentry };
-	char *source_pathname = NULL;
-       	char *target_pathname = "N/A";
-	char *source_buff = NULL;
+	char *s_path = NULL;
+       	char *t_path = "N/A";
+	char *s_buff = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1292,40 +1292,40 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 	       	err = -ENOMEM;
 
 	/* extract full path */
-	source_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
-	source_pathname = d_absolute_path(&source, source_buff, PATH_MAX);
+	s_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	s_path = d_absolute_path(&source, s_buff, PATH_MAX);
 
-	if (!source_buff) {
+	if (!s_buff) {
 		err = -EOPNOTSUPP;
 		goto out;
 	}
 
-	if (!source_pathname) {
+	if (!s_path) {
 		err = -EOPNOTSUPP;
 		goto out1;
 	}
 
-	if (!source_pathname || allow_file_whitelist(source_pathname)) {
+	if (!s_path || allow_file_whitelist(s_path)) {
 		goto out1;
 	}
 
-	record = search_path_record(HB_PATH_MKNOD, current->cred->uid.val, mode, source_pathname, target_pathname, 0, 0, dev);
+	record = search_path_record(HB_PATH_MKNOD, current->cred->uid.val, mode, s_path, t_path, 0, 0, dev);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found path mknod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+	       	;//printk(KERN_INFO "Found path mknod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
 		if (bl == 1)
 			err = -EOPNOTSUPP;
 	}
 	else {
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_MKNOD, current->cred->uid.val, mode, source_pathname, target_pathname, 0, 0, dev, interact);
+			err = add_path_record(HB_PATH_MKNOD, current->cred->uid.val, mode, s_path, t_path, 0, 0, dev, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
 out1:
-	kfree(source_buff);
+	kfree(s_buff);
 out:
 	return err;
 }
@@ -1343,9 +1343,9 @@ static int honeybest_path_truncate(struct path *path)
 {
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
-	char *source_pathname = NULL;
-       	char *target_pathname = "N/A";
-	char *source_buff = NULL;
+	char *s_path = NULL;
+       	char *t_path = "N/A";
+	char *s_buff = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1358,40 +1358,40 @@ static int honeybest_path_truncate(struct path *path)
 	       	err = -ENOMEM;
 
 	/* extract full path */
-	source_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
-	source_pathname = d_absolute_path(path, source_buff, PATH_MAX);
+	s_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	s_path = d_absolute_path(path, s_buff, PATH_MAX);
 
-	if (source_buff == NULL) {
+	if (s_buff == NULL) {
 		err = -EOPNOTSUPP;
 		goto out;
 	}
 
-	if (!source_pathname) {
+	if (!s_path) {
 		err = -EOPNOTSUPP;
 		goto out1;
 	}
 
-	if (!source_pathname || allow_file_whitelist(source_pathname)) {
+	if (!s_path || allow_file_whitelist(s_path)) {
 		goto out1;
 	}
 
-	record = search_path_record(HB_PATH_TRUNCATE, current->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
+	record = search_path_record(HB_PATH_TRUNCATE, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found path truncate record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+	       	;//printk(KERN_INFO "Found path truncate record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
 		if (bl == 1)
 			err = -EOPNOTSUPP;
 	}
 	else {
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_TRUNCATE, current->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0, interact);
+			err = add_path_record(HB_PATH_TRUNCATE, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
 out1:
-	kfree(source_buff);
+	kfree(s_buff);
 out:
 	return err;
 }
@@ -1413,9 +1413,9 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
 	struct path target = { dir->mnt, dentry };
-	char *source_pathname = (char *)old_name;
-       	char *target_pathname = NULL;
-	char *target_buff = NULL;
+	char *s_path = (char *)old_name;
+       	char *t_path = NULL;
+	char *t_buff = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1428,36 +1428,36 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 	       	err = -ENOMEM;
 
 	/* extract full path */
-	target_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
-	target_pathname = d_absolute_path(&target, target_buff, PATH_MAX);
+	t_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	t_path = d_absolute_path(&target, t_buff, PATH_MAX);
 
-	if (target_buff == NULL) {
+	if (t_buff == NULL) {
 		err = -EOPNOTSUPP;
 		goto out;
 	}
 
-	if (!target_pathname) {
+	if (!t_path) {
 		err = -EOPNOTSUPP;
 		goto out1;
 	}
 
-	record = search_path_record(HB_PATH_SYMLINK, current->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
+	record = search_path_record(HB_PATH_SYMLINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found path symlink record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+	       	;//printk(KERN_INFO "Found path symlink record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
 		if (bl == 1)
 			err = -EOPNOTSUPP;
 	}
 	else {
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_SYMLINK, current->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0, interact);
+			err = add_path_record(HB_PATH_SYMLINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
 out1:
-	kfree(target_buff);
+	kfree(t_buff);
 out:
 	return err;
 }
@@ -1480,10 +1480,10 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 	struct cred *cred = (struct cred *) current->real_cred;
 	struct path source = { new_dir->mnt, new_dentry };
 	struct path target = { new_dir->mnt, old_dentry };
-	char *source_pathname = NULL;
-       	char *target_pathname = NULL;
-	char *source_buff = NULL;
-	char *target_buff = NULL;
+	char *s_path = NULL;
+       	char *t_path = NULL;
+	char *s_buff = NULL;
+	char *t_buff = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1496,54 +1496,54 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 	       	err = -ENOMEM;
 
 	/* extract full path */
-	source_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
-	source_pathname = d_absolute_path(&source, source_buff, PATH_MAX);
+	s_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	s_path = d_absolute_path(&source, s_buff, PATH_MAX);
 
-	if (!source_buff) {
+	if (!s_buff) {
 		err = -EOPNOTSUPP;
 		goto out;
 	}
 
-	if (!source_pathname) {
+	if (!s_path) {
 		err = -EOPNOTSUPP;
 		goto out;
 	}
 
-	target_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
-	target_pathname = d_absolute_path(&target, target_buff, PATH_MAX);
+	t_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	t_path = d_absolute_path(&target, t_buff, PATH_MAX);
 
-	if (!target_buff) {
+	if (!t_buff) {
 		err = -EOPNOTSUPP;
 		goto out1;
 	}
 
-	if (!target_pathname) {
+	if (!t_path) {
 		err = -EOPNOTSUPP;
 		goto out1;
 	}
 
-	if (!source_pathname || allow_file_whitelist(source_pathname)) {
+	if (!s_path || allow_file_whitelist(s_path)) {
 		goto out2;
 	}
 
-	record = search_path_record(HB_PATH_LINK, current->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
+	record = search_path_record(HB_PATH_LINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found path link record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+	       	;//printk(KERN_INFO "Found path link record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
 		if (bl == 1)
 			err = -EOPNOTSUPP;
 	}
 	else {
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_LINK, current->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0, interact);
+			err = add_path_record(HB_PATH_LINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 out2:
-	kfree(target_buff);
+	kfree(t_buff);
 out1:
-	kfree(source_buff);
+	kfree(s_buff);
 out:
 	return err;
 }
@@ -1565,10 +1565,10 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 	struct cred *cred = (struct cred *) current->real_cred;
 	struct path target = { new_dir->mnt, new_dentry };
 	struct path source = { old_dir->mnt, old_dentry };
-	char *source_pathname = NULL;
-       	char *target_pathname = NULL;
-	char *source_buff = NULL;
-	char *target_buff = NULL;
+	char *s_path = NULL;
+       	char *t_path = NULL;
+	char *s_buff = NULL;
+	char *t_buff = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1581,50 +1581,50 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 	       	err = -ENOMEM;
 
 	/* extract full path */
-	source_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
-	source_pathname = d_absolute_path(&source, source_buff, PATH_MAX);
+	s_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	s_path = d_absolute_path(&source, s_buff, PATH_MAX);
 
-	if (!source_buff) {
+	if (!s_buff) {
 		err = -EOPNOTSUPP;
 		goto out;
 	}
 
-	if (!source_pathname) {
+	if (!s_path) {
 		err = -EOPNOTSUPP;
 		goto out;
 	}
 
-	target_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
-	target_pathname = d_absolute_path(&target, target_buff, PATH_MAX);
+	t_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	t_path = d_absolute_path(&target, t_buff, PATH_MAX);
 
-	if (!target_buff) {
+	if (!t_buff) {
 		err = -EOPNOTSUPP;
 		goto out1;
 	}
 
-	if (!target_pathname) {
+	if (!t_path) {
 		err = -EOPNOTSUPP;
 		goto out1;
 	}
 
-	record = search_path_record(HB_PATH_RENAME, current->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0);
+	record = search_path_record(HB_PATH_RENAME, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found path rename record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+	       	;//printk(KERN_INFO "Found path rename record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
 		if (bl == 1)
 			err = -EOPNOTSUPP;
 	}
 	else {
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_RENAME, current->cred->uid.val, 0, source_pathname, target_pathname, 0, 0, 0, interact);
+			err = add_path_record(HB_PATH_RENAME, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
-	kfree(target_buff);
+	kfree(t_buff);
 out1:
-	kfree(source_buff);
+	kfree(s_buff);
 out:
 	return err;
 }
@@ -1642,9 +1642,9 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 {
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
-	char *source_pathname = NULL;
-       	char *target_pathname = "N/A";
-	char *source_buff = NULL;
+	char *s_path = NULL;
+       	char *t_path = "N/A";
+	char *s_buff = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1657,36 +1657,36 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 	       	err = -ENOMEM;
 
 	/* extract full path */
-	source_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
-	source_pathname = d_absolute_path(path, source_buff, PATH_MAX);
+	s_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	s_path = d_absolute_path(path, s_buff, PATH_MAX);
 
-	if (source_buff == NULL) {
+	if (s_buff == NULL) {
 		err = -EOPNOTSUPP;
 		goto out;
 	}
 
-	if (!source_pathname) {
+	if (!s_path) {
 		err = -EOPNOTSUPP;
 		goto out1;
 	}
 
-	record = search_path_record(HB_PATH_CHMOD, current->cred->uid.val, mode, source_pathname, target_pathname, 0, 0, 0);
+	record = search_path_record(HB_PATH_CHMOD, current->cred->uid.val, mode, s_path, t_path, 0, 0, 0);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found path chmod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+	       	;//printk(KERN_INFO "Found path chmod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
 		if (bl == 1)
 			err = -EOPNOTSUPP;
 	}
 	else {
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_CHMOD, current->cred->uid.val, mode, source_pathname, target_pathname, 0, 0, 0, interact);
+			err = add_path_record(HB_PATH_CHMOD, current->cred->uid.val, mode, s_path, t_path, 0, 0, 0, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
 out1:
-	kfree(source_buff);
+	kfree(s_buff);
 out:
 	return err;
 }
@@ -1704,9 +1704,9 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 {
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
-	char *source_pathname = NULL;
-       	char *target_pathname = "N/A";
-	char *source_buff = NULL;
+	char *s_path = NULL;
+       	char *t_path = "N/A";
+	char *s_buff = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1719,36 +1719,36 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 	       	err = -ENOMEM;
 
 	/* extract full path */
-	source_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
-	source_pathname = d_absolute_path(path, source_buff, PATH_MAX);
+	s_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+	s_path = d_absolute_path(path, s_buff, PATH_MAX);
 
-	if (source_buff == NULL) {
+	if (s_buff == NULL) {
 		err = -EOPNOTSUPP;
 		goto out;
 	}
 
-	if (!source_pathname) {
+	if (!s_path) {
 		err = -EOPNOTSUPP;
 		goto out1;
 	}
 
-	record = search_path_record(HB_PATH_CHOWN, current->cred->uid.val, 0, source_pathname, target_pathname, uid.val, gid.val, 0);
+	record = search_path_record(HB_PATH_CHOWN, current->cred->uid.val, 0, s_path, t_path, uid.val, gid.val, 0);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found path chmod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->source_pathname, record->target_pathname);
+	       	;//printk(KERN_INFO "Found path chmod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
 		if (bl == 1)
 			err = -EOPNOTSUPP;
 	}
 	else {
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_CHOWN, current->cred->uid.val, 0, source_pathname, target_pathname, uid.val, gid.val, 0, interact);
+			err = add_path_record(HB_PATH_CHOWN, current->cred->uid.val, 0, s_path, t_path, uid.val, gid.val, 0, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
 
 out1:
-	kfree(source_buff);
+	kfree(s_buff);
 out:
 	return err;
 }
