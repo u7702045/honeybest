@@ -92,16 +92,16 @@
 
 struct proc_dir_entry *hb_proc_file_entry;
 hb_file_ll hb_file_list_head;
-hb_file_ll *search_file_record(unsigned int fid, uid_t uid, char *pathname)
+hb_file_ll *search_file_record(unsigned int fid, uid_t uid, char *filename, char *binprm)
 {
 	hb_file_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_file_list_head.list) {
 		tmp = list_entry(pos, hb_file_ll, list);
-		if ((tmp->fid == HB_FILE_OPEN) && (uid == tmp->uid) && !compare_regex(tmp->pathname, strlen(tmp->pathname), pathname, strlen(pathname))) {
+		if ((tmp->fid == HB_FILE_OPEN) && (uid == tmp->uid) && !compare_regex(tmp->filename, strlen(tmp->filename), filename, strlen(filename)) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
 			/* we find the record */
-			//printk(KERN_INFO "Found file set record %s, %s!!!!\n", pathname, tmp->pathname);
+			//printk(KERN_INFO "Found file set record %s, %s!!!!\n", filename, tmp->filename);
 			return tmp;
 		}
 	}
@@ -109,11 +109,15 @@ hb_file_ll *search_file_record(unsigned int fid, uid_t uid, char *pathname)
 	return NULL;
 }
 
-int add_file_record(unsigned int fid, uid_t uid, char *pathname, int interact)
+int add_file_record(unsigned int fid, uid_t uid, char *filename, char *binprm, int interact)
 {
 	int err = 0;
 	hb_file_ll *tmp = NULL;
-       	int len = strlen(pathname);
+       	int file_len = strlen(filename);
+       	int binprm_len = strlen(binprm);
+
+	if ((file_len <= 0) || (binprm_len <= 0))
+		return -EOPNOTSUPP;
 
 	tmp = (hb_file_ll *)kmalloc(sizeof(hb_file_ll), GFP_KERNEL);
 	if (tmp) {
@@ -122,11 +126,20 @@ int add_file_record(unsigned int fid, uid_t uid, char *pathname, int interact)
 		tmp->uid = uid;
 		switch (fid) {
 			case HB_FILE_OPEN:
-				tmp->pathname = kmalloc(len+1, GFP_KERNEL);
-				if (tmp->pathname == NULL)
+				tmp->filename = kmalloc(file_len+1, GFP_KERNEL);
+				if (tmp->filename == NULL) {
 					err = -EOPNOTSUPP;
-				else
-					strcpy(tmp->pathname, pathname);
+					goto out;
+				}
+				strcpy(tmp->filename, filename);
+
+				tmp->binprm = kmalloc(binprm_len+1, GFP_KERNEL);
+				if (tmp->binprm == NULL) {
+					kfree(tmp->filename);
+					err = -EOPNOTSUPP;
+					goto out;
+				}
+				strcpy(tmp->binprm, binprm);
 			       	break;
 			default:
 			       	break;
@@ -141,6 +154,7 @@ int add_file_record(unsigned int fid, uid_t uid, char *pathname, int interact)
 	else
 		err = -EOPNOTSUPP;
 
+out:
 	return err;
 }
 
@@ -150,10 +164,10 @@ int read_file_record(struct seq_file *m, void *v)
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
-	seq_printf(m, "NO\tFUNC\tUID\tPATH\n");
+	seq_printf(m, "NO\tFUNC\tUID\tPATH\t\t\t\tBINPRM\n");
 	list_for_each(pos, &hb_file_list_head.list) {
 		tmp = list_entry(pos, hb_file_ll, list);
-		seq_printf(m, "%lu\t%u\t%d\t%s\n", total++, tmp->fid, tmp->uid, tmp->pathname);
+		seq_printf(m, "%lu\t%u\t%d\t%s\t%s\n", total++, tmp->fid, tmp->uid, tmp->filename, tmp->binprm);
 	}
 
 	return 0;
@@ -192,7 +206,8 @@ ssize_t write_file_record(struct file *file, const char __user *buffer, size_t c
 	list_for_each_safe(pos, q, &hb_file_list_head.list) {
 		tmp = list_entry(pos, hb_file_ll, list);
 		list_del(pos);
-		kfree(tmp->pathname);
+		kfree(tmp->filename);
+		kfree(tmp->binprm);
 		kfree(tmp);
 		tmp = NULL;
 	}
@@ -202,19 +217,27 @@ ssize_t write_file_record(struct file *file, const char __user *buffer, size_t c
 	while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
 		uid_t uid = 0;
 		unsigned int fid = 0;
-		char *pathname = NULL;
+		char *filename = NULL;
+		char *binprm = NULL;
 
-		pathname = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
-		if (pathname == NULL) {
+		filename = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+		if (filename == NULL) {
 			continue;
 		}
 
-		sscanf(token, "%u %u %s", &fid, &uid, pathname);
-		if (add_file_record(HB_FILE_OPEN, uid, pathname, 0) != 0) {
-			printk(KERN_WARNING "Failure to add file record %u, %s\n", uid, pathname);
+		binprm = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+		if (binprm == NULL) {
+			kfree(filename);
+			continue;
 		}
 
-		kfree(pathname);
+		sscanf(token, "%u %u %s %s", &fid, &uid, filename, binprm);
+		if (add_file_record(HB_FILE_OPEN, uid, filename, binprm, 0) != 0) {
+			printk(KERN_WARNING "Failure to add file record %u, %s, %s\n", uid, filename, binprm);
+		}
+
+		kfree(filename);
+		kfree(binprm);
 	} //while
 out1:
 	kfree(acts_buff);

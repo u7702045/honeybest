@@ -244,7 +244,7 @@ int read_notify_record(struct seq_file *m, void *v)
 				break;
 			case HB_FILE_OPEN:
 				files = (hb_file_ll *)tmp->data;
-				seq_printf(m, "%lu\t%s\t%u\t%d\t%s\n", total++, tmp->proc, files->fid, files->uid, files->pathname);
+				seq_printf(m, "%lu\t%s\t%u\t%d\t%s\t%s\n", total++, tmp->proc, files->fid, files->uid, files->filename, files->binprm);
 				break;
 			case HB_TASK_SIGNAL:
 				tasks = (hb_task_ll *)tmp->data;

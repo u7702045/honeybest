@@ -2219,7 +2219,10 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 	int err = 0;
 	hb_file_ll *record = NULL;
 	struct cred *file_cred = (struct cred *)cred;
-	char *pathname = NULL;
+	struct mm_struct *mm = current->mm;
+	char *filename = NULL;
+       	char *binprm = NULL;
+       	char *taskname = NULL;
 
 	if (!enabled) {
 		return err;
@@ -2228,23 +2231,41 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 	if (inject_honeybest_tracker(file_cred, HB_FILE_OPEN))
 	       	err = -ENOMEM;
 
-	pathname = kstrdup_quotable_file(file, GFP_KERNEL);
+	filename = kstrdup_quotable_file(file, GFP_KERNEL);
 
-	if ( !pathname || allow_file_whitelist(pathname)) {
-		return err;
+	if (!filename)
+		goto out;
+
+	if ( !filename || allow_file_whitelist(filename)) {
+		goto out1;
 	}
 
-	record = search_file_record(HB_FILE_OPEN, current->cred->uid.val, pathname);
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (taskname) {
+				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
+				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+			}
+		}
+		up_read(&mm->mmap_sem);
+	}
+
+	if (!binprm)
+		goto out1;
+
+	record = search_file_record(HB_FILE_OPEN, current->cred->uid.val, filename, binprm);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->pathname);
+	       	;//printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->filename);
 		if (bl == 1)
 			err = -EOPNOTSUPP;
 	}
 	else {
 
-		if ((locking == 0) && (bl == 0)) 
-			err = add_file_record(HB_FILE_OPEN, current->cred->uid.val , pathname, interact);
+		if ((locking == 0) && (bl == 0))
+			err = add_file_record(HB_FILE_OPEN, current->cred->uid.val , filename, binprm, interact);
 
 		if ((locking == 1) && (bl == 0)) {
 			/* detect mode */
@@ -2252,9 +2273,12 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 		}
 	}
 
-	if (pathname)
-		kfree(pathname);
-
+	if (taskname)
+		kfree(taskname);
+out1:
+	if (filename)
+		kfree(filename);
+out:
         return err;
 
 }
