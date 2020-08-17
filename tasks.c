@@ -87,18 +87,19 @@
 #include <crypto/algapi.h>
 #include "tasks.h"
 #include "notify.h"
+#include "regex.h"
 #include "honeybest.h"
 
 struct proc_dir_entry *hb_proc_task_entry;
 hb_task_ll hb_task_list_head;
-hb_task_ll *search_task_record(unsigned int fid, uid_t uid, struct siginfo *info, int sig, u32 secid)
+hb_task_ll *search_task_record(unsigned int fid, uid_t uid, struct siginfo *info, int sig, u32 secid, char *binprm)
 {
 	hb_task_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_task_list_head.list) {
 		tmp = list_entry(pos, hb_task_ll, list);
-		if ((tmp->fid == HB_TASK_SIGNAL) && (uid == tmp->uid) && (tmp->sig == sig)) {
+		if ((tmp->fid == HB_TASK_SIGNAL) && (uid == tmp->uid) && (tmp->sig == sig) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
 			/* we find the record */
 			//printk(KERN_INFO "Found task open record !!!!\n");
 			return tmp;
@@ -108,7 +109,7 @@ hb_task_ll *search_task_record(unsigned int fid, uid_t uid, struct siginfo *info
 	return NULL;
 }
 
-int add_task_record(unsigned int fid, uid_t uid, int sig, int si_signo, int si_errno, u32 secid, int interact)
+int add_task_record(unsigned int fid, uid_t uid, int sig, int si_signo, int si_errno, u32 secid, char *binprm, int interact)
 {
 	int err = 0;
 	hb_task_ll *tmp = NULL;
@@ -118,6 +119,12 @@ int add_task_record(unsigned int fid, uid_t uid, int sig, int si_signo, int si_e
 		memset(tmp, 0, sizeof(hb_task_ll));
 		tmp->fid = fid;
 		tmp->uid = uid;
+	       	tmp->binprm = kmalloc(strlen(binprm)+1, GFP_KERNEL);
+		if (tmp->binprm == NULL) {
+			err = -EOPNOTSUPP;
+			goto out;
+		}
+		strcpy(tmp->binprm, binprm);
 		switch (fid) {
 			case HB_TASK_SIGNAL:
 				tmp->sig = sig;
@@ -136,7 +143,7 @@ int add_task_record(unsigned int fid, uid_t uid, int sig, int si_signo, int si_e
 	}
 	else
 		err = -EOPNOTSUPP;
-
+out:
 	return err;
 }
 
@@ -146,10 +153,10 @@ int read_task_record(struct seq_file *m, void *v)
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
-	seq_printf(m, "NO\tFUNC\tUID\tSIGNAL\tSIGNO\tERRNO\tSECID\n");
+	seq_printf(m, "NO\tFUNC\tUID\tSIGNAL\tSIGNO\tERRNO\tSECID\tBINPRM\n");
 	list_for_each(pos, &hb_task_list_head.list) {
 		tmp = list_entry(pos, hb_task_ll, list);
-		seq_printf(m, "%lu\t%u\t%u\t%d\t%d\t%d\t%u\n", total++, tmp->fid, tmp->uid, tmp->sig, tmp->si_signo, tmp->si_errno, tmp->secid);
+		seq_printf(m, "%lu\t%u\t%u\t%d\t%d\t%d\t%u\t%s\n", total++, tmp->fid, tmp->uid, tmp->sig, tmp->si_signo, tmp->si_errno, tmp->secid, tmp->binprm);
 	}
 
 	return 0;
@@ -187,6 +194,7 @@ ssize_t write_task_record(struct file *file, const char __user *buffer, size_t c
 	/* clean all acts_buff */
 	list_for_each_safe(pos, q, &hb_task_list_head.list) {
 		tmp = list_entry(pos, hb_task_ll, list);
+		kfree(tmp->binprm);
 		list_del(pos);
 		kfree(tmp);
 		tmp = NULL;
@@ -201,10 +209,17 @@ ssize_t write_task_record(struct file *file, const char __user *buffer, size_t c
 		int si_signo = 0;
 		int si_errno = 0;
 		u32 secid = 0;
+		char *binprm = NULL;
 
-		sscanf(token, "%u %u %d %d %d %u", &fid, &uid, &sig, &si_signo, &si_errno, &secid);
-		if (add_task_record(HB_TASK_SIGNAL, uid, sig, si_signo, si_errno, secid, 0) != 0) {
-			printk(KERN_WARNING "Failure to add task record %u, %d\n", uid, sig);
+		binprm = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+		if (binprm == NULL) {
+			printk(KERN_ERR "binprm is null !\n");
+			continue;
+		}
+
+		sscanf(token, "%u %u %d %d %d %u %s", &fid, &uid, &sig, &si_signo, &si_errno, &secid, binprm);
+		if (add_task_record(HB_TASK_SIGNAL, uid, sig, si_signo, si_errno, secid, binprm, 0) != 0) {
+			printk(KERN_WARNING "Failure to add task record %u, %d, %s\n", uid, sig, binprm);
 		}
 	}
 

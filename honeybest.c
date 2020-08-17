@@ -728,8 +728,13 @@ static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 
 	pathname = kstrdup_quotable_file(bprm->file, GFP_KERNEL);
 
-	if (!pathname || allow_file_whitelist(pathname)) {
-		return err;
+	if (!pathname) {
+		err = -EOPNOTSUPP;
+		goto out;
+	}
+
+	if(allow_file_whitelist(pathname)) {
+		goto out1;
 	}
 
 	// logic of xattr need to validate?
@@ -753,10 +758,9 @@ static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 			err = -EOPNOTSUPP;
 		}
 	}
-
-	if (pathname)
-		kfree(pathname);
-
+out1:
+	kfree(pathname);
+out:
 	return err;
 }
 
@@ -1101,7 +1105,7 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 		goto out1;
 	}
 
-	if (!s_path || allow_file_whitelist(s_path)) {
+	if (allow_file_whitelist(s_path)) {
 		goto out1;
 	}
 
@@ -1180,7 +1184,7 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 	s_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
 	s_path = d_absolute_path(&source, s_buff, PATH_MAX);
 
-	if (!s_path) {
+	if (!s_buff) {
 		err = -EOPNOTSUPP;
 		goto out;
 	}
@@ -1190,7 +1194,7 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 		goto out1;
 	}
 
-	if (!s_path || allow_file_whitelist(s_path)) {
+	if (allow_file_whitelist(s_path)) {
 		goto out1;
 	}
 
@@ -1362,7 +1366,7 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 		goto out1;
 	}
 
-	if (!s_path || allow_file_whitelist(s_path)) {
+	if (allow_file_whitelist(s_path)) {
 		goto out1;
 	}
 
@@ -1447,7 +1451,7 @@ static int honeybest_path_truncate(struct path *path)
 		goto out1;
 	}
 
-	if (!s_path || allow_file_whitelist(s_path)) {
+	if (allow_file_whitelist(s_path)) {
 		goto out1;
 	}
 
@@ -1620,7 +1624,7 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 
 	if (!s_path) {
 		err = -EOPNOTSUPP;
-		goto out;
+		goto out1;
 	}
 
 	t_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
@@ -1633,10 +1637,10 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 
 	if (!t_path) {
 		err = -EOPNOTSUPP;
-		goto out1;
+		goto out2;
 	}
 
-	if (!s_path || allow_file_whitelist(s_path)) {
+	if (allow_file_whitelist(s_path)) {
 		goto out2;
 	}
 
@@ -1725,7 +1729,7 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 
 	if (!s_path) {
 		err = -EOPNOTSUPP;
-		goto out;
+		goto out1;
 	}
 
 	t_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
@@ -1738,7 +1742,7 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 
 	if (!t_path) {
 		err = -EOPNOTSUPP;
-		goto out1;
+		goto out2;
 	}
 
 	if (mm) {
@@ -1837,10 +1841,10 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 	}
 
 	if (!taskname)
-		goto out2;
+		goto out1;
 
 	if (!binprm)
-		goto out1;
+		goto out2;
 
 	record = search_path_record(HB_PATH_CHMOD, current->cred->uid.val, mode, s_path, t_path, 0, 0, 0, binprm);
 
@@ -2247,7 +2251,6 @@ static int honeybest_inode_listxattr(struct dentry *dentry)
 out1:
 	kfree(pathname);
 out:
-
         return err;
 }
 
@@ -2428,7 +2431,7 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 	if (!filename)
 		goto out;
 
-	if ( !filename || allow_file_whitelist(filename)) {
+	if (allow_file_whitelist(filename)) {
 		goto out1;
 	}
 
@@ -2444,8 +2447,11 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 		up_read(&mm->mmap_sem);
 	}
 
-	if (!binprm)
+	if (!taskname)
 		goto out1;
+
+	if (!binprm)
+		goto out2;
 
 	record = search_file_record(HB_FILE_OPEN, current->cred->uid.val, filename, binprm);
 
@@ -2464,12 +2470,10 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 			err = -EOPNOTSUPP;
 		}
 	}
-
-	if (taskname)
-		kfree(taskname);
+out2:
+	kfree(taskname);
 out1:
-	if (filename)
-		kfree(filename);
+	kfree(filename);
 out:
         return err;
 
@@ -2675,6 +2679,9 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 {
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
+	struct mm_struct *mm = current->mm;
+       	char *binprm = NULL;
+       	char *taskname = NULL;
 	hb_task_ll *record;
 
 	if (!enabled) {
@@ -2684,7 +2691,25 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 	if (inject_honeybest_tracker(cred, HB_TASK_SIGNAL))
 	       	err = -ENOMEM;
 
-	record = search_task_record(HB_TASK_SIGNAL, current->cred->uid.val, info, sig, secid);
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (taskname) {
+				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
+				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+			}
+		}
+		up_read(&mm->mmap_sem);
+	}
+
+	if (!taskname)
+		goto out;
+
+	if (!binprm)
+		goto out1;
+
+	record = search_task_record(HB_TASK_SIGNAL, current->cred->uid.val, info, sig, secid, binprm);
 
 	if (record) {
 		;//printk(KERN_INFO "Found task struct sig %d, secid %d, signo %d, errno %d\n", record->sig, record->secid, record->si_signo, record->si_errno);
@@ -2695,10 +2720,10 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 
 		if ((locking == 0) && (bl == 0)) {
 			if (info == NULL)
-				err = add_task_record(HB_TASK_SIGNAL, current->cred->uid.val, 0, 0, sig, secid, interact);
+				err = add_task_record(HB_TASK_SIGNAL, current->cred->uid.val, 0, 0, sig, secid, binprm, interact);
 			else
 				err = add_task_record(HB_TASK_SIGNAL, current->cred->uid.val, info->si_signo\
-						, info->si_errno, sig, secid, interact);
+						, info->si_errno, sig, secid, binprm, interact);
 		}
 
 		if ((locking == 1) && (bl == 0)) {
@@ -2707,7 +2732,9 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 		}
 	}
 
-
+out1:
+	kfree(taskname);
+out:
         return err;
 
 }
@@ -2777,7 +2804,7 @@ static int honeybest_socket_create(int family, int type,
        	const struct task_struct *task = current;
 	struct cred *cred = (struct cred *)task->cred;
 	struct mm_struct *mm = current->mm;
-	char *path_buff = NULL;
+	char *taskname = NULL;
 	char *binprm = NULL;
 	hb_socket_ll *record;
 
@@ -2790,13 +2817,19 @@ static int honeybest_socket_create(int family, int type,
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
-			path_buff = kmalloc(PATH_MAX, GFP_ATOMIC);
-			if (path_buff) {
-				binprm = d_path(&mm->exe_file->f_path, path_buff, PATH_MAX);
+			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (taskname) {
+				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 			}
 		}
 		up_read(&mm->mmap_sem);
 	}
+
+	if (!taskname)
+		goto out;
+
+	if (!binprm)
+		goto out1;
 
 	record = search_socket_record(HB_SOCKET_CREATE, current->cred->uid.val, family, type, protocol, 0, 0, 0, binprm);
 
@@ -2814,8 +2847,9 @@ static int honeybest_socket_create(int family, int type,
 			err = -EOPNOTSUPP;
 	}
 
-	kfree(path_buff);
-
+out1:
+	kfree(taskname);
+out:
 	return err;
 }
 
@@ -2835,7 +2869,7 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
        	const struct task_struct *task = current;
 	struct cred *cred = (struct cred *)task->cred;
 	struct mm_struct *mm = current->mm;
-	char *path_buff = NULL;
+	char *taskname = NULL;
 	char *binprm = NULL;
 	hb_socket_ll *record;
 	int port = 0;
@@ -2850,13 +2884,19 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
-			path_buff = kmalloc(PATH_MAX, GFP_ATOMIC);
-			if (path_buff) {
-				binprm = d_path(&mm->exe_file->f_path, path_buff, PATH_MAX);
+			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (taskname) {
+				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 			}
 		}
 		up_read(&mm->mmap_sem);
 	}
+
+	if (!taskname)
+		goto out;
+
+	if (!binprm)
+		goto out1;
 
 	port = lookup_source_port(sock, address, addrlen);
 
@@ -2878,9 +2918,9 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 			err = -EOPNOTSUPP;
 		}
 	}
-
-	kfree(path_buff);
-
+out1:
+	kfree(taskname);
+out:
 	return err;
 }
 
@@ -2894,7 +2934,7 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
        	const struct task_struct *task = current;
 	struct cred *cred = (struct cred *)task->cred;
 	struct mm_struct *mm = current->mm;
-	char *path_buff = NULL;
+	char *taskname = NULL;
 	char *binprm = NULL;
 	hb_socket_ll *record;
 	int port = 0;
@@ -2909,13 +2949,19 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
-			path_buff = kmalloc(PATH_MAX, GFP_ATOMIC);
-			if (path_buff) {
-				binprm = d_path(&mm->exe_file->f_path, path_buff, PATH_MAX);
+			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (taskname) {
+				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 			}
 		}
 		up_read(&mm->mmap_sem);
 	}
+
+	if (!taskname)
+		goto out;
+
+	if (!binprm)
+		goto out1;
 
 	port = lookup_source_port(sock, address, addrlen);
 
@@ -2936,9 +2982,9 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 			err = -EOPNOTSUPP;
 		}
 	}
-
-	kfree(path_buff);
-
+out1:
+	kfree(taskname);
+out:
 	return err;
 }
 
@@ -2994,7 +3040,7 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
        	const struct task_struct *task = current;
 	struct cred *cred = (struct cred *)task->cred;
 	struct mm_struct *mm = current->mm;
-	char *path_buff = NULL;
+	char *taskname = NULL;
 	char *binprm = NULL;
 	hb_socket_ll *record;
 	int err = 0;
@@ -3008,13 +3054,19 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
-			path_buff = kmalloc(PATH_MAX, GFP_ATOMIC);
-			if (path_buff) {
-				binprm = d_path(&mm->exe_file->f_path, path_buff, PATH_MAX);
+			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (taskname) {
+				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 			}
 		}
 		up_read(&mm->mmap_sem);
 	}
+
+	if (!taskname)
+		goto out;
+
+	if (!binprm)
+		goto out1;
 
 	record = search_socket_record(HB_SOCKET_SETSOCKOPT, current->cred->uid.val, 0, 0, 0, 0, level, optname, binprm);
 
@@ -3031,9 +3083,9 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 		if ((locking == 1) && (bl == 0)) 
 			err = -EOPNOTSUPP;
 	}
-
-	kfree(path_buff);
-
+out1:
+	kfree(taskname);
+out:
 	return err;
 }
 
