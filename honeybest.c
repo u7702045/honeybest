@@ -1072,6 +1072,9 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
+	struct mm_struct *mm = current->mm;
+       	char *binprm = NULL;
+       	char *taskname = NULL;
 	struct path source = { dir->mnt, dentry };
 	char *s_path = NULL;
        	char *t_path = "N/A";
@@ -1080,9 +1083,6 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 
 	if (!enabled)
 		return err;
-
-	if (!current->cred)
-	       	return err;
 
 	if (inject_honeybest_tracker(cred, HB_PATH_UNLINK))
 	       	err = -ENOMEM;
@@ -1105,7 +1105,25 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 		goto out1;
 	}
 
-	record = search_path_record(HB_PATH_UNLINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0);
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (taskname) {
+				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
+				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+			}
+		}
+		up_read(&mm->mmap_sem);
+	}
+
+	if (!taskname)
+		goto out1;
+
+	if (!binprm)
+		goto out2;
+
+	record = search_path_record(HB_PATH_UNLINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, binprm);
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found path unlink record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
@@ -1114,12 +1132,13 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 	}
 	else {
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_UNLINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, interact);
+			err = add_path_record(HB_PATH_UNLINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
-
+out2:
+	kfree(taskname);
 out1:
 	kfree(s_buff);
 out:
@@ -1142,6 +1161,9 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
+	struct mm_struct *mm = current->mm;
+       	char *binprm = NULL;
+       	char *taskname = NULL;
 	struct path source = { dir->mnt, dentry };
 	char *s_path = NULL;
        	char *t_path = "N/A";
@@ -1150,9 +1172,6 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 
 	if (!enabled)
 		return err;
-
-	if (!current->cred)
-	       	return err;
 
 	if (inject_honeybest_tracker(cred, HB_PATH_MKDIR))
 	       	err = -ENOMEM;
@@ -1175,7 +1194,25 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 		goto out1;
 	}
 
-	record = search_path_record(HB_PATH_MKDIR, current->cred->uid.val, mode, s_path, t_path, 0, 0, 0);
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (taskname) {
+				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
+				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+			}
+		}
+		up_read(&mm->mmap_sem);
+	}
+
+	if (!taskname)
+		goto out1;
+
+	if (!binprm)
+		goto out2;
+
+	record = search_path_record(HB_PATH_MKDIR, current->cred->uid.val, mode, s_path, t_path, 0, 0, 0, binprm);
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found path mkdir record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
@@ -1184,12 +1221,13 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 	}
 	else {
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_MKDIR, current->cred->uid.val, mode, s_path, t_path, 0, 0, 0, interact);
+			err = add_path_record(HB_PATH_MKDIR, current->cred->uid.val, mode, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
-
+out2:
+	kfree(taskname);
 out1:
 	kfree(s_buff);
 out:
@@ -1210,6 +1248,9 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
+	struct mm_struct *mm = current->mm;
+       	char *binprm = NULL;
+       	char *taskname = NULL;
 	struct path source = { dir->mnt, dentry };
 	char *s_path = NULL;
        	char *t_path = "N/A";
@@ -1218,9 +1259,6 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 
 	if (!enabled)
 		return err;
-
-	if (!current->cred)
-	       	return err;
 
 	if (inject_honeybest_tracker(cred, HB_PATH_RMDIR))
 	       	err = -ENOMEM;
@@ -1239,7 +1277,25 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 		goto out1;
 	}
 
-	record = search_path_record(HB_PATH_RMDIR, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0);
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (taskname) {
+				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
+				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+			}
+		}
+		up_read(&mm->mmap_sem);
+	}
+
+	if (!taskname)
+		goto out1;
+
+	if (!binprm)
+		goto out2;
+
+	record = search_path_record(HB_PATH_RMDIR, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, binprm);
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found path rmdir record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
@@ -1248,12 +1304,13 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 	}
 	else {
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_RMDIR, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, interact);
+			err = add_path_record(HB_PATH_RMDIR, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
-
+out2:
+	kfree(taskname);
 out1:
 	kfree(s_buff);
 out:
@@ -1276,6 +1333,9 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
+	struct mm_struct *mm = current->mm;
+       	char *binprm = NULL;
+       	char *taskname = NULL;
 	struct path source = { dir->mnt, dentry };
 	char *s_path = NULL;
        	char *t_path = "N/A";
@@ -1284,9 +1344,6 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 
 	if (!enabled)
 		return err;
-
-	if (!current->cred)
-	       	return err;
 
 	if (inject_honeybest_tracker(cred, HB_PATH_MKNOD))
 	       	err = -ENOMEM;
@@ -1309,7 +1366,25 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 		goto out1;
 	}
 
-	record = search_path_record(HB_PATH_MKNOD, current->cred->uid.val, mode, s_path, t_path, 0, 0, dev);
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (taskname) {
+				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
+				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+			}
+		}
+		up_read(&mm->mmap_sem);
+	}
+
+	if (!taskname)
+		goto out1;
+
+	if (!binprm)
+		goto out2;
+
+	record = search_path_record(HB_PATH_MKNOD, current->cred->uid.val, mode, s_path, t_path, 0, 0, dev, binprm);
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found path mknod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
@@ -1318,12 +1393,13 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 	}
 	else {
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_MKNOD, current->cred->uid.val, mode, s_path, t_path, 0, 0, dev, interact);
+			err = add_path_record(HB_PATH_MKNOD, current->cred->uid.val, mode, s_path, t_path, 0, 0, dev, binprm, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
-
+out2:
+	kfree(taskname);
 out1:
 	kfree(s_buff);
 out:
@@ -1343,6 +1419,9 @@ static int honeybest_path_truncate(struct path *path)
 {
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
+	struct mm_struct *mm = current->mm;
+       	char *binprm = NULL;
+       	char *taskname = NULL;
 	char *s_path = NULL;
        	char *t_path = "N/A";
 	char *s_buff = NULL;
@@ -1350,9 +1429,6 @@ static int honeybest_path_truncate(struct path *path)
 
 	if (!enabled)
 		return err;
-
-	if (!current->cred)
-	       	return err;
 
 	if (inject_honeybest_tracker(cred, HB_PATH_TRUNCATE))
 	       	err = -ENOMEM;
@@ -1375,7 +1451,25 @@ static int honeybest_path_truncate(struct path *path)
 		goto out1;
 	}
 
-	record = search_path_record(HB_PATH_TRUNCATE, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0);
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (taskname) {
+				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
+				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+			}
+		}
+		up_read(&mm->mmap_sem);
+	}
+
+	if (!taskname)
+		goto out1;
+
+	if (!binprm)
+		goto out2;
+
+	record = search_path_record(HB_PATH_TRUNCATE, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, binprm);
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found path truncate record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
@@ -1384,12 +1478,13 @@ static int honeybest_path_truncate(struct path *path)
 	}
 	else {
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_TRUNCATE, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, interact);
+			err = add_path_record(HB_PATH_TRUNCATE, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
-
+out2:
+	kfree(taskname);
 out1:
 	kfree(s_buff);
 out:
@@ -1412,6 +1507,9 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
+	struct mm_struct *mm = current->mm;
+       	char *binprm = NULL;
+       	char *taskname = NULL;
 	struct path target = { dir->mnt, dentry };
 	char *s_path = (char *)old_name;
        	char *t_path = NULL;
@@ -1420,9 +1518,6 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 
 	if (!enabled)
 		return err;
-
-	if (!current->cred)
-	       	return err;
 
 	if (inject_honeybest_tracker(cred, HB_PATH_SYMLINK))
 	       	err = -ENOMEM;
@@ -1441,7 +1536,25 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 		goto out1;
 	}
 
-	record = search_path_record(HB_PATH_SYMLINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0);
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (taskname) {
+				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
+				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+			}
+		}
+		up_read(&mm->mmap_sem);
+	}
+
+	if (!taskname)
+		goto out1;
+
+	if (!binprm)
+		goto out2;
+
+	record = search_path_record(HB_PATH_SYMLINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, binprm);
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found path symlink record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
@@ -1450,12 +1563,13 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 	}
 	else {
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_SYMLINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, interact);
+			err = add_path_record(HB_PATH_SYMLINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
-
+out2:
+	kfree(taskname);
 out1:
 	kfree(t_buff);
 out:
@@ -1478,6 +1592,9 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 {
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
+	struct mm_struct *mm = current->mm;
+       	char *binprm = NULL;
+       	char *taskname = NULL;
 	struct path source = { new_dir->mnt, new_dentry };
 	struct path target = { new_dir->mnt, old_dentry };
 	char *s_path = NULL;
@@ -1488,9 +1605,6 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 
 	if (!enabled)
 		return err;
-
-	if (!current->cred)
-	       	return err;
 
 	if (inject_honeybest_tracker(cred, HB_PATH_LINK))
 	       	err = -ENOMEM;
@@ -1526,7 +1640,25 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 		goto out2;
 	}
 
-	record = search_path_record(HB_PATH_LINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0);
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (taskname) {
+				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
+				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+			}
+		}
+		up_read(&mm->mmap_sem);
+	}
+
+	if (!taskname)
+		goto out2;
+
+	if (!binprm)
+		goto out3;
+
+	record = search_path_record(HB_PATH_LINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, binprm);
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found path link record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
@@ -1535,11 +1667,13 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 	}
 	else {
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_LINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, interact);
+			err = add_path_record(HB_PATH_LINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
+out3:
+	kfree(taskname);
 out2:
 	kfree(t_buff);
 out1:
@@ -1563,6 +1697,9 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 {
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
+	struct mm_struct *mm = current->mm;
+       	char *binprm = NULL;
+       	char *taskname = NULL;
 	struct path target = { new_dir->mnt, new_dentry };
 	struct path source = { old_dir->mnt, old_dentry };
 	char *s_path = NULL;
@@ -1573,9 +1710,6 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 
 	if (!enabled)
 		return err;
-
-	if (!current->cred)
-	       	return err;
 
 	if (inject_honeybest_tracker(cred, HB_PATH_RENAME))
 	       	err = -ENOMEM;
@@ -1607,7 +1741,25 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 		goto out1;
 	}
 
-	record = search_path_record(HB_PATH_RENAME, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0);
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (taskname) {
+				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
+				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+			}
+		}
+		up_read(&mm->mmap_sem);
+	}
+
+	if (!taskname)
+		goto out2;
+
+	if (!binprm)
+		goto out3;
+
+	record = search_path_record(HB_PATH_RENAME, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, binprm);
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found path rename record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
@@ -1616,12 +1768,14 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 	}
 	else {
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_RENAME, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, interact);
+			err = add_path_record(HB_PATH_RENAME, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
-
+out3:
+	kfree(taskname);
+out2:
 	kfree(t_buff);
 out1:
 	kfree(s_buff);
@@ -1642,6 +1796,9 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 {
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
+	struct mm_struct *mm = current->mm;
+       	char *binprm = NULL;
+       	char *taskname = NULL;
 	char *s_path = NULL;
        	char *t_path = "N/A";
 	char *s_buff = NULL;
@@ -1649,9 +1806,6 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 
 	if (!enabled)
 		return err;
-
-	if (!current->cred)
-	       	return err;
 
 	if (inject_honeybest_tracker(cred, HB_PATH_CHMOD))
 	       	err = -ENOMEM;
@@ -1670,7 +1824,25 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 		goto out1;
 	}
 
-	record = search_path_record(HB_PATH_CHMOD, current->cred->uid.val, mode, s_path, t_path, 0, 0, 0);
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (taskname) {
+				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
+				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+			}
+		}
+		up_read(&mm->mmap_sem);
+	}
+
+	if (!taskname)
+		goto out2;
+
+	if (!binprm)
+		goto out1;
+
+	record = search_path_record(HB_PATH_CHMOD, current->cred->uid.val, mode, s_path, t_path, 0, 0, 0, binprm);
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found path chmod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
@@ -1679,12 +1851,13 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 	}
 	else {
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_CHMOD, current->cred->uid.val, mode, s_path, t_path, 0, 0, 0, interact);
+			err = add_path_record(HB_PATH_CHMOD, current->cred->uid.val, mode, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
-
+out2:
+	kfree(taskname);
 out1:
 	kfree(s_buff);
 out:
@@ -1704,6 +1877,9 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 {
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
+	struct mm_struct *mm = current->mm;
+       	char *binprm = NULL;
+       	char *taskname = NULL;
 	char *s_path = NULL;
        	char *t_path = "N/A";
 	char *s_buff = NULL;
@@ -1711,9 +1887,6 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 
 	if (!enabled)
 		return err;
-
-	if (!current->cred)
-	       	return err;
 
 	if (inject_honeybest_tracker(cred, HB_PATH_CHOWN))
 	       	err = -ENOMEM;
@@ -1732,7 +1905,25 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 		goto out1;
 	}
 
-	record = search_path_record(HB_PATH_CHOWN, current->cred->uid.val, 0, s_path, t_path, uid.val, gid.val, 0);
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (taskname) {
+				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
+				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+			}
+		}
+		up_read(&mm->mmap_sem);
+	}
+
+	if (!taskname)
+		goto out1;
+
+	if (!binprm)
+		goto out2;
+
+	record = search_path_record(HB_PATH_CHOWN, current->cred->uid.val, 0, s_path, t_path, uid.val, gid.val, 0, binprm);
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found path chmod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
@@ -1741,12 +1932,13 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 	}
 	else {
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_CHOWN, current->cred->uid.val, 0, s_path, t_path, uid.val, gid.val, 0, interact);
+			err = add_path_record(HB_PATH_CHOWN, current->cred->uid.val, 0, s_path, t_path, uid.val, gid.val, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
-
+out2:
+	kfree(taskname);
 out1:
 	kfree(s_buff);
 out:

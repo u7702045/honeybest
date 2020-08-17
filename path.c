@@ -92,7 +92,7 @@
 
 struct proc_dir_entry *hb_proc_path_entry;
 hb_path_ll hb_path_list_head;
-hb_path_ll *search_path_record(unsigned int fid, uid_t uid, umode_t mode, char *s_path, char *t_path, uid_t suid, uid_t sgid, unsigned int dev)
+hb_path_ll *search_path_record(unsigned int fid, uid_t uid, umode_t mode, char *s_path, char *t_path, uid_t suid, uid_t sgid, unsigned int dev, char *binprm)
 {
 	hb_path_ll *tmp = NULL;
 	struct list_head *pos = NULL;
@@ -106,7 +106,7 @@ hb_path_ll *search_path_record(unsigned int fid, uid_t uid, umode_t mode, char *
 			case HB_PATH_SYMLINK:
 			case HB_PATH_LINK:
 			case HB_PATH_UNLINK:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_path, strlen(tmp->s_path), s_path, strlen(s_path)) && !compare_regex(tmp->t_path, strlen(tmp->t_path), t_path, strlen(t_path))) {
+				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_path, strlen(tmp->s_path), s_path, strlen(s_path)) && !compare_regex(tmp->t_path, strlen(tmp->t_path), t_path, strlen(t_path)) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
 					/* we find the record */
 					//printk(KERN_INFO "Found link/rename/rmdir/symlink/unlink path record !!!!\n");
 					return tmp;
@@ -114,21 +114,21 @@ hb_path_ll *search_path_record(unsigned int fid, uid_t uid, umode_t mode, char *
 				break;
 			case HB_PATH_MKDIR:
 			case HB_PATH_CHMOD:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_path, strlen(tmp->s_path), s_path, strlen(s_path)) && (tmp->mode == mode)) {
+				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_path, strlen(tmp->s_path), s_path, strlen(s_path)) && (tmp->mode == mode) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
 					/* we find the record */
 					//printk(KERN_INFO "Found chmod path record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_PATH_CHOWN:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_path, strlen(tmp->s_path), s_path, strlen(s_path)) && (tmp->suid == suid) && (tmp->sgid == sgid)) {
+				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_path, strlen(tmp->s_path), s_path, strlen(s_path)) && (tmp->suid == suid) && (tmp->sgid == sgid) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
 					/* we find the record */
 					//printk(KERN_INFO "Found chown path record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_PATH_MKNOD:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_path, strlen(tmp->s_path), s_path, strlen(s_path)) && (tmp->dev == dev)) {
+				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_path, strlen(tmp->s_path), s_path, strlen(s_path)) && (tmp->dev == dev) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
 					/* we find the record */
 					//printk(KERN_INFO "Found mknod path record !!!!\n");
 					return tmp;
@@ -143,7 +143,7 @@ hb_path_ll *search_path_record(unsigned int fid, uid_t uid, umode_t mode, char *
 }
 
 int add_path_record(unsigned int fid, uid_t uid, umode_t mode, char *s_path, char *t_path, \
-		uid_t suid, uid_t sgid, unsigned int dev, int interact)
+		uid_t suid, uid_t sgid, unsigned int dev, char *binprm, int interact)
 {
 	int err = 0;
 	hb_path_ll *tmp = NULL;
@@ -158,19 +158,28 @@ int add_path_record(unsigned int fid, uid_t uid, umode_t mode, char *s_path, cha
 		tmp->dev = 0;
 		tmp->mode = 0;
 		tmp->s_path = kmalloc(strlen(s_path)+1, GFP_KERNEL);
-	       	tmp->t_path = kmalloc(strlen(t_path)+1, GFP_KERNEL);
 		if (tmp->s_path == NULL) {
 			err = -EOPNOTSUPP;
 			goto out;
 		}
+		strcpy(tmp->s_path, s_path);
+
+	       	tmp->t_path = kmalloc(strlen(t_path)+1, GFP_KERNEL);
 		if (tmp->t_path == NULL) {
 			kfree(tmp->s_path);
 			err = -EOPNOTSUPP;
 			goto out;
 		}
-
-		strcpy(tmp->s_path, s_path);
 		strcpy(tmp->t_path, t_path);
+
+	       	tmp->binprm = kmalloc(strlen(binprm)+1, GFP_KERNEL);
+		if (tmp->binprm == NULL) {
+			kfree(tmp->s_path);
+			kfree(tmp->t_path);
+			err = -EOPNOTSUPP;
+			goto out;
+		}
+		strcpy(tmp->binprm, binprm);
 
 		switch (fid) {
 			case HB_PATH_RENAME:
@@ -216,7 +225,7 @@ int read_path_record(struct seq_file *m, void *v)
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
-	seq_printf(m, "NO\tFUNC\tUID\tMODE\tSUID\tGUID\tDEV NODE\tSOURCE PATH\t\t\tTARGET PATH\n");
+	seq_printf(m, "NO\tFUNC\tUID\tMODE\tSUID\tGUID\tDEV NODE\tSOURCE PATH\t\t\tTARGET PATH\t\t\tBINPRM\n");
 
 	if (list_empty(&hb_path_list_head.list)) {
 		printk(KERN_WARNING "List is empty!!\n");
@@ -225,7 +234,7 @@ int read_path_record(struct seq_file *m, void *v)
 
 	list_for_each(pos, &hb_path_list_head.list) {
 		tmp = list_entry(pos, hb_path_ll, list);
-		seq_printf(m, "%lu\t%u\t%u\t%u\t%u\t%u\t%u\t%s\t\t%s\n", total++, tmp->fid, tmp->uid, tmp->mode, tmp->suid, tmp->sgid, tmp->dev, tmp->s_path, tmp->t_path);
+		seq_printf(m, "%lu\t%u\t%u\t%u\t%u\t%u\t%u\t%s\t\t%s\t\t%s\n", total++, tmp->fid, tmp->uid, tmp->mode, tmp->suid, tmp->sgid, tmp->dev, tmp->s_path, tmp->t_path, tmp->binprm);
 
 	}
 
@@ -267,6 +276,7 @@ ssize_t write_path_record(struct file *file, const char __user *buffer, size_t c
 		list_del(pos);
 		kfree(tmp->s_path);
 		kfree(tmp->t_path);
+		kfree(tmp->binprm);
 		kfree(tmp);
 		tmp = NULL;
 	}
@@ -282,6 +292,7 @@ ssize_t write_path_record(struct file *file, const char __user *buffer, size_t c
 		umode_t mode = 0;
 		char *s_path = NULL;
 		char *t_path = NULL;
+		char *binprm = NULL;
 
 		s_path = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
 		if (s_path == NULL) {
@@ -296,13 +307,22 @@ ssize_t write_path_record(struct file *file, const char __user *buffer, size_t c
 			continue;
 		}
 
-		sscanf(token, "%u %u %hd %u %u %u %s %s", &fid, &uid, &mode, &suid, &sgid, &dev, s_path, t_path);
-		if (add_path_record(fid, uid, mode, s_path, t_path, suid, sgid, dev, 0) != 0) {
-			printk(KERN_WARNING "Failure to add path record %u, %s, %s\n", uid, s_path, t_path);
+		binprm = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+		if (binprm == NULL) {
+			printk(KERN_ERR "binprm is null !\n");
+			kfree(t_path);
+			kfree(s_path);
+			continue;
+		}
+
+		sscanf(token, "%u %u %hd %u %u %u %s %s %s", &fid, &uid, &mode, &suid, &sgid, &dev, s_path, t_path, binprm);
+		if (add_path_record(fid, uid, mode, s_path, t_path, suid, sgid, dev, binprm, 0) != 0) {
+			printk(KERN_WARNING "Failure to add path record %u, %s, %s, %s\n", uid, s_path, t_path, binprm);
 		}
 
 		kfree(s_path);
 		kfree(t_path);
+		kfree(binprm);
 	} //while
 out1:
 	kfree(acts_buff);
