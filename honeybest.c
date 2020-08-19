@@ -653,12 +653,14 @@ static int honeybest_capset(struct cred *new, const struct cred *old,
 {
 	int err = 0;
 	kernel_cap_t dest, a, b;
+       	struct task_struct *task = current;
 	char *pathname,*p;
 	struct mm_struct *mm = current->mm;
 
 	if (!enabled)
 		return err;
 
+	task_lock(task);
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
@@ -669,6 +671,7 @@ static int honeybest_capset(struct cred *new, const struct cred *old,
 		}
 		up_read(&mm->mmap_sem);
 	}
+	task_unlock(task);
 
 	cap_clear(dest);
 	rcu_read_lock();
@@ -1055,7 +1058,6 @@ static int honeybest_dentry_init_security(struct dentry *dentry, int mode,
                                         u32 *ctxlen)
 {
 	int err = 0;
-       	const struct task_struct *task = current;
 
 	if (!enabled)
 		return err;
@@ -1075,6 +1077,7 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 {
 
 	int err = 0;
+       	struct task_struct *task = current;
 	struct cred *cred = (struct cred *) current->real_cred;
 	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
@@ -1109,6 +1112,7 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 		goto out1;
 	}
 
+	task_lock(task);
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
@@ -1120,6 +1124,7 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 		}
 		up_read(&mm->mmap_sem);
 	}
+	task_unlock(task);
 
 	if (!taskname)
 		goto out1;
@@ -1164,6 +1169,7 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 {
 
 	int err = 0;
+       	struct task_struct *task = current;
 	struct cred *cred = (struct cred *) current->real_cred;
 	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
@@ -1198,6 +1204,7 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 		goto out1;
 	}
 
+	task_lock(task);
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
@@ -1209,6 +1216,7 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 		}
 		up_read(&mm->mmap_sem);
 	}
+	task_unlock(task);
 
 	if (!taskname)
 		goto out1;
@@ -1251,6 +1259,7 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 {
 
 	int err = 0;
+       	struct task_struct *task = current;
 	struct cred *cred = (struct cred *) current->real_cred;
 	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
@@ -1281,6 +1290,7 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 		goto out1;
 	}
 
+	task_lock(task);
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
@@ -1292,6 +1302,7 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 		}
 		up_read(&mm->mmap_sem);
 	}
+	task_unlock(task);
 
 	if (!taskname)
 		goto out1;
@@ -1336,6 +1347,7 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 {
 
 	int err = 0;
+       	struct task_struct *task = current;
 	struct cred *cred = (struct cred *) current->real_cred;
 	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
@@ -1370,6 +1382,7 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 		goto out1;
 	}
 
+	task_lock(task);
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
@@ -1381,6 +1394,7 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 		}
 		up_read(&mm->mmap_sem);
 	}
+	task_unlock(task);
 
 	if (!taskname)
 		goto out1;
@@ -1422,6 +1436,7 @@ static int honeybest_path_truncate(struct path *path)
 #endif
 {
 	int err = 0;
+       	struct task_struct *task = current;
 	struct cred *cred = (struct cred *) current->real_cred;
 	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
@@ -1455,6 +1470,7 @@ static int honeybest_path_truncate(struct path *path)
 		goto out1;
 	}
 
+	task_lock(task);
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
@@ -1466,6 +1482,7 @@ static int honeybest_path_truncate(struct path *path)
 		}
 		up_read(&mm->mmap_sem);
 	}
+	task_unlock(task);
 
 	if (!taskname)
 		goto out1;
@@ -1510,6 +1527,7 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 {
 
 	int err = 0;
+       	struct task_struct *task = current;
 	struct cred *cred = (struct cred *) current->real_cred;
 	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
@@ -1540,6 +1558,7 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 		goto out1;
 	}
 
+	task_lock(task);
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
@@ -1551,6 +1570,7 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 		}
 		up_read(&mm->mmap_sem);
 	}
+	task_unlock(task);
 
 	if (!taskname)
 		goto out1;
@@ -1595,6 +1615,7 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 #endif
 {
 	int err = 0;
+       	struct task_struct *task = current;
 	struct cred *cred = (struct cred *) current->real_cred;
 	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
@@ -1644,6 +1665,7 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 		goto out2;
 	}
 
+	task_lock(task);
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
@@ -1655,6 +1677,7 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 		}
 		up_read(&mm->mmap_sem);
 	}
+	task_unlock(task);
 
 	if (!taskname)
 		goto out2;
@@ -1700,6 +1723,7 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 #endif
 {
 	int err = 0;
+       	struct task_struct *task = current;
 	struct cred *cred = (struct cred *) current->real_cred;
 	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
@@ -1745,6 +1769,7 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 		goto out2;
 	}
 
+	task_lock(task);
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
@@ -1756,6 +1781,7 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 		}
 		up_read(&mm->mmap_sem);
 	}
+	task_unlock(task);
 
 	if (!taskname)
 		goto out2;
@@ -1799,6 +1825,7 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 #endif
 {
 	int err = 0;
+       	struct task_struct *task = current;
 	struct cred *cred = (struct cred *) current->real_cred;
 	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
@@ -1828,6 +1855,7 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 		goto out1;
 	}
 
+	task_lock(task);
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
@@ -1839,6 +1867,7 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 		}
 		up_read(&mm->mmap_sem);
 	}
+	task_unlock(task);
 
 	if (!taskname)
 		goto out1;
@@ -1880,6 +1909,7 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 #endif
 {
 	int err = 0;
+       	struct task_struct *task = current;
 	struct cred *cred = (struct cred *) current->real_cred;
 	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
@@ -1909,6 +1939,7 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 		goto out1;
 	}
 
+	task_lock(task);
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
@@ -1920,6 +1951,7 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 		}
 		up_read(&mm->mmap_sem);
 	}
+	task_unlock(task);
 
 	if (!taskname)
 		goto out1;
@@ -2412,6 +2444,7 @@ static int honeybest_file_receive(struct file *file)
 static int honeybest_file_open(struct file *file, const struct cred *cred)
 {
 	int err = 0;
+       	struct task_struct *task = current;
 	hb_file_ll *record = NULL;
 	struct cred *file_cred = (struct cred *)cred;
 	struct mm_struct *mm = current->mm;
@@ -2435,6 +2468,7 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 		goto out1;
 	}
 
+	task_lock(task);
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
@@ -2446,6 +2480,7 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 		}
 		up_read(&mm->mmap_sem);
 	}
+	task_unlock(task);
 
 	if (!taskname)
 		goto out1;
@@ -2678,6 +2713,7 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
                                 int sig, u32 secid)
 {
 	int err = 0;
+       	struct task_struct *task = current;
 	struct cred *cred = (struct cred *) current->real_cred;
 	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
@@ -2691,6 +2727,7 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 	if (inject_honeybest_tracker(cred, HB_TASK_SIGNAL))
 	       	err = -ENOMEM;
 
+	task_lock(task);
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
@@ -2702,6 +2739,7 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 		}
 		up_read(&mm->mmap_sem);
 	}
+	task_unlock(task);
 
 	if (!taskname)
 		goto out;
@@ -2801,7 +2839,7 @@ static int honeybest_socket_create(int family, int type,
                                  int protocol, int kern)
 {
 	int err = 0;
-       	const struct task_struct *task = current;
+       	struct task_struct *task = current;
 	struct cred *cred = (struct cred *)task->cred;
 	struct mm_struct *mm = current->mm;
 	char *taskname = NULL;
@@ -2814,6 +2852,7 @@ static int honeybest_socket_create(int family, int type,
 	if (inject_honeybest_tracker(cred, HB_SOCKET_CREATE))
 		err = -ENOMEM;
 
+	task_lock(task);
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
@@ -2824,6 +2863,7 @@ static int honeybest_socket_create(int family, int type,
 		}
 		up_read(&mm->mmap_sem);
 	}
+	task_unlock(task);
 
 	if (!taskname)
 		goto out;
@@ -2866,7 +2906,7 @@ static int honeybest_socket_post_create(struct socket *sock, int family,
  */
 static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, int addrlen)
 {
-       	const struct task_struct *task = current;
+       	struct task_struct *task = current;
 	struct cred *cred = (struct cred *)task->cred;
 	struct mm_struct *mm = current->mm;
 	char *taskname = NULL;
@@ -2881,6 +2921,7 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 	if (inject_honeybest_tracker(cred, HB_SOCKET_BIND))
 		err = -ENOMEM;
 
+	task_lock(task);
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
@@ -2891,6 +2932,7 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 		}
 		up_read(&mm->mmap_sem);
 	}
+	task_unlock(task);
 
 	if (!taskname)
 		goto out;
@@ -2931,7 +2973,7 @@ out:
  */
 static int honeybest_socket_connect(struct socket *sock, struct sockaddr *address, int addrlen)
 {
-       	const struct task_struct *task = current;
+       	struct task_struct *task = current;
 	struct cred *cred = (struct cred *)task->cred;
 	struct mm_struct *mm = current->mm;
 	char *taskname = NULL;
@@ -2946,6 +2988,7 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 	if (inject_honeybest_tracker(cred, HB_SOCKET_CONNECT))
 		err = -ENOMEM;
 
+	task_lock(task);
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
@@ -2956,6 +2999,7 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 		}
 		up_read(&mm->mmap_sem);
 	}
+	task_unlock(task);
 
 	if (!taskname)
 		goto out;
@@ -3037,7 +3081,7 @@ static int honeybest_socket_getpeername(struct socket *sock)
  */
 static int honeybest_socket_setsockopt(struct socket *sock, int level, int optname)
 {
-       	const struct task_struct *task = current;
+       	struct task_struct *task = current;
 	struct cred *cred = (struct cred *)task->cred;
 	struct mm_struct *mm = current->mm;
 	char *taskname = NULL;
@@ -3051,6 +3095,7 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 	if (inject_honeybest_tracker(cred, HB_SOCKET_SETSOCKOPT))
 		err = -ENOMEM;
 
+	task_lock(task);
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
@@ -3061,6 +3106,7 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 		}
 		up_read(&mm->mmap_sem);
 	}
+	task_unlock(task);
 
 	if (!taskname)
 		goto out;
