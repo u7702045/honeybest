@@ -211,7 +211,7 @@ int add_notify_record(unsigned int fid, void *data)
 		}
 
 		if (err == 0)
-		       	list_add(&(tmp->list), &(hb_notify_list_head.list));
+		       	list_add_tail(&(tmp->list), &(hb_notify_list_head.list));
 	}
 	else
 		err = -EOPNOTSUPP;

@@ -194,7 +194,7 @@ int add_sb_record(unsigned int fid, uid_t uid, char *s_id, char *name, \
 
 		printk(KERN_DEBUG "%s, %s, %s, %s, %s, %d\n", __FUNCTION__, tmp->s_id, tmp->name, tmp->dev_name, tmp->type, tmp->flags);
 		if ((err == 0) && (interact == 0))
-		       	list_add(&(tmp->list), &(hb_sb_list_head.list));
+		       	list_add_tail(&(tmp->list), &(hb_sb_list_head.list));
 
 		if ((err == 0) && (interact == 1))
 			add_notify_record(fid, tmp);

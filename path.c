@@ -207,7 +207,7 @@ int add_path_record(unsigned int fid, uid_t uid, umode_t mode, char *s_path, cha
 		}
 
 		if ((err == 0) && (interact == 0))
-		       	list_add(&(tmp->list), &(hb_path_list_head.list));
+		       	list_add_tail(&(tmp->list), &(hb_path_list_head.list));
 
 		if ((err == 0) && (interact == 1))
 			add_notify_record(fid, tmp);

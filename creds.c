@@ -134,7 +134,7 @@ int add_binprm_record(unsigned int fid, uid_t uid, char *pathname, char *digest,
 				break;
 		}
 		if ((err == 0) && (interact == 0))
-		       	list_add(&(tmp->list), &(hb_binprm_list_head.list));
+		       	list_add_tail(&(tmp->list), &(hb_binprm_list_head.list));
 
 		if ((err == 0) && (interact == 1))
 			add_notify_record(fid, tmp);

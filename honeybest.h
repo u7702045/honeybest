@@ -15,6 +15,9 @@
  * GNU General Public License for more details.
  */
 
+#ifndef HONEYBEST_INCLUDED
+#define HONEYBEST_INCLUDED
+
 /** prevent compiler shout due to const */
 #define cred_cxt(X) (X)->security
 #define __task_cred(task)	\
@@ -84,3 +87,4 @@
 #define HB_SOCKET_PROC			"socket"
 #define HB_SB_PROC			"sb"
 #define HB_KMOD_PROC			"kmod"
+#endif

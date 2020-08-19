@@ -19,8 +19,9 @@
 #define HB_BINPRM_DATA 
 typedef struct hb_binprm_ll_t {
 	uid_t uid;
-	unsigned int fid;	// security hook function binprm by program
-	char digest[SHA1_HONEYBEST_DIGEST_SIZE];	// exec program xattr hash
+	unsigned int fid;	/**< security hook function binprm by program */
+	bool act;		/**< allow / reject action */
+	char digest[SHA1_HONEYBEST_DIGEST_SIZE];	/**< exec program xattr hash */
 	char *pathname;	// open file path
 	struct list_head list;
 } hb_binprm_ll;

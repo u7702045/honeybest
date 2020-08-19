@@ -136,7 +136,7 @@ int add_kmod_record(unsigned int fid, uid_t uid, char *name, int interact)
 		strncpy(tmp->name, name, strlen(name));
 
 		if ((err == 0) && (interact == 0))
-		       	list_add(&(tmp->list), &(hb_kmod_list_head.list));
+		       	list_add_tail(&(tmp->list), &(hb_kmod_list_head.list));
 
 		if ((err == 0) && (interact == 1))
 			add_notify_record(fid, tmp);
