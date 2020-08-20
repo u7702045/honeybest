@@ -143,6 +143,9 @@ int add_binprm_record(unsigned int fid, uid_t uid, char act_allow, char *pathnam
 	else
 		err = -EOPNOTSUPP;
 
+	if(err != 0)
+		kfree(tmp);
+
 	return err;
 }
 

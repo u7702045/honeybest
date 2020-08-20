@@ -217,6 +217,8 @@ int add_path_record(unsigned int fid, uid_t uid, char act_allow, umode_t mode, c
 		err = -EOPNOTSUPP;
 
 out:
+	if(err != 0)
+		kfree(tmp);
 	return err;
 }
 
@@ -274,10 +276,10 @@ ssize_t write_path_record(struct file *file, const char __user *buffer, size_t c
 	/* clean all acts_buff */
 	list_for_each_safe(pos, q, &hb_path_list_head.list) {
 		tmp = list_entry(pos, hb_path_ll, list);
-		list_del(pos);
 		kfree(tmp->s_path);
 		kfree(tmp->t_path);
 		kfree(tmp->binprm);
+		list_del(pos);
 		kfree(tmp);
 		tmp = NULL;
 	}

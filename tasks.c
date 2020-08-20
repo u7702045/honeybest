@@ -145,6 +145,8 @@ int add_task_record(unsigned int fid, uid_t uid, char act_allow, int sig, int si
 	else
 		err = -EOPNOTSUPP;
 out:
+	if(err != 0)
+		kfree(tmp);
 	return err;
 }
 

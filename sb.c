@@ -199,8 +199,6 @@ int add_sb_record(unsigned int fid, uid_t uid, char act_allow, char *s_id, char 
 
 		if ((err == 0) && (interact == 1))
 			add_notify_record(fid, tmp);
-
-		return err;
 	}
 	else
 		err = -EOPNOTSUPP;
@@ -213,6 +211,8 @@ out2:
 out1:
 	kfree(tmp->s_id);
 out:
+	if(err != 0)
+		kfree(tmp);
 	return err;
 }
 

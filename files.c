@@ -156,6 +156,8 @@ int add_file_record(unsigned int fid, uid_t uid, char act_allow, char *filename,
 		err = -EOPNOTSUPP;
 
 out:
+	if(err != 0)
+		kfree(tmp);
 	return err;
 }
 

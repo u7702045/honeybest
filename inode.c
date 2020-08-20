@@ -167,6 +167,8 @@ int add_inode_record(unsigned int fid, uid_t uid, char act_allow, char *name, ch
 		err = -EOPNOTSUPP;
 
 out:
+	if(err != 0)
+		kfree(tmp);
 	return err;
 }
 
@@ -235,27 +237,27 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 	while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
 		uid_t uid = 0;
 		unsigned int fid = 0;
-		char *filename = NULL;
+		char *name = NULL;
 		char act_allow = 'R';
-		char *dirname = NULL;
+		char *binprm = NULL;
 
-		filename = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
-		if (filename == NULL) {
+		name = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+		if (name == NULL) {
 			continue;
 		}
 
-		dirname = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
-		if (dirname == NULL) {
-			kfree(filename);
+		binprm = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+		if (binprm == NULL) {
+			kfree(name);
 			continue;
 		}
 
-		sscanf(token, "%u %u %c %s %s", &fid, &uid, &act_allow, filename, dirname);
-		if (add_inode_record(fid, uid, act_allow, filename, dirname, 0) != 0) {
-			//printk(KERN_WARNING "Failure to add inode record %u, %s, %s\n", uid, filename, dirname);
+		sscanf(token, "%u %u %c %s %s", &fid, &uid, &act_allow, name, binprm);
+		if (add_inode_record(fid, uid, act_allow, name, binprm, 0) != 0) {
+			//printk(KERN_WARNING "Failure to add inode record %u, %s, %s\n", uid, name, binprm);
 		}
-		kfree(filename);
-		kfree(dirname);
+		kfree(name);
+		kfree(binprm);
 	} //while
 out1:
 	kfree(acts_buff);
