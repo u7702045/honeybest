@@ -16,8 +16,9 @@
  */
 
 typedef struct hb_socket_ll_t {
-	unsigned int fid;	// security hook function open socket by program
+	unsigned int fid;	/**< security hook function open socket by program */
 	uid_t uid;
+	char act_allow;		/**< 'A'llow / 'R'eject action */
 	int family;
 	int type;
 	int protocol;
@@ -34,7 +35,7 @@ typedef struct hb_socket_ll_t {
 hb_socket_ll *search_socket_record(unsigned int fid, uid_t uid, int family, int type, int protocol, int port,
 		int level, int optname, char *binprm);
 
-int add_socket_record(unsigned int fid, uid_t uid, int family, int type, int protocol,
+int add_socket_record(unsigned int fid, uid_t uid, char act_allow, int family, int type, int protocol,
 	       	int port, int level, int optname, char *binprm, int interact);
 
 int read_socket_record(struct seq_file *m, void *v);

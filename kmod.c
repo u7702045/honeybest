@@ -115,7 +115,7 @@ hb_kmod_ll *search_kmod_record(unsigned int fid, uid_t uid, char *name)
 	return NULL;
 }
 
-int add_kmod_record(unsigned int fid, uid_t uid, char *name, int interact)
+int add_kmod_record(unsigned int fid, uid_t uid, char act_allow, char *name, int interact)
 {
 	int err = 0;
 	hb_kmod_ll *tmp = NULL;
@@ -125,6 +125,7 @@ int add_kmod_record(unsigned int fid, uid_t uid, char *name, int interact)
 		memset(tmp, 0, sizeof(hb_kmod_ll));
 		tmp->fid = fid;
 		tmp->uid = uid;
+		tmp->act_allow = act_allow;
 
 		tmp->name = kmalloc(strlen(name)+1, GFP_KERNEL);
 		if (tmp->name == NULL) {
@@ -157,11 +158,11 @@ int read_kmod_record(struct seq_file *m, void *v)
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
-	seq_printf(m, "NO\tFUNC\tUID\tNAME\n");
+	seq_printf(m, "NO\tFUNC\tUID\tACTION\tNAME\n");
 
 	list_for_each(pos, &hb_kmod_list_head.list) {
 		tmp = list_entry(pos, hb_kmod_ll, list);
-		seq_printf(m, "%lu\t%u\t%u\t%s\n", total++, tmp->fid, tmp->uid, tmp->name);
+		seq_printf(m, "%lu\t%u\t%u\t%c\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->name);
 	}
 
 	return 0;
@@ -210,6 +211,7 @@ ssize_t write_kmod_record(struct file *file, const char __user *buffer, size_t c
 	while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
 		uid_t uid = 0;
 		unsigned int fid = 0;
+		char act_allow = 'R';
 		char *name = NULL;
 
 		name = (char *)kmalloc(32, GFP_KERNEL);
@@ -217,8 +219,8 @@ ssize_t write_kmod_record(struct file *file, const char __user *buffer, size_t c
 			goto out;
 		}
 
-		sscanf(token, "%u %u %s", &fid, &uid, name);
-		if (add_kmod_record(fid, uid, name, 0) != 0) {
+		sscanf(token, "%u %u %c %s", &fid, &uid, &act_allow, name);
+		if (add_kmod_record(fid, uid, act_allow, name, 0) != 0) {
 			printk(KERN_WARNING "Failure to add kmod record %s\n", name);
 		}
 

@@ -109,7 +109,7 @@ hb_file_ll *search_file_record(unsigned int fid, uid_t uid, char *filename, char
 	return NULL;
 }
 
-int add_file_record(unsigned int fid, uid_t uid, char *filename, char *binprm, int interact)
+int add_file_record(unsigned int fid, uid_t uid, char act_allow, char *filename, char *binprm, int interact)
 {
 	int err = 0;
 	hb_file_ll *tmp = NULL;
@@ -124,6 +124,7 @@ int add_file_record(unsigned int fid, uid_t uid, char *filename, char *binprm, i
 		memset(tmp, 0, sizeof(hb_file_ll));
 		tmp->fid = fid;
 		tmp->uid = uid;
+		tmp->act_allow = act_allow;
 		switch (fid) {
 			case HB_FILE_OPEN:
 				tmp->filename = kmalloc(file_len+1, GFP_KERNEL);
@@ -164,10 +165,10 @@ int read_file_record(struct seq_file *m, void *v)
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
-	seq_printf(m, "NO\tFUNC\tUID\tPATH\t\t\t\tBINPRM\n");
+	seq_printf(m, "NO\tFUNC\tUID\tACTION\t\tPATH\t\t\t\tBINPRM\n");
 	list_for_each(pos, &hb_file_list_head.list) {
 		tmp = list_entry(pos, hb_file_ll, list);
-		seq_printf(m, "%lu\t%u\t%d\t%s\t%s\n", total++, tmp->fid, tmp->uid, tmp->filename, tmp->binprm);
+		seq_printf(m, "%lu\t%u\t%d\t%c\t%s\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->filename, tmp->binprm);
 	}
 
 	return 0;
@@ -218,6 +219,7 @@ ssize_t write_file_record(struct file *file, const char __user *buffer, size_t c
 		uid_t uid = 0;
 		unsigned int fid = 0;
 		char *filename = NULL;
+		char act_allow = 'R';
 		char *binprm = NULL;
 
 		filename = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
@@ -231,8 +233,8 @@ ssize_t write_file_record(struct file *file, const char __user *buffer, size_t c
 			continue;
 		}
 
-		sscanf(token, "%u %u %s %s", &fid, &uid, filename, binprm);
-		if (add_file_record(HB_FILE_OPEN, uid, filename, binprm, 0) != 0) {
+		sscanf(token, "%u %u %c %s %s", &fid, &uid, &act_allow, filename, binprm);
+		if (add_file_record(HB_FILE_OPEN, uid, act_allow, filename, binprm, 0) != 0) {
 			printk(KERN_WARNING "Failure to add file record %u, %s, %s\n", uid, filename, binprm);
 		}
 

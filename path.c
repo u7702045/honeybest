@@ -142,7 +142,7 @@ hb_path_ll *search_path_record(unsigned int fid, uid_t uid, umode_t mode, char *
 	return NULL;
 }
 
-int add_path_record(unsigned int fid, uid_t uid, umode_t mode, char *s_path, char *t_path, \
+int add_path_record(unsigned int fid, uid_t uid, char act_allow, umode_t mode, char *s_path, char *t_path, \
 		uid_t suid, uid_t sgid, unsigned int dev, char *binprm, int interact)
 {
 	int err = 0;
@@ -157,6 +157,7 @@ int add_path_record(unsigned int fid, uid_t uid, umode_t mode, char *s_path, cha
 		tmp->sgid = 0;
 		tmp->dev = 0;
 		tmp->mode = 0;
+		tmp->act_allow = act_allow;
 		tmp->s_path = kmalloc(strlen(s_path)+1, GFP_KERNEL);
 		if (tmp->s_path == NULL) {
 			err = -EOPNOTSUPP;
@@ -225,7 +226,7 @@ int read_path_record(struct seq_file *m, void *v)
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
-	seq_printf(m, "NO\tFUNC\tUID\tMODE\tSUID\tGUID\tDEV NODE\tSOURCE PATH\t\t\tTARGET PATH\t\t\tBINPRM\n");
+	seq_printf(m, "NO\tFUNC\tUID\tACTION\tMODE\tSUID\tGUID\tDEV NODE\tSOURCE PATH\t\t\tTARGET PATH\t\t\tBINPRM\n");
 
 	if (list_empty(&hb_path_list_head.list)) {
 		printk(KERN_WARNING "List is empty!!\n");
@@ -234,7 +235,7 @@ int read_path_record(struct seq_file *m, void *v)
 
 	list_for_each(pos, &hb_path_list_head.list) {
 		tmp = list_entry(pos, hb_path_ll, list);
-		seq_printf(m, "%lu\t%u\t%u\t%u\t%u\t%u\t%u\t%s\t\t%s\t\t%s\n", total++, tmp->fid, tmp->uid, tmp->mode, tmp->suid, tmp->sgid, tmp->dev, tmp->s_path, tmp->t_path, tmp->binprm);
+		seq_printf(m, "%lu\t%u\t%u\t%c\t%u\t%u\t%u\t%u\t%s\t\t%s\t\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->mode, tmp->suid, tmp->sgid, tmp->dev, tmp->s_path, tmp->t_path, tmp->binprm);
 
 	}
 
@@ -290,6 +291,7 @@ ssize_t write_path_record(struct file *file, const char __user *buffer, size_t c
 		unsigned int dev = 0;
 		unsigned int fid = 0;
 		umode_t mode = 0;
+		char act_allow = 'R';
 		char *s_path = NULL;
 		char *t_path = NULL;
 		char *binprm = NULL;
@@ -315,8 +317,8 @@ ssize_t write_path_record(struct file *file, const char __user *buffer, size_t c
 			continue;
 		}
 
-		sscanf(token, "%u %u %hd %u %u %u %s %s %s", &fid, &uid, &mode, &suid, &sgid, &dev, s_path, t_path, binprm);
-		if (add_path_record(fid, uid, mode, s_path, t_path, suid, sgid, dev, binprm, 0) != 0) {
+		sscanf(token, "%u %u %c %hd %u %u %u %s %s %s", &fid, &uid, &act_allow, &mode, &suid, &sgid, &dev, s_path, t_path, binprm);
+		if (add_path_record(fid, uid, act_allow, mode, s_path, t_path, suid, sgid, dev, binprm, 0) != 0) {
 			printk(KERN_WARNING "Failure to add path record %u, %s, %s, %s\n", uid, s_path, t_path, binprm);
 		}
 

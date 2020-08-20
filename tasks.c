@@ -109,7 +109,7 @@ hb_task_ll *search_task_record(unsigned int fid, uid_t uid, struct siginfo *info
 	return NULL;
 }
 
-int add_task_record(unsigned int fid, uid_t uid, int sig, int si_signo, int si_errno, u32 secid, char *binprm, int interact)
+int add_task_record(unsigned int fid, uid_t uid, char act_allow, int sig, int si_signo, int si_errno, u32 secid, char *binprm, int interact)
 {
 	int err = 0;
 	hb_task_ll *tmp = NULL;
@@ -119,6 +119,7 @@ int add_task_record(unsigned int fid, uid_t uid, int sig, int si_signo, int si_e
 		memset(tmp, 0, sizeof(hb_task_ll));
 		tmp->fid = fid;
 		tmp->uid = uid;
+		tmp->act_allow = act_allow;
 	       	tmp->binprm = kmalloc(strlen(binprm)+1, GFP_KERNEL);
 		if (tmp->binprm == NULL) {
 			err = -EOPNOTSUPP;
@@ -153,10 +154,10 @@ int read_task_record(struct seq_file *m, void *v)
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
-	seq_printf(m, "NO\tFUNC\tUID\tSIGNAL\tSIGNO\tERRNO\tSECID\tBINPRM\n");
+	seq_printf(m, "NO\tFUNC\tUID\tACTION\tSIGNAL\tSIGNO\tERRNO\tSECID\tBINPRM\n");
 	list_for_each(pos, &hb_task_list_head.list) {
 		tmp = list_entry(pos, hb_task_ll, list);
-		seq_printf(m, "%lu\t%u\t%u\t%d\t%d\t%d\t%u\t%s\n", total++, tmp->fid, tmp->uid, tmp->sig, tmp->si_signo, tmp->si_errno, tmp->secid, tmp->binprm);
+		seq_printf(m, "%lu\t%u\t%u\t%c\t%d\t%d\t%d\t%u\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->sig, tmp->si_signo, tmp->si_errno, tmp->secid, tmp->binprm);
 	}
 
 	return 0;
@@ -209,6 +210,7 @@ ssize_t write_task_record(struct file *file, const char __user *buffer, size_t c
 		int si_signo = 0;
 		int si_errno = 0;
 		u32 secid = 0;
+		char act_allow = 'R';
 		char *binprm = NULL;
 
 		binprm = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
@@ -217,8 +219,8 @@ ssize_t write_task_record(struct file *file, const char __user *buffer, size_t c
 			continue;
 		}
 
-		sscanf(token, "%u %u %d %d %d %u %s", &fid, &uid, &sig, &si_signo, &si_errno, &secid, binprm);
-		if (add_task_record(HB_TASK_SIGNAL, uid, sig, si_signo, si_errno, secid, binprm, 0) != 0) {
+		sscanf(token, "%u %u %c %d %d %d %u %s", &fid, &uid, &act_allow, &sig, &si_signo, &si_errno, &secid, binprm);
+		if (add_task_record(HB_TASK_SIGNAL, uid, act_allow, sig, si_signo, si_errno, secid, binprm, 0) != 0) {
 			printk(KERN_WARNING "Failure to add task record %u, %d, %s\n", uid, sig, binprm);
 		}
 	}

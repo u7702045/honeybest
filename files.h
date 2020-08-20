@@ -16,15 +16,16 @@
  */
 
 typedef struct hb_file_ll_t {
-	unsigned int fid;	// security hook function open file by program
+	unsigned int fid;	/**< security hook function open file by program */
 	uid_t uid;
-	char *filename;	// open file path
-	char *binprm;	// binary open filename
+	char act_allow;		/**< 'A'llow / 'R'eject action */
+	char *filename;		/**< open file path */
+	char *binprm;		/**< binary open filename */
 	struct list_head list;
 } hb_file_ll;
 
 hb_file_ll *search_file_record(unsigned int fid, uid_t uid, char *filename, char *binprm);
-int add_file_record(unsigned int fid, uid_t uid, char *filename, char *binprm, int interact);
+int add_file_record(unsigned int fid, uid_t uid, char act_allow, char *filename, char *binprm, int interact);
 
 int read_file_record(struct seq_file *m, void *v);
 ssize_t write_file_record(struct file *file, const char __user *buffer, size_t count, loff_t *pos);

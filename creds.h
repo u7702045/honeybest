@@ -20,14 +20,14 @@
 typedef struct hb_binprm_ll_t {
 	uid_t uid;
 	unsigned int fid;	/**< security hook function binprm by program */
-	bool act;		/**< allow / reject action */
+	char act_allow;		/**< 'A'llow / 'R'eject action */
 	char digest[SHA1_HONEYBEST_DIGEST_SIZE];	/**< exec program xattr hash */
-	char *pathname;	// open file path
+	char *pathname;		/**< open file path */
 	struct list_head list;
 } hb_binprm_ll;
 
 hb_binprm_ll *search_binprm_record(unsigned int fid, uid_t uid, char *pathname, char *digest);
-int add_binprm_record(unsigned int fid, uid_t uid, char *pathname, char *digest, int interact);
+int add_binprm_record(unsigned int fid, uid_t uid, char act_allow, char *pathname, char *digest, int interact);
 int lookup_binprm_digest(struct file *file, char *digest);
 
 int read_binprm_record(struct seq_file *m, void *v);

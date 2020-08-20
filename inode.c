@@ -120,7 +120,7 @@ hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *name, char *
 	return NULL;
 }
 
-int add_inode_record(unsigned int fid, uid_t uid, char *name, char *binprm, int interact)
+int add_inode_record(unsigned int fid, uid_t uid, char act_allow, char *name, char *binprm, int interact)
 {
 	int err = 0;
 	hb_inode_ll *tmp = NULL;
@@ -132,6 +132,7 @@ int add_inode_record(unsigned int fid, uid_t uid, char *name, char *binprm, int 
 	if (tmp) {
 		tmp->fid = fid;
 		tmp->uid = uid;
+		tmp->act_allow = act_allow;
 		tmp->name = kmalloc(strlen(name)+1, GFP_KERNEL);
 		if (tmp->name == NULL) {
 			err = -EOPNOTSUPP;
@@ -175,7 +176,7 @@ int read_inode_record(struct seq_file *m, void *v)
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
-	seq_printf(m, "NO\tFUNC\tUID\tXATTR\t\t\tBINPRM\n");
+	seq_printf(m, "NO\tFUNC\tUID\tACTION\tXATTR\t\t\tBINPRM\n");
 
 	if (list_empty(&hb_inode_list_head.list)) {
 		printk(KERN_WARNING "List is empty!!\n");
@@ -184,7 +185,7 @@ int read_inode_record(struct seq_file *m, void *v)
 
 	list_for_each(pos, &hb_inode_list_head.list) {
 		tmp = list_entry(pos, hb_inode_ll, list);
-		seq_printf(m, "%lu\t%u\t%u\t%s\t%s\n", total++, tmp->fid, tmp->uid, tmp->name, tmp->binprm);
+		seq_printf(m, "%lu\t%u\t%u\t%c\t%s\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->name, tmp->binprm);
 	}
 
 	return 0;
@@ -235,6 +236,7 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 		uid_t uid = 0;
 		unsigned int fid = 0;
 		char *filename = NULL;
+		char act_allow = 'R';
 		char *dirname = NULL;
 
 		filename = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
@@ -248,8 +250,8 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 			continue;
 		}
 
-		sscanf(token, "%u %u %s %s", &fid, &uid, filename, dirname);
-		if (add_inode_record(fid, uid, filename, dirname, 0) != 0) {
+		sscanf(token, "%u %u %c %s %s", &fid, &uid, &act_allow, filename, dirname);
+		if (add_inode_record(fid, uid, act_allow, filename, dirname, 0) != 0) {
 			//printk(KERN_WARNING "Failure to add inode record %u, %s, %s\n", uid, filename, dirname);
 		}
 		kfree(filename);

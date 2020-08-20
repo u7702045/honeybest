@@ -138,7 +138,7 @@ hb_sb_ll *search_sb_record(unsigned int fid, uid_t uid, char *s_id, char *name, 
 	return NULL;
 }
 
-int add_sb_record(unsigned int fid, uid_t uid, char *s_id, char *name, \
+int add_sb_record(unsigned int fid, uid_t uid, char act_allow, char *s_id, char *name, \
 		char *dev_name, char *type, int flags, int interact)
 {
 	int err = 0;
@@ -152,6 +152,7 @@ int add_sb_record(unsigned int fid, uid_t uid, char *s_id, char *name, \
 		memset(tmp, 0, sizeof(hb_sb_ll));
 		tmp->fid = fid;
 		tmp->uid = uid;
+		tmp->act_allow = act_allow;
 
 		tmp->s_id = kmalloc(strlen(s_id)+1, GFP_KERNEL);
 		if (tmp->s_id == NULL) {
@@ -221,11 +222,11 @@ int read_sb_record(struct seq_file *m, void *v)
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
-	seq_printf(m, "NO\tFUNC\tUID\tSID\tNAME\tDEV_NAME\tTYPE\tFLAGS\n");
+	seq_printf(m, "NO\tFUNC\tUID\tACTION\tSID\tNAME\tDEV_NAME\tTYPE\tFLAGS\n");
 
 	list_for_each(pos, &hb_sb_list_head.list) {
 		tmp = list_entry(pos, hb_sb_ll, list);
-		seq_printf(m, "%lu\t%u\t%u\t%s\t%s\t%s\t\t%s\t%d\n", total++, tmp->fid, tmp->uid,
+		seq_printf(m, "%lu\t%u\t%u\t%c\t%s\t%s\t%s\t\t%s\t%d\n", total++, tmp->fid, tmp->uid, tmp->act_allow,
 				tmp->s_id, tmp->name, tmp->dev_name, tmp->type, tmp->flags);
 	}
 
@@ -282,6 +283,7 @@ ssize_t write_sb_record(struct file *file, const char __user *buffer, size_t cou
 		char *name = NULL;
 		char *dev_name = NULL;
 		char *type = NULL;
+		char act_allow = 'R';
 		int flags = 0;
 
 		/* 32 array reference to fs.h */
@@ -305,8 +307,8 @@ ssize_t write_sb_record(struct file *file, const char __user *buffer, size_t cou
 			goto out4;
 		}
 
-		sscanf(token, "%u %u %s %s %s %s %d", &fid, &uid, s_id, name, dev_name, type, &flags);
-		if (add_sb_record(fid, uid, s_id, name, dev_name, type, flags, 0) != 0) {
+		sscanf(token, "%u %u %c %s %s %s %s %d", &fid, &uid, &act_allow, s_id, name, dev_name, type, &flags);
+		if (add_sb_record(fid, uid, act_allow, s_id, name, dev_name, type, flags, 0) != 0) {
 			printk(KERN_WARNING "Failure to add sb record %s, %s %s %s\n", s_id, name, dev_name, type);
 		}
 

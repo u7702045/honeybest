@@ -182,16 +182,16 @@ int read_socket_record(struct seq_file *m, void *v)
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
-	seq_printf(m, "NO\tFUNC\tUID\tFAMILY\tTYPE\tPROTO\tPORT\tLEVEL\tOPTNAME\tBINPRM\n");
+	seq_printf(m, "NO\tFUNC\tUID\tACTION\tFAMILY\tTYPE\tPROTO\tPORT\tLEVEL\tOPTNAME\tBINPRM\n");
 	list_for_each(pos, &hb_socket_list_head.list) {
 		tmp = list_entry(pos, hb_socket_ll, list);
-		seq_printf(m, "%lu\t%u\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\n", total++, tmp->fid, tmp->uid, tmp->family, tmp->type, tmp->protocol, tmp->port, tmp->level, tmp->optname, tmp->binprm);
+		seq_printf(m, "%lu\t%u\t%d\t%c\t%d\t%d\t%d\t%d\t%d\t%d\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->family, tmp->type, tmp->protocol, tmp->port, tmp->level, tmp->optname, tmp->binprm);
 	}
 
 	return 0;
 }
 
-int add_socket_record(unsigned int fid, uid_t uid, int family, int type, int protocol, 
+int add_socket_record(unsigned int fid, uid_t uid, char act_allow, int family, int type, int protocol, 
 		int port, int level, int optname, char *binprm, int interact)
 {
 	int err = 0;
@@ -202,6 +202,7 @@ int add_socket_record(unsigned int fid, uid_t uid, int family, int type, int pro
 		memset(tmp, 0, sizeof(hb_socket_ll));
 		tmp->fid = fid;
 		tmp->uid = uid;
+		tmp->act_allow = act_allow;
 		tmp->binprm = kmalloc(strlen(binprm), GFP_KERNEL);
 		if (!tmp->binprm) {
 			kfree(tmp);
@@ -286,6 +287,7 @@ ssize_t write_socket_record(struct file *file, const char __user *buffer, size_t
 		int protocol = 0;
 		int port = 0;
 		int level = 0;
+		char act_allow = 'R';
 		char *binprm = NULL;
 		int optname = 0;
 
@@ -293,9 +295,9 @@ ssize_t write_socket_record(struct file *file, const char __user *buffer, size_t
 		if (!binprm)
 			goto out1;
 
-		sscanf(token, "%u %u %d %d %d %d %d %d %s", &fid, &uid, &family, &type, &protocol,
+		sscanf(token, "%u %u %c %d %d %d %d %d %d %s", &fid, &uid, &act_allow, &family, &type, &protocol,
 				&port, &level, &optname, binprm);
-		if (add_socket_record(fid, uid, family, type, protocol,
+		if (add_socket_record(fid, uid, act_allow, family, type, protocol,
 					port, level, optname, binprm, 0) != 0) {
 			printk(KERN_WARNING "Failure to add socket record %u, %d, %d, %d\n", uid, family, type, protocol);
 		}
