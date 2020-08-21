@@ -91,10 +91,10 @@ HoneyBest安全模組預設處於停用模式/非互動模式。它提供了2個
 |3|20|0|420|0|0|0|/etc/resolv.conf.dhclient-new.1115|/etc/resolv.conf|
 
 #### 圖2
-| | | | | | | | | |
-|--|----|---|----|----|----|---|-----------|-----------|
+| | | | | | | | |
+|--|----|---|----|----|----|---|-----------|
 |23|0|0|0|0|0|/dev/usb0|/dev/ttyUSB*|
-|23|0|0|0|0|0||/etc/resolv.conf.dhclient-new.1115|/etc/resolv.conf|
+|23|0|0|0|0|0|/etc/resolv.conf.dhclient-new.*|/etc/resolv.conf|
 
 ##### 保存和還原設定
 保存HoneyBest LSM配置非常簡單。您需要將其轉儲到單獨的文件中，並在系統重新啟動後還原（initrd或rc.local）。 __在儲存內容後，請重做步驟6.4。如果步驟6.4未完成，HoneyBest LSM將無法正確還原。__
