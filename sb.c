@@ -203,13 +203,17 @@ int add_sb_record(unsigned int fid, uid_t uid, char act_allow, char *s_id, char 
 	else
 		err = -EOPNOTSUPP;
 
-	kfree(tmp->type);
+	if(err != 0)
+		kfree(tmp->type);
 out3:
-	kfree(tmp->dev_name);
+	if(err != 0)
+		kfree(tmp->dev_name);
 out2:
-	kfree(tmp->name);
+	if(err != 0)
+		kfree(tmp->name);
 out1:
-	kfree(tmp->s_id);
+	if(err != 0)
+		kfree(tmp->s_id);
 out:
 	if(err != 0)
 		kfree(tmp);
