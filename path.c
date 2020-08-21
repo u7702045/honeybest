@@ -98,7 +98,18 @@ hb_path_ll *search_path_record(unsigned int fid, uid_t uid, umode_t mode, char *
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_path_list_head.list) {
+		bool do_compare_uid = false;
+		unsigned long list_uid = 0;
+
 		tmp = list_entry(pos, hb_path_ll, list);
+
+		if (tmp->uid[0] == '*')
+			do_compare_uid = true;
+		else {
+			if ((kstrtoul(tmp->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
+				do_compare_uid = (uid == list_uid) ;
+		}
+
 		switch (fid) {
 			case HB_PATH_RENAME:
 			case HB_PATH_TRUNCATE:
@@ -106,7 +117,7 @@ hb_path_ll *search_path_record(unsigned int fid, uid_t uid, umode_t mode, char *
 			case HB_PATH_SYMLINK:
 			case HB_PATH_LINK:
 			case HB_PATH_UNLINK:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_path, strlen(tmp->s_path), s_path, strlen(s_path)) && !compare_regex(tmp->t_path, strlen(tmp->t_path), t_path, strlen(t_path)) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
+				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->s_path, strlen(tmp->s_path), s_path, strlen(s_path)) && !compare_regex(tmp->t_path, strlen(tmp->t_path), t_path, strlen(t_path)) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
 					/* we find the record */
 					//printk(KERN_INFO "Found link/rename/rmdir/symlink/unlink path record !!!!\n");
 					return tmp;
@@ -114,21 +125,21 @@ hb_path_ll *search_path_record(unsigned int fid, uid_t uid, umode_t mode, char *
 				break;
 			case HB_PATH_MKDIR:
 			case HB_PATH_CHMOD:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_path, strlen(tmp->s_path), s_path, strlen(s_path)) && (tmp->mode == mode) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
+				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->s_path, strlen(tmp->s_path), s_path, strlen(s_path)) && (tmp->mode == mode) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
 					/* we find the record */
 					//printk(KERN_INFO "Found chmod path record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_PATH_CHOWN:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_path, strlen(tmp->s_path), s_path, strlen(s_path)) && (tmp->suid == suid) && (tmp->sgid == sgid) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
+				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->s_path, strlen(tmp->s_path), s_path, strlen(s_path)) && (tmp->suid == suid) && (tmp->sgid == sgid) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
 					/* we find the record */
 					//printk(KERN_INFO "Found chown path record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_PATH_MKNOD:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_path, strlen(tmp->s_path), s_path, strlen(s_path)) && (tmp->dev == dev) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
+				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->s_path, strlen(tmp->s_path), s_path, strlen(s_path)) && (tmp->dev == dev) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
 					/* we find the record */
 					//printk(KERN_INFO "Found mknod path record !!!!\n");
 					return tmp;
@@ -142,7 +153,7 @@ hb_path_ll *search_path_record(unsigned int fid, uid_t uid, umode_t mode, char *
 	return NULL;
 }
 
-int add_path_record(unsigned int fid, uid_t uid, char act_allow, umode_t mode, char *s_path, char *t_path, \
+int add_path_record(unsigned int fid, char *uid, char act_allow, umode_t mode, char *s_path, char *t_path, \
 		uid_t suid, uid_t sgid, unsigned int dev, char *binprm, int interact)
 {
 	int err = 0;
@@ -152,7 +163,7 @@ int add_path_record(unsigned int fid, uid_t uid, char act_allow, umode_t mode, c
 	if (tmp) {
 		memset(tmp, 0, sizeof(hb_path_ll));
 		tmp->fid = fid;
-		tmp->uid = uid;
+		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
 		tmp->suid = 0;
 		tmp->sgid = 0;
 		tmp->dev = 0;
@@ -237,7 +248,7 @@ int read_path_record(struct seq_file *m, void *v)
 
 	list_for_each(pos, &hb_path_list_head.list) {
 		tmp = list_entry(pos, hb_path_ll, list);
-		seq_printf(m, "%lu\t%u\t%u\t%c\t%u\t%u\t%u\t%u\t%s\t\t%s\t\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->mode, tmp->suid, tmp->sgid, tmp->dev, tmp->s_path, tmp->t_path, tmp->binprm);
+		seq_printf(m, "%lu\t%u\t%s\t%c\t%u\t%u\t%u\t%u\t%s\t\t%s\t\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->mode, tmp->suid, tmp->sgid, tmp->dev, tmp->s_path, tmp->t_path, tmp->binprm);
 
 	}
 
@@ -287,7 +298,7 @@ ssize_t write_path_record(struct file *file, const char __user *buffer, size_t c
        	cur = acts_buff;
 	/* add acts_buff */
 	while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
-		uid_t uid = 0;
+		char uid[UID_STR_SIZE];
 		uid_t suid = 0;
 		uid_t sgid = 0;
 		unsigned int dev = 0;
@@ -319,9 +330,9 @@ ssize_t write_path_record(struct file *file, const char __user *buffer, size_t c
 			continue;
 		}
 
-		sscanf(token, "%u %u %c %hd %u %u %u %s %s %s", &fid, &uid, &act_allow, &mode, &suid, &sgid, &dev, s_path, t_path, binprm);
+		sscanf(token, "%u %s %c %hd %u %u %u %s %s %s", &fid, uid, &act_allow, &mode, &suid, &sgid, &dev, s_path, t_path, binprm);
 		if (add_path_record(fid, uid, act_allow, mode, s_path, t_path, suid, sgid, dev, binprm, 0) != 0) {
-			printk(KERN_WARNING "Failure to add path record %u, %s, %s, %s\n", uid, s_path, t_path, binprm);
+			printk(KERN_WARNING "Failure to add path record %s, %s, %s, %s\n", uid, s_path, t_path, binprm);
 		}
 
 		kfree(s_path);

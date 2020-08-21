@@ -98,10 +98,21 @@ hb_kmod_ll *search_kmod_record(unsigned int fid, uid_t uid, char *name)
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_kmod_list_head.list) {
+		bool do_compare_uid = false;
+		unsigned long list_uid = 0;
+
 		tmp = list_entry(pos, hb_kmod_ll, list);
+
+		if (tmp->uid[0] == '*')
+			do_compare_uid = true;
+		else {
+			if ((kstrtoul(tmp->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
+				do_compare_uid = (uid == list_uid) ;
+		}
+
 		switch (fid) {
 			case HB_KMOD_REQ:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->name, strlen(tmp->name), name, strlen(name))) {
+				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->name, strlen(tmp->name), name, strlen(name))) {
 					/* we find the record */
 					//printk(KERN_INFO "Found kernel module record !!!!\n");
 					return tmp;
@@ -115,7 +126,7 @@ hb_kmod_ll *search_kmod_record(unsigned int fid, uid_t uid, char *name)
 	return NULL;
 }
 
-int add_kmod_record(unsigned int fid, uid_t uid, char act_allow, char *name, int interact)
+int add_kmod_record(unsigned int fid, char *uid, char act_allow, char *name, int interact)
 {
 	int err = 0;
 	hb_kmod_ll *tmp = NULL;
@@ -124,7 +135,7 @@ int add_kmod_record(unsigned int fid, uid_t uid, char act_allow, char *name, int
 	if (tmp) {
 		memset(tmp, 0, sizeof(hb_kmod_ll));
 		tmp->fid = fid;
-		tmp->uid = uid;
+		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
 		tmp->act_allow = act_allow;
 
 		tmp->name = kmalloc(strlen(name)+1, GFP_KERNEL);
@@ -162,7 +173,7 @@ int read_kmod_record(struct seq_file *m, void *v)
 
 	list_for_each(pos, &hb_kmod_list_head.list) {
 		tmp = list_entry(pos, hb_kmod_ll, list);
-		seq_printf(m, "%lu\t%u\t%u\t%c\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->name);
+		seq_printf(m, "%lu\t%u\t%s\t%c\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->name);
 	}
 
 	return 0;
@@ -209,7 +220,7 @@ ssize_t write_kmod_record(struct file *file, const char __user *buffer, size_t c
        	cur = acts_buff;
 	/* add acts_buff */
 	while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
-		uid_t uid = 0;
+		char uid[UID_STR_SIZE];
 		unsigned int fid = 0;
 		char act_allow = 'R';
 		char *name = NULL;
@@ -219,7 +230,7 @@ ssize_t write_kmod_record(struct file *file, const char __user *buffer, size_t c
 			goto out;
 		}
 
-		sscanf(token, "%u %u %c %s", &fid, &uid, &act_allow, name);
+		sscanf(token, "%u %s %c %s", &fid, uid, &act_allow, name);
 		if (add_kmod_record(fid, uid, act_allow, name, 0) != 0) {
 			printk(KERN_WARNING "Failure to add kmod record %s\n", name);
 		}

@@ -143,27 +143,38 @@ hb_socket_ll *search_socket_record(unsigned int fid, uid_t uid, int family, int 
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_socket_list_head.list) {
+		bool do_compare_uid = false;
+		unsigned long list_uid = 0;
+
 		tmp = list_entry(pos, hb_socket_ll, list);
+
+		if (tmp->uid[0] == '*')
+			do_compare_uid = true;
+		else {
+			if ((kstrtoul(tmp->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
+				do_compare_uid = (uid == list_uid) ;
+		}
+
 		switch (fid) {
 			case HB_SOCKET_CONNECT:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->family == family) && (tmp->type == type) && (tmp->protocol == protocol) && (tmp->port == port) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
+				if ((tmp->fid == fid) && do_compare_uid && (tmp->family == family) && (tmp->type == type) && (tmp->protocol == protocol) && (tmp->port == port) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
 					return tmp;
 				}
 				break;
 			case HB_SOCKET_CREATE:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->family == family) && (tmp->type == type) && (tmp->protocol == protocol) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
+				if ((tmp->fid == fid) && do_compare_uid && (tmp->family == family) && (tmp->type == type) && (tmp->protocol == protocol) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
 					//printk(KERN_INFO "Found socket create record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_SOCKET_BIND:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->port == port) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
+				if ((tmp->fid == fid) && do_compare_uid && (tmp->port == port) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
 					//printk(KERN_INFO "Found socket bind record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_SOCKET_SETSOCKOPT:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && (tmp->level == level) && (tmp->optname == optname) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
+				if ((tmp->fid == fid) && do_compare_uid && (tmp->level == level) && (tmp->optname == optname) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
 					//printk(KERN_INFO "Found socket setsockopt record !!!!\n");
 					return tmp;
 				}
@@ -185,13 +196,13 @@ int read_socket_record(struct seq_file *m, void *v)
 	seq_printf(m, "NO\tFUNC\tUID\tACTION\tFAMILY\tTYPE\tPROTO\tPORT\tLEVEL\tOPTNAME\tBINPRM\n");
 	list_for_each(pos, &hb_socket_list_head.list) {
 		tmp = list_entry(pos, hb_socket_ll, list);
-		seq_printf(m, "%lu\t%u\t%d\t%c\t%d\t%d\t%d\t%d\t%d\t%d\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->family, tmp->type, tmp->protocol, tmp->port, tmp->level, tmp->optname, tmp->binprm);
+		seq_printf(m, "%lu\t%u\t%s\t%c\t%d\t%d\t%d\t%d\t%d\t%d\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->family, tmp->type, tmp->protocol, tmp->port, tmp->level, tmp->optname, tmp->binprm);
 	}
 
 	return 0;
 }
 
-int add_socket_record(unsigned int fid, uid_t uid, char act_allow, int family, int type, int protocol, 
+int add_socket_record(unsigned int fid, char *uid, char act_allow, int family, int type, int protocol, 
 		int port, int level, int optname, char *binprm, int interact)
 {
 	int err = 0;
@@ -201,7 +212,7 @@ int add_socket_record(unsigned int fid, uid_t uid, char act_allow, int family, i
 	if (tmp) {
 		memset(tmp, 0, sizeof(hb_socket_ll));
 		tmp->fid = fid;
-		tmp->uid = uid;
+		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
 		tmp->act_allow = act_allow;
 		tmp->binprm = kmalloc(strlen(binprm), GFP_KERNEL);
 		if (!tmp->binprm) {
@@ -281,7 +292,7 @@ ssize_t write_socket_record(struct file *file, const char __user *buffer, size_t
 	/* add acts_buff */
 	while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
 		unsigned int fid = 0;
-		uid_t uid = 0;
+		char uid[UID_STR_SIZE];
 		int family = 0;
 		int type = 0;
 		int protocol = 0;
@@ -295,11 +306,11 @@ ssize_t write_socket_record(struct file *file, const char __user *buffer, size_t
 		if (!binprm)
 			goto out1;
 
-		sscanf(token, "%u %u %c %d %d %d %d %d %d %s", &fid, &uid, &act_allow, &family, &type, &protocol,
+		sscanf(token, "%u %s %c %d %d %d %d %d %d %s", &fid, uid, &act_allow, &family, &type, &protocol,
 				&port, &level, &optname, binprm);
 		if (add_socket_record(fid, uid, act_allow, family, type, protocol,
 					port, level, optname, binprm, 0) != 0) {
-			printk(KERN_WARNING "Failure to add socket record %u, %d, %d, %d\n", uid, family, type, protocol);
+			printk(KERN_WARNING "Failure to add socket record %s, %d, %d, %d\n", uid, family, type, protocol);
 		}
 	} //while
 out1:

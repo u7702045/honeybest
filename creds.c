@@ -99,8 +99,19 @@ hb_binprm_ll *search_binprm_record(unsigned int fid, uid_t uid, char *pathname, 
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_binprm_list_head.list) {
+		bool do_compare_uid = false;
+		unsigned long list_uid = 0;
+
 		tmp = list_entry(pos, hb_binprm_ll, list);
-		if ((tmp->fid == HB_BPRM_SET_CREDS) && !memcmp(tmp->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE-1) && (uid == tmp->uid) && !compare_regex(tmp->pathname, strlen(tmp->pathname), pathname, strlen(pathname))) {
+
+		if (tmp->uid[0] == '*')
+			do_compare_uid = true;
+		else {
+			if ((kstrtoul(tmp->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
+				do_compare_uid = (uid == list_uid) ;
+		}
+
+		if ((tmp->fid == HB_BPRM_SET_CREDS) && !memcmp(tmp->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE-1) && do_compare_uid && !compare_regex(tmp->pathname, strlen(tmp->pathname), pathname, strlen(pathname))) {
 			/* we find the record */
 			//printk(KERN_INFO "Found binprm set record !!!!\n");
 			return tmp;
@@ -110,7 +121,7 @@ hb_binprm_ll *search_binprm_record(unsigned int fid, uid_t uid, char *pathname, 
 	return NULL;
 }
 
-int add_binprm_record(unsigned int fid, uid_t uid, char act_allow, char *pathname, char *digest, int interact)
+int add_binprm_record(unsigned int fid, char *uid, char act_allow, char *pathname, char *digest, int interact)
 {
 	int err = 0;
 	hb_binprm_ll *tmp = NULL;
@@ -120,7 +131,7 @@ int add_binprm_record(unsigned int fid, uid_t uid, char act_allow, char *pathnam
 	if (tmp) {
 		memset(tmp, 0, sizeof(hb_binprm_ll));
 		tmp->fid = fid;
-		tmp->uid = uid;
+		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
 		tmp->act_allow = act_allow;
 		switch (fid) {
 			case HB_BPRM_SET_CREDS:
@@ -246,7 +257,7 @@ int read_binprm_record(struct seq_file *m, void *v)
 	seq_printf(m, "NO\tFUNC\tUID\tACTION\tDIGEST\t\t\t\t\t\tPATH\n");
 	list_for_each(pos, &hb_binprm_list_head.list) {
 		tmp = list_entry(pos, hb_binprm_ll, list);
-		seq_printf(m, "%lu\t%u\t%d\t%c\t%s\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->digest, tmp->pathname);
+		seq_printf(m, "%lu\t%u\t%s\t%c\t%s\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->digest, tmp->pathname);
 	}
 
 	return 0;
@@ -293,7 +304,7 @@ ssize_t write_binprm_record(struct file *file, const char __user *buffer, size_t
        	cur = acts_buff;
 	/* add acts_buff */
 	while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
-		uid_t uid = 0;
+		char uid[UID_STR_SIZE];
 		unsigned int fid = 0;
 		char *digest = NULL;
 		char act_allow = 'R';
@@ -310,9 +321,9 @@ ssize_t write_binprm_record(struct file *file, const char __user *buffer, size_t
 			continue;
 		}
 
-		sscanf(token, "%u %u %c %s %s", &fid, &uid, &act_allow, digest, pathname);
+		sscanf(token, "%u %s %c %s %s", &fid, uid, &act_allow, digest, pathname);
 		if (add_binprm_record(HB_BPRM_SET_CREDS, uid, act_allow, pathname, digest, 0) != 0) {
-			printk(KERN_WARNING "Failure to add binprm record %u, %s, %s\n", uid, pathname, digest);
+			printk(KERN_WARNING "Failure to add binprm record %s, %s, %s\n", uid, pathname, digest);
 		}
 
 		kfree(pathname);

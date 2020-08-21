@@ -240,16 +240,16 @@ int read_notify_record(struct seq_file *m, void *v)
 		switch (tmp->fid) {
 			case HB_BPRM_SET_CREDS:
 				binprm = (hb_binprm_ll *)tmp->data;
-				seq_printf(m, "%lu\t%s\t%u\t%d\t%s\t%s\n", total++, tmp->proc, binprm->fid, binprm->uid, binprm->digest, binprm->pathname);
+				seq_printf(m, "%lu\t%s\t%u\t%s\t%c\t%s\t%s\n", total++, tmp->proc, binprm->fid, binprm->uid, binprm->act_allow, binprm->digest, binprm->pathname);
 				break;
 			case HB_FILE_OPEN:
 				files = (hb_file_ll *)tmp->data;
-				seq_printf(m, "%lu\t%s\t%u\t%d\t%s\t%s\n", total++, tmp->proc, files->fid, files->uid, files->filename, files->binprm);
+				seq_printf(m, "%lu\t%s\t%u\t%s\t%c\t%s\t%s\n", total++, tmp->proc, files->fid, files->uid, files->act_allow, files->filename, files->binprm);
 				break;
 			case HB_TASK_SIGNAL:
 				tasks = (hb_task_ll *)tmp->data;
-				seq_printf(m, "%lu\t%s\t%u\t%d\t%d\t%d\t%d\t%u\n", total++, tmp->proc, tasks->fid\
-						, tasks->uid, tasks->sig, tasks->si_signo, tasks->si_errno\
+				seq_printf(m, "%lu\t%s\t%u\t%s\t%c\t%d\t%d\t%d\t%u\n", total++, tmp->proc, tasks->fid\
+						, tasks->uid, tasks->act_allow, tasks->sig, tasks->si_signo, tasks->si_errno\
 						, tasks->secid);
 				break;
 			case HB_SOCKET_CREATE:
@@ -257,7 +257,7 @@ int read_notify_record(struct seq_file *m, void *v)
 			case HB_SOCKET_BIND:
 			case HB_SOCKET_SETSOCKOPT:
 				sockets = (hb_socket_ll *)tmp->data;
-				seq_printf(m, "%lu\t%s\t%u\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\n", total++, tmp->proc, sockets->fid, sockets->uid, sockets->family, sockets->type, sockets->protocol, sockets->port, sockets->level, sockets->optname, sockets->binprm);
+				seq_printf(m, "%lu\t%s\t%u\t%s\t%c\t%d\t%d\t%d\t%d\t%d\t%d\t%s\n", total++, tmp->proc, sockets->fid, sockets->uid, sockets->act_allow, sockets->family, sockets->type, sockets->protocol, sockets->port, sockets->level, sockets->optname, sockets->binprm);
 				break;
 			case HB_PATH_RENAME:
 			case HB_PATH_SYMLINK:
@@ -270,16 +270,16 @@ int read_notify_record(struct seq_file *m, void *v)
 			case HB_PATH_MKDIR:
 			case HB_PATH_CHMOD:
 				paths = (hb_path_ll *)tmp->data;
-				seq_printf(m, "%lu\t%s\t%u\t%d\t%u\t%u\t%u\t%u\t%s\t\t%s\t\t%s\n", total++, tmp->proc, paths->fid\
-						, paths->uid, paths->mode, paths->suid, paths->sgid \
+				seq_printf(m, "%lu\t%s\t%u\t%s\t%c\t%u\t%u\t%u\t%u\t%s\t\t%s\t\t%s\n", total++, tmp->proc, paths->fid\
+						, paths->uid, paths->act_allow, paths->mode, paths->suid, paths->sgid \
 						, paths->dev, paths->s_path, paths->t_path, paths->binprm);
 				break;
 			case HB_INODE_REMOVEXATTR:
 			case HB_INODE_GETXATTR:
 			case HB_INODE_SETXATTR:
 				inodes = (hb_inode_ll *)tmp->data;
-				seq_printf(m, "%lu\t%s\t%u\t%u\t%s\t%s\n", total++, tmp->proc, inodes->fid\
-						, inodes->uid, inodes->name, inodes->binprm);
+				seq_printf(m, "%lu\t%s\t%u\t%s\t%c\t%s\t%s\n", total++, tmp->proc, inodes->fid\
+						, inodes->uid, inodes->act_allow, inodes->name, inodes->binprm);
 				break;
 			case HB_SB_COPY_DATA:
 			case HB_SB_STATFS:
@@ -287,13 +287,13 @@ int read_notify_record(struct seq_file *m, void *v)
 			case HB_SB_UMOUNT:
 			case HB_SB_MOUNT:
 				sbs = (hb_sb_ll *)tmp->data;
-				seq_printf(m, "%lu\t%s\t%u\t%u\t%s\t%s\t%s\t%s\t%d\n", total++, tmp->proc, sbs->fid\
-						, sbs->uid, sbs->s_id, sbs->name, sbs->dev_name, sbs->type, sbs->flags);
+				seq_printf(m, "%lu\t%s\t%u\t%s\t%c\t%s\t%s\t%s\t%s\t%d\n", total++, tmp->proc, sbs->fid\
+						, sbs->uid, sbs->act_allow, sbs->s_id, sbs->name, sbs->dev_name, sbs->type, sbs->flags);
 				break;
 			case HB_KMOD_REQ:
 				kmods = (hb_kmod_ll *)tmp->data;
-				seq_printf(m, "%lu\t%s\t%u\t%u\t%s\n", total++, tmp->proc, sbs->fid\
-						, sbs->uid, sbs->name);
+				seq_printf(m, "%lu\t%s\t%u\t%s\t%c\t%s\n", total++, tmp->proc, sbs->fid\
+						, sbs->uid, sbs->act_allow, sbs->name);
 				break;
 			default:
 				break;

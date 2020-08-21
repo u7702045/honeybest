@@ -722,6 +722,7 @@ static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 	char digest[SHA1_HONEYBEST_DIGEST_SIZE];
 	hb_binprm_ll *record = NULL;
 	char *pathname;
+	char uid[UID_STR_SIZE];
 
 	if (!enabled)
 		return err;
@@ -752,12 +753,13 @@ static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(uid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
-			err = add_binprm_record(HB_BPRM_SET_CREDS, current->cred->uid.val, 'A', pathname, digest, interact);
+			err = add_binprm_record(HB_BPRM_SET_CREDS, uid, 'A', pathname, digest, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_binprm_record(HB_BPRM_SET_CREDS, current->cred->uid.val, 'R', pathname, digest, interact);
+			err = add_binprm_record(HB_BPRM_SET_CREDS, uid, 'R', pathname, digest, interact);
 
 		if ((locking == 1) && (bl == 0)) {
 			/* detect mode */
@@ -837,6 +839,7 @@ static int honeybest_sb_remount(struct super_block *sb, void *data)
 	int *flags;
 	int i = 0;
 	char *na = "N/A";
+	char uid[UID_STR_SIZE];
 	hb_sb_ll *record = NULL;
 	struct cred *cred = (struct cred *) current->real_cred;
 
@@ -861,11 +864,13 @@ static int honeybest_sb_remount(struct super_block *sb, void *data)
 				err = -EOPNOTSUPP;
 		}
 		else {
+			sprintf(uid, "%u", current->cred->uid.val);
+
 			if ((locking == 0) && (bl == 0)) 
-				err = add_sb_record(HB_SB_REMOUNT, current->cred->uid.val, 'A', sb->s_id, (char *)sb->s_type->name, na, na, 0, interact);
+				err = add_sb_record(HB_SB_REMOUNT, uid, 'A', sb->s_id, (char *)sb->s_type->name, na, na, 0, interact);
 
 			if ((locking == 0) && (bl == 1)) 
-				err = add_sb_record(HB_SB_REMOUNT, current->cred->uid.val, 'R', sb->s_id, (char *)sb->s_type->name, na, na, 0, interact);
+				err = add_sb_record(HB_SB_REMOUNT, uid, 'R', sb->s_id, (char *)sb->s_type->name, na, na, 0, interact);
 
 			if ((locking == 1) && (bl == 0))
 				err = -EOPNOTSUPP;
@@ -897,6 +902,7 @@ static int honeybest_sb_statfs(struct dentry *dentry)
 	struct cred *cred = (struct cred *) current->real_cred;
        	struct super_block *sb = dentry->d_sb;
 	char *na = "N/A";
+	char uid[UID_STR_SIZE];
 	hb_sb_ll *record = NULL;
 
 	if (!enabled)
@@ -916,11 +922,13 @@ static int honeybest_sb_statfs(struct dentry *dentry)
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(uid, "%u", current->cred->uid.val);
+
 		if ((locking == 0) && (bl == 0)) 
-			err = add_sb_record(HB_SB_STATFS, current->cred->uid.val, 'A', sb->s_id, (char *)sb->s_type->name, na, na, 0, interact);
+			err = add_sb_record(HB_SB_STATFS, uid, 'A', sb->s_id, (char *)sb->s_type->name, na, na, 0, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_sb_record(HB_SB_STATFS, current->cred->uid.val, 'R', sb->s_id, (char *)sb->s_type->name, na, na, 0, interact);
+			err = add_sb_record(HB_SB_STATFS, uid, 'R', sb->s_id, (char *)sb->s_type->name, na, na, 0, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -977,6 +985,7 @@ static int honeybest_mount(const char *dev_name, struct path *path,
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
 	char *na = "N/A";
+	char uid[UID_STR_SIZE];
 	hb_sb_ll *record = NULL;
 
 	if (!enabled)
@@ -993,11 +1002,13 @@ static int honeybest_mount(const char *dev_name, struct path *path,
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(uid, "%u", current->cred->uid.val);
+
 		if ((locking == 0) && (bl == 0)) 
-			err = add_sb_record(HB_SB_MOUNT, current->cred->uid.val, 'A', na, na, (char *)dev_name, (char *)type, flags, interact);
+			err = add_sb_record(HB_SB_MOUNT, uid, 'A', na, na, (char *)dev_name, (char *)type, flags, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_sb_record(HB_SB_MOUNT, current->cred->uid.val, 'R', na, na, (char *)dev_name, (char *)type, flags, interact);
+			err = add_sb_record(HB_SB_MOUNT, uid, 'R', na, na, (char *)dev_name, (char *)type, flags, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -1017,6 +1028,7 @@ static int honeybest_umount(struct vfsmount *mnt, int flags)
 	struct cred *cred = (struct cred *) current->real_cred;
        	struct super_block *sb = mnt->mnt_sb;
 	char *na = "N/A";
+	char uid[UID_STR_SIZE];
 	hb_sb_ll *record = NULL;
 
 	if (!enabled)
@@ -1036,11 +1048,13 @@ static int honeybest_umount(struct vfsmount *mnt, int flags)
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(uid, "%u", current->cred->uid.val);
+
 		if ((locking == 0) && (bl == 0)) 
-			err = add_sb_record(HB_SB_UMOUNT, current->cred->uid.val, 'A', sb->s_id, (char *)sb->s_type->name, na, na, flags, interact);
+			err = add_sb_record(HB_SB_UMOUNT, uid, 'A', sb->s_id, (char *)sb->s_type->name, na, na, flags, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_sb_record(HB_SB_UMOUNT, current->cred->uid.val, 'R', sb->s_id, (char *)sb->s_type->name, na, na, flags, interact);
+			err = add_sb_record(HB_SB_UMOUNT, uid, 'R', sb->s_id, (char *)sb->s_type->name, na, na, flags, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -1101,6 +1115,7 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 	char *s_path = NULL;
        	char *t_path = "N/A";
 	char *s_buff = NULL;
+	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1155,11 +1170,13 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(tuid, "%u", current->cred->uid.val);
+
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_UNLINK, current->cred->uid.val, 'A', 0, s_path, t_path, 0, 0, 0, binprm, interact);
+			err = add_path_record(HB_PATH_UNLINK, tuid, 'A', 0, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_path_record(HB_PATH_UNLINK, current->cred->uid.val, 'R', 0, s_path, t_path, 0, 0, 0, binprm, interact);
+			err = add_path_record(HB_PATH_UNLINK, tuid, 'R', 0, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -1196,6 +1213,7 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 	char *s_path = NULL;
        	char *t_path = "N/A";
 	char *s_buff = NULL;
+	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1250,11 +1268,13 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(tuid, "%u", current->cred->uid.val);
+
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_MKDIR, current->cred->uid.val, 'A', mode, s_path, t_path, 0, 0, 0, binprm, interact);
+			err = add_path_record(HB_PATH_MKDIR, tuid, 'A', mode, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_path_record(HB_PATH_MKDIR, current->cred->uid.val, 'R', mode, s_path, t_path, 0, 0, 0, binprm, interact);
+			err = add_path_record(HB_PATH_MKDIR, tuid, 'R', mode, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -1289,6 +1309,7 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 	char *s_path = NULL;
        	char *t_path = "N/A";
 	char *s_buff = NULL;
+	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1339,11 +1360,13 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(tuid, "%u", current->cred->uid.val);
+
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_RMDIR, current->cred->uid.val, 'A', 0, s_path, t_path, 0, 0, 0, binprm, interact);
+			err = add_path_record(HB_PATH_RMDIR, tuid, 'A', 0, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_path_record(HB_PATH_RMDIR, current->cred->uid.val, 'R', 0, s_path, t_path, 0, 0, 0, binprm, interact);
+			err = add_path_record(HB_PATH_RMDIR, tuid, 'R', 0, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -1380,6 +1403,7 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 	char *s_path = NULL;
        	char *t_path = "N/A";
 	char *s_buff = NULL;
+	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1434,11 +1458,13 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(tuid, "%u", current->cred->uid.val);
+
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_MKNOD, current->cred->uid.val, 'A', mode, s_path, t_path, 0, 0, dev, binprm, interact);
+			err = add_path_record(HB_PATH_MKNOD, tuid, 'A', mode, s_path, t_path, 0, 0, dev, binprm, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_path_record(HB_PATH_MKNOD, current->cred->uid.val, 'R', mode, s_path, t_path, 0, 0, dev, binprm, interact);
+			err = add_path_record(HB_PATH_MKNOD, tuid, 'R', mode, s_path, t_path, 0, 0, dev, binprm, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -1471,6 +1497,7 @@ static int honeybest_path_truncate(struct path *path)
 	char *s_path = NULL;
        	char *t_path = "N/A";
 	char *s_buff = NULL;
+	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1525,11 +1552,13 @@ static int honeybest_path_truncate(struct path *path)
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(tuid, "%u", current->cred->uid.val);
+
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_TRUNCATE, current->cred->uid.val, 'A', 0, s_path, t_path, 0, 0, 0, binprm, interact);
+			err = add_path_record(HB_PATH_TRUNCATE, tuid, 'A', 0, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_path_record(HB_PATH_TRUNCATE, current->cred->uid.val, 'R', 0, s_path, t_path, 0, 0, 0, binprm, interact);
+			err = add_path_record(HB_PATH_TRUNCATE, tuid, 'R', 0, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -1566,6 +1595,7 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 	char *s_path = (char *)old_name;
        	char *t_path = NULL;
 	char *t_buff = NULL;
+	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1616,11 +1646,13 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(tuid, "%u", current->cred->uid.val);
+
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_SYMLINK, current->cred->uid.val, 'A', 0, s_path, t_path, 0, 0, 0, binprm, interact);
+			err = add_path_record(HB_PATH_SYMLINK, tuid, 'A', 0, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_path_record(HB_PATH_SYMLINK, current->cred->uid.val, 'R', 0, s_path, t_path, 0, 0, 0, binprm, interact);
+			err = add_path_record(HB_PATH_SYMLINK, tuid, 'R', 0, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -1659,6 +1691,7 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
        	char *t_path = NULL;
 	char *s_buff = NULL;
 	char *t_buff = NULL;
+	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1726,11 +1759,13 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(tuid, "%u", current->cred->uid.val);
+
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_LINK, current->cred->uid.val, 'A', 0, s_path, t_path, 0, 0, 0, binprm, interact);
+			err = add_path_record(HB_PATH_LINK, tuid, 'A', 0, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_path_record(HB_PATH_LINK, current->cred->uid.val, 'R', 0, s_path, t_path, 0, 0, 0, binprm, interact);
+			err = add_path_record(HB_PATH_LINK, tuid, 'R', 0, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -1770,6 +1805,7 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
        	char *t_path = NULL;
 	char *s_buff = NULL;
 	char *t_buff = NULL;
+	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1833,11 +1869,13 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(tuid, "%u", current->cred->uid.val);
+
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_RENAME, current->cred->uid.val, 'A', 0, s_path, t_path, 0, 0, 0, binprm, interact);
+			err = add_path_record(HB_PATH_RENAME, tuid, 'A', 0, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_path_record(HB_PATH_RENAME, current->cred->uid.val, 'R', 0, s_path, t_path, 0, 0, 0, binprm, interact);
+			err = add_path_record(HB_PATH_RENAME, tuid, 'R', 0, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -1872,6 +1910,7 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 	char *s_path = NULL;
        	char *t_path = "N/A";
 	char *s_buff = NULL;
+	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -1922,11 +1961,13 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(tuid, "%u", current->cred->uid.val);
+
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_CHMOD, current->cred->uid.val, 'A', mode, s_path, t_path, 0, 0, 0, binprm, interact);
+			err = add_path_record(HB_PATH_CHMOD, tuid, 'A', mode, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_path_record(HB_PATH_CHMOD, current->cred->uid.val, 'R', mode, s_path, t_path, 0, 0, 0, binprm, interact);
+			err = add_path_record(HB_PATH_CHMOD, tuid, 'R', mode, s_path, t_path, 0, 0, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -1959,6 +2000,7 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 	char *s_path = NULL;
        	char *t_path = "N/A";
 	char *s_buff = NULL;
+	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
@@ -2009,11 +2051,13 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(tuid, "%u", current->cred->uid.val);
+
 		if ((locking == 0) && (bl == 0)) 
-			err = add_path_record(HB_PATH_CHOWN, current->cred->uid.val, 'A', 0, s_path, t_path, uid.val, gid.val, 0, binprm, interact);
+			err = add_path_record(HB_PATH_CHOWN, tuid, 'A', 0, s_path, t_path, uid.val, gid.val, 0, binprm, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_path_record(HB_PATH_CHOWN, current->cred->uid.val, 'R', 0, s_path, t_path, uid.val, gid.val, 0, binprm, interact);
+			err = add_path_record(HB_PATH_CHOWN, tuid, 'R', 0, s_path, t_path, uid.val, gid.val, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -2183,6 +2227,7 @@ static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
 	struct cred *cred = (struct cred *) current->real_cred;
 	char *pathname = NULL;
        	char *binprm = NULL;
+	char uid[UID_STR_SIZE];
 	hb_inode_ll *record;
 
 	if (!enabled)
@@ -2208,12 +2253,13 @@ static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(uid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
-			err = add_inode_record(HB_INODE_SETXATTR, current->cred->uid.val, 'A', (char *)name, binprm, interact);
+			err = add_inode_record(HB_INODE_SETXATTR, uid, 'A', (char *)name, binprm, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_inode_record(HB_INODE_SETXATTR, current->cred->uid.val, 'R', (char *)name, binprm, interact);
+			err = add_inode_record(HB_INODE_SETXATTR, uid, 'R', (char *)name, binprm, interact);
 
 		if ((locking == 1) && (bl == 0)) {
 			/* detect mode */
@@ -2245,6 +2291,7 @@ static int honeybest_inode_getxattr(struct dentry *dentry, const char *name)
 	struct cred *cred = (struct cred *) current->real_cred;
 	char *pathname = NULL;
        	char *binprm = NULL;
+	char uid[UID_STR_SIZE];
 	hb_inode_ll *record;
 
 	if (!enabled)
@@ -2270,12 +2317,13 @@ static int honeybest_inode_getxattr(struct dentry *dentry, const char *name)
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(uid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0))
-			err = add_inode_record(HB_INODE_GETXATTR, current->cred->uid.val, 'A', (char *)name, binprm, interact);
+			err = add_inode_record(HB_INODE_GETXATTR, uid, 'A', (char *)name, binprm, interact);
 
 		if ((locking == 0) && (bl == 1))
-			err = add_inode_record(HB_INODE_GETXATTR, current->cred->uid.val, 'R', (char *)name, binprm, interact);
+			err = add_inode_record(HB_INODE_GETXATTR, uid, 'R', (char *)name, binprm, interact);
 
 		if ((locking == 1) && (bl == 0)) {
 			/* detect mode */
@@ -2297,6 +2345,7 @@ static int honeybest_inode_listxattr(struct dentry *dentry)
 	char *pathname = NULL;
        	char *binprm = NULL;
 	hb_inode_ll *record;
+	char uid[UID_STR_SIZE];
 
 	if (!enabled)
 		return err;
@@ -2321,12 +2370,13 @@ static int honeybest_inode_listxattr(struct dentry *dentry)
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(uid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
-			err = add_inode_record(HB_INODE_LISTXATTR, current->cred->uid.val, 'A', (char *)name, binprm, interact);
+			err = add_inode_record(HB_INODE_LISTXATTR, uid, 'A', (char *)name, binprm, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_inode_record(HB_INODE_LISTXATTR, current->cred->uid.val, 'R', (char *)name, binprm, interact);
+			err = add_inode_record(HB_INODE_LISTXATTR, uid, 'R', (char *)name, binprm, interact);
 
 		if ((locking == 1) && (bl == 0)) {
 			/* detect mode */
@@ -2352,6 +2402,7 @@ static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
 	char *pathname = NULL;
        	char *binprm = NULL;
 	hb_inode_ll *record;
+	char uid[UID_STR_SIZE];
 
 	if (!enabled)
 		return err;
@@ -2376,12 +2427,13 @@ static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(uid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
-			err = add_inode_record(HB_INODE_REMOVEXATTR, current->cred->uid.val, 'A', (char *)name, binprm, interact);
+			err = add_inode_record(HB_INODE_REMOVEXATTR, uid, 'A', (char *)name, binprm, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_inode_record(HB_INODE_REMOVEXATTR, current->cred->uid.val, 'R', (char *)name, binprm, interact);
+			err = add_inode_record(HB_INODE_REMOVEXATTR, uid, 'R', (char *)name, binprm, interact);
 
 		if ((locking == 1) && (bl == 0)) {
 			/* detect mode */
@@ -2507,6 +2559,7 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 	struct mm_struct *mm = current->mm;
 	char *filename = NULL;
        	char *binprm = NULL;
+	char uid[UID_STR_SIZE];
        	char *taskname = NULL;
 
 	if (!enabled) {
@@ -2553,12 +2606,13 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(uid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0))
-			err = add_file_record(HB_FILE_OPEN, current->cred->uid.val, 'A', filename, binprm, interact);
+			err = add_file_record(HB_FILE_OPEN, uid, 'A', filename, binprm, interact);
 
 		if ((locking == 0) && (bl == 1))
-			err = add_file_record(HB_FILE_OPEN, current->cred->uid.val, 'R', filename, binprm, interact);
+			err = add_file_record(HB_FILE_OPEN, uid, 'R', filename, binprm, interact);
 
 		if ((locking == 1) && (bl == 0)) {
 			/* detect mode */
@@ -2674,6 +2728,7 @@ static int honeybest_kernel_module_request(char *kmod_name)
 {
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
+	char uid[UID_STR_SIZE];
 	hb_kmod_ll *record = NULL;
 
 	if (!enabled) {
@@ -2691,11 +2746,13 @@ static int honeybest_kernel_module_request(char *kmod_name)
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(uid, "%u", current->cred->uid.val);
+
 		if ((locking == 0) && (bl == 0)) 
-			err = add_kmod_record(HB_KMOD_REQ, current->cred->uid.val, 'A', kmod_name, interact);
+			err = add_kmod_record(HB_KMOD_REQ, uid, 'A', kmod_name, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_kmod_record(HB_KMOD_REQ, current->cred->uid.val, 'R', kmod_name, interact);
+			err = add_kmod_record(HB_KMOD_REQ, uid, 'R', kmod_name, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -2781,6 +2838,7 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
        	char *taskname = NULL;
+	char uid[UID_STR_SIZE];
 	hb_task_ll *record;
 
 	if (!enabled) {
@@ -2818,20 +2876,21 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(uid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) {
 			if (info == NULL)
-				err = add_task_record(HB_TASK_SIGNAL, current->cred->uid.val, 'A', 0, 0, sig, secid, binprm, interact);
+				err = add_task_record(HB_TASK_SIGNAL, uid, 'A', 0, 0, sig, secid, binprm, interact);
 			else
-				err = add_task_record(HB_TASK_SIGNAL, current->cred->uid.val, 'R', info->si_signo\
+				err = add_task_record(HB_TASK_SIGNAL, uid, 'R', info->si_signo\
 						, info->si_errno, sig, secid, binprm, interact);
 		}
 
 		if ((locking == 0) && (bl == 1)) {
 			if (info == NULL)
-				err = add_task_record(HB_TASK_SIGNAL, current->cred->uid.val, 'A', 0, 0, sig, secid, binprm, interact);
+				err = add_task_record(HB_TASK_SIGNAL, uid, 'A', 0, 0, sig, secid, binprm, interact);
 			else
-				err = add_task_record(HB_TASK_SIGNAL, current->cred->uid.val, 'R', info->si_signo\
+				err = add_task_record(HB_TASK_SIGNAL, uid, 'R', info->si_signo\
 						, info->si_errno, sig, secid, binprm, interact);
 		}
 
@@ -2915,6 +2974,7 @@ static int honeybest_socket_create(int family, int type,
 	struct mm_struct *mm = current->mm;
 	char *taskname = NULL;
 	char *binprm = NULL;
+	char uid[UID_STR_SIZE];
 	hb_socket_ll *record;
 
 	if (!enabled)
@@ -2950,12 +3010,13 @@ static int honeybest_socket_create(int family, int type,
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(uid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
-			err = add_socket_record(HB_SOCKET_CREATE, current->cred->uid.val, 'A', family, type, protocol, 0, 0, 0, binprm, interact);
+			err = add_socket_record(HB_SOCKET_CREATE, uid, 'A', family, type, protocol, 0, 0, 0, binprm, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_socket_record(HB_SOCKET_CREATE, current->cred->uid.val, 'R', family, type, protocol, 0, 0, 0, binprm, interact);
+			err = add_socket_record(HB_SOCKET_CREATE, uid, 'R', family, type, protocol, 0, 0, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0)) 
 			err = -EOPNOTSUPP;
@@ -2985,6 +3046,7 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 	struct mm_struct *mm = current->mm;
 	char *taskname = NULL;
 	char *binprm = NULL;
+	char uid[UID_STR_SIZE];
 	hb_socket_ll *record;
 	int port = 0;
 	int err = 0;
@@ -3024,13 +3086,14 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(uid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
-			err = add_socket_record(HB_SOCKET_BIND, current->cred->uid.val, 'A', 0, 0, 0, \
+			err = add_socket_record(HB_SOCKET_BIND, uid, 'A', 0, 0, 0, \
 					port, 0, 0, binprm, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_socket_record(HB_SOCKET_BIND, current->cred->uid.val, 'R', 0, 0, 0, \
+			err = add_socket_record(HB_SOCKET_BIND, uid, 'R', 0, 0, 0, \
 					port, 0, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0)) {
@@ -3056,6 +3119,7 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 	struct mm_struct *mm = current->mm;
 	char *taskname = NULL;
 	char *binprm = NULL;
+	char uid[UID_STR_SIZE];
 	hb_socket_ll *record;
 	int port = 0;
 	int err = 0;
@@ -3095,12 +3159,13 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(uid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
-			err = add_socket_record(HB_SOCKET_CONNECT, current->cred->uid.val, 'A', 0, 0, 0, port, 0, 0, binprm, interact);
+			err = add_socket_record(HB_SOCKET_CONNECT, uid, 'A', 0, 0, 0, port, 0, 0, binprm, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_socket_record(HB_SOCKET_CONNECT, current->cred->uid.val, 'R', 0, 0, 0, port, 0, 0, binprm, interact);
+			err = add_socket_record(HB_SOCKET_CONNECT, uid, 'R', 0, 0, 0, port, 0, 0, binprm, interact);
 
 		if ((locking == 1) && (bl == 0)) {
 			/* detect mode */
@@ -3167,6 +3232,7 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 	struct mm_struct *mm = current->mm;
 	char *taskname = NULL;
 	char *binprm = NULL;
+	char uid[UID_STR_SIZE];
 	hb_socket_ll *record;
 	int err = 0;
 
@@ -3203,12 +3269,13 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 			err = -EOPNOTSUPP;
 	}
 	else {
+		sprintf(uid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
-			err = add_socket_record(HB_SOCKET_SETSOCKOPT, current->cred->uid.val, 'A', 0, 0, 0, 0, level, optname, binprm, interact);
+			err = add_socket_record(HB_SOCKET_SETSOCKOPT, uid, 'A', 0, 0, 0, 0, level, optname, binprm, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_socket_record(HB_SOCKET_SETSOCKOPT, current->cred->uid.val, 'R', 0, 0, 0, 0, level, optname, binprm, interact);
+			err = add_socket_record(HB_SOCKET_SETSOCKOPT, uid, 'R', 0, 0, 0, 0, level, optname, binprm, interact);
 
 		if ((locking == 1) && (bl == 0)) 
 			err = -EOPNOTSUPP;

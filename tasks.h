@@ -14,10 +14,11 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+#include "honeybest.h"
 
 typedef struct hb_task_ll_t {
 	unsigned int fid;	/**< security hook function run task by program */
-	uid_t uid;
+	char uid[UID_STR_SIZE];
 	char act_allow;		/**< 'A'llow / 'R'eject action */
 	int sig;
 	int si_signo;
@@ -28,7 +29,7 @@ typedef struct hb_task_ll_t {
 } hb_task_ll;
 
 hb_task_ll *search_task_record(unsigned int fid, uid_t uid, struct siginfo *info, int sig, u32 secid, char *binprm);
-int add_task_record(unsigned int fid, uid_t uid, char act_allow, int sig, int si_signo, \
+int add_task_record(unsigned int fid, char *uid, char act_allow, int sig, int si_signo, \
 		int si_errno, u32 secid, char *binprm, int interact);
 
 int read_task_record(struct seq_file *m, void *v);

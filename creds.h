@@ -14,20 +14,21 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+#include "honeybest.h"
 
 #define SHA1_HONEYBEST_DIGEST_SIZE (SHA1_DIGEST_SIZE * 2)+1	// leave '\0' at the end
 #define HB_BINPRM_DATA 
 typedef struct hb_binprm_ll_t {
-	uid_t uid;
-	unsigned int fid;	/**< security hook function binprm by program */
-	char act_allow;		/**< 'A'llow / 'R'eject action */
+	unsigned int fid;				/**< security hook function binprm by program */
+	char uid[UID_STR_SIZE];
+	char act_allow;					/**< 'A'llow / 'R'eject action */
 	char digest[SHA1_HONEYBEST_DIGEST_SIZE];	/**< exec program xattr hash */
-	char *pathname;		/**< open file path */
+	char *pathname;					/**< open file path */
 	struct list_head list;
 } hb_binprm_ll;
 
 hb_binprm_ll *search_binprm_record(unsigned int fid, uid_t uid, char *pathname, char *digest);
-int add_binprm_record(unsigned int fid, uid_t uid, char act_allow, char *pathname, char *digest, int interact);
+int add_binprm_record(unsigned int fid, char *uid, char act_allow, char *pathname, char *digest, int interact);
 int lookup_binprm_digest(struct file *file, char *digest);
 
 int read_binprm_record(struct seq_file *m, void *v);

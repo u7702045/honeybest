@@ -101,13 +101,24 @@ hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *name, char *
 		return NULL;
 
 	list_for_each(pos, &hb_inode_list_head.list) {
+		bool do_compare_uid = false;
+		unsigned long list_uid = 0;
+
 		tmp = list_entry(pos, hb_inode_ll, list);
+
+		if (tmp->uid[0] == '*')
+			do_compare_uid = true;
+		else {
+			if ((kstrtoul(tmp->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
+				do_compare_uid = (uid == list_uid) ;
+		}
+
 		switch (fid) {
 			case HB_INODE_GETXATTR:
 			case HB_INODE_LISTXATTR:
 			case HB_INODE_REMOVEXATTR:
 			case HB_INODE_SETXATTR:
-				if ((fid == tmp->fid) && (uid == tmp->uid) && !compare_regex(tmp->name, strlen(tmp->name), name, strlen(name)) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
+				if ((fid == tmp->fid) && do_compare_uid && !compare_regex(tmp->name, strlen(tmp->name), name, strlen(name)) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
 					/* we find the record */
 					//printk(KERN_INFO "Found inode open record !!!!\n");
 					return tmp;
@@ -120,7 +131,7 @@ hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *name, char *
 	return NULL;
 }
 
-int add_inode_record(unsigned int fid, uid_t uid, char act_allow, char *name, char *binprm, int interact)
+int add_inode_record(unsigned int fid, char *uid, char act_allow, char *name, char *binprm, int interact)
 {
 	int err = 0;
 	hb_inode_ll *tmp = NULL;
@@ -131,7 +142,7 @@ int add_inode_record(unsigned int fid, uid_t uid, char act_allow, char *name, ch
 	tmp = (hb_inode_ll *)kmalloc(sizeof(hb_inode_ll), GFP_KERNEL);
 	if (tmp) {
 		tmp->fid = fid;
-		tmp->uid = uid;
+		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
 		tmp->act_allow = act_allow;
 		tmp->name = kmalloc(strlen(name)+1, GFP_KERNEL);
 		if (tmp->name == NULL) {
@@ -187,7 +198,7 @@ int read_inode_record(struct seq_file *m, void *v)
 
 	list_for_each(pos, &hb_inode_list_head.list) {
 		tmp = list_entry(pos, hb_inode_ll, list);
-		seq_printf(m, "%lu\t%u\t%u\t%c\t%s\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->name, tmp->binprm);
+		seq_printf(m, "%lu\t%u\t%s\t%c\t%s\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->name, tmp->binprm);
 	}
 
 	return 0;
@@ -235,7 +246,7 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
        	cur = acts_buff;
 	/* add acts_buff */
 	while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
-		uid_t uid = 0;
+		char uid[UID_STR_SIZE];
 		unsigned int fid = 0;
 		char *name = NULL;
 		char act_allow = 'R';
@@ -252,9 +263,9 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 			continue;
 		}
 
-		sscanf(token, "%u %u %c %s %s", &fid, &uid, &act_allow, name, binprm);
+		sscanf(token, "%u %s %c %s %s", &fid, uid, &act_allow, name, binprm);
 		if (add_inode_record(fid, uid, act_allow, name, binprm, 0) != 0) {
-			//printk(KERN_WARNING "Failure to add inode record %u, %s, %s\n", uid, name, binprm);
+			//printk(KERN_WARNING "Failure to add inode record %s, %s, %s\n", uid, name, binprm);
 		}
 		kfree(name);
 		kfree(binprm);

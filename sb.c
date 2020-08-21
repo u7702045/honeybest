@@ -99,10 +99,21 @@ hb_sb_ll *search_sb_record(unsigned int fid, uid_t uid, char *s_id, char *name, 
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_sb_list_head.list) {
+		bool do_compare_uid = false;
+		unsigned long list_uid = 0;
+
 		tmp = list_entry(pos, hb_sb_ll, list);
+
+		if (tmp->uid[0] == '*')
+			do_compare_uid = true;
+		else {
+			if ((kstrtoul(tmp->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
+				do_compare_uid = (uid == list_uid) ;
+		}
+
 		switch (fid) {
 			case HB_SB_COPY_DATA:
-				if ((tmp->fid == fid) && (uid == tmp->uid)) {
+				if ((tmp->fid == fid) && do_compare_uid) {
 					/* we find the record */
 					//printk(KERN_INFO "Found sb copy data record !!!!\n");
 					return tmp;
@@ -110,21 +121,21 @@ hb_sb_ll *search_sb_record(unsigned int fid, uid_t uid, char *s_id, char *name, 
 				break;
 			case HB_SB_STATFS:
 			case HB_SB_REMOUNT:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_id, strlen(tmp->s_id), s_id, strlen(s_id)) && !compare_regex(tmp->name, strlen(tmp->name), name, strlen(name))) {
+				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->s_id, strlen(tmp->s_id), s_id, strlen(s_id)) && !compare_regex(tmp->name, strlen(tmp->name), name, strlen(name))) {
 					/* we find the record */
 					//printk(KERN_INFO "Found sb remount/statfs data record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_SB_UMOUNT:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->s_id, strlen(tmp->s_id), s_id, strlen(s_id)) && !compare_regex(tmp->name, strlen(tmp->name), name, strlen(name)) && (tmp->flags == flags)) {
+				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->s_id, strlen(tmp->s_id), s_id, strlen(s_id)) && !compare_regex(tmp->name, strlen(tmp->name), name, strlen(name)) && (tmp->flags == flags)) {
 					/* we find the record */
 					//printk(KERN_INFO "Found sb umount data record !!!!\n");
 					return tmp;
 				}
 				break;
 			case HB_SB_MOUNT:
-				if ((tmp->fid == fid) && (uid == tmp->uid) && !compare_regex(tmp->dev_name, strlen(tmp->dev_name), dev_name, strlen(dev_name)) && !strncmp(tmp->type, type, strlen(tmp->type)) && (tmp->flags == flags)) {
+				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->dev_name, strlen(tmp->dev_name), dev_name, strlen(dev_name)) && !strncmp(tmp->type, type, strlen(tmp->type)) && (tmp->flags == flags)) {
 					/* we find the record */
 					//printk(KERN_INFO "Found sb mount data record !!!!\n");
 					return tmp;
@@ -138,7 +149,7 @@ hb_sb_ll *search_sb_record(unsigned int fid, uid_t uid, char *s_id, char *name, 
 	return NULL;
 }
 
-int add_sb_record(unsigned int fid, uid_t uid, char act_allow, char *s_id, char *name, \
+int add_sb_record(unsigned int fid, char *uid, char act_allow, char *s_id, char *name, \
 		char *dev_name, char *type, int flags, int interact)
 {
 	int err = 0;
@@ -151,7 +162,7 @@ int add_sb_record(unsigned int fid, uid_t uid, char act_allow, char *s_id, char 
 	if (tmp) {
 		memset(tmp, 0, sizeof(hb_sb_ll));
 		tmp->fid = fid;
-		tmp->uid = uid;
+		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
 		tmp->act_allow = act_allow;
 
 		tmp->s_id = kmalloc(strlen(s_id)+1, GFP_KERNEL);
@@ -230,7 +241,7 @@ int read_sb_record(struct seq_file *m, void *v)
 
 	list_for_each(pos, &hb_sb_list_head.list) {
 		tmp = list_entry(pos, hb_sb_ll, list);
-		seq_printf(m, "%lu\t%u\t%u\t%c\t%s\t%s\t%s\t\t%s\t%d\n", total++, tmp->fid, tmp->uid, tmp->act_allow,
+		seq_printf(m, "%lu\t%u\t%s\t%c\t%s\t%s\t%s\t\t%s\t%d\n", total++, tmp->fid, tmp->uid, tmp->act_allow,
 				tmp->s_id, tmp->name, tmp->dev_name, tmp->type, tmp->flags);
 	}
 
@@ -281,7 +292,7 @@ ssize_t write_sb_record(struct file *file, const char __user *buffer, size_t cou
        	cur = acts_buff;
 	/* add acts_buff */
 	while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
-		uid_t uid = 0;
+		char uid[UID_STR_SIZE];
 		unsigned int fid = 0;
 		char *s_id = NULL;
 		char *name = NULL;
@@ -311,7 +322,7 @@ ssize_t write_sb_record(struct file *file, const char __user *buffer, size_t cou
 			goto out4;
 		}
 
-		sscanf(token, "%u %u %c %s %s %s %s %d", &fid, &uid, &act_allow, s_id, name, dev_name, type, &flags);
+		sscanf(token, "%u %s %c %s %s %s %s %d", &fid, uid, &act_allow, s_id, name, dev_name, type, &flags);
 		if (add_sb_record(fid, uid, act_allow, s_id, name, dev_name, type, flags, 0) != 0) {
 			printk(KERN_WARNING "Failure to add sb record %s, %s %s %s\n", s_id, name, dev_name, type);
 		}
