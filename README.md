@@ -52,7 +52,7 @@ Locking option only take effective once enablement option mode turn on (default 
 Interactive & auto mode only take effectively when enablement mode turn into true. The default interactive option is switch to auto mode, all activities occur in kernel are immediately tracking after enablement option turn into true. Selecting manual mode are mandatory to install libhoneybest-notify package (still in developing progress). Interactive mode toggle can be set via command (`echo 1 > /proc/sys/kernel/honeybest/interact` or `echo 0 > /proc/sys/kernel/honeybest/interact`). This option take effectived only when enablement option is in turn on mode; Locking option is in turn off mode.
 
 ##### Black list option - whitelist mode vs blacklist mode
-The default mode is whitelist mode, all activities pass through the list will be allow as default. The easy way to think of this mode is iptables default policy, REJECT or ACCEPT.
+The default mode is whitelist mode, all activities pass through the list will be allow as default. The easy way to think of this mode is iptables default policy, REJECT or ACCEPT. The toggle can be set via command (`echo 1 > /proc/sys/kernel/honeybest/bl` or `echo 0 > /proc/sys/kernel/honeybest/bl`).
 
 ### __Configure activities__
 Every single files in directory /proc/honeybest tracking different behavior. We will explain each single file corresponding on next section. In general, every file share the common column, e.g NO/FUNCTION/USER ID.
