@@ -46,15 +46,20 @@ HoneyBest security module stay in deactivate mode / non-interactive mode as defa
 Once you activate HoneyBest, kernel tracking activities start to record into different files under directory /proc/honeybest. User can monitor the tracking progress via read file application such as tail/cat/head. 
 
 ##### Locking option – on mode or off mode
-Locking option only take effective once enablement option mode turn on (default locking option mode is turn off). Once turn on, only expect activities is allow to operate on system. Locking mode toggle can be set via command (`echo 1 > /proc/sys/kernel/honeybest/locking` or `echo 0 > /proc/sys/kernel/honeybest/locking`)
+Locking option only take effective once enablement option mode turn on (default locking option mode is turn off). Once turn on, only expect activities is allow to operate on system. Locking mode toggle can be set via command (`echo 1 > /proc/sys/kernel/honeybest/locking` or `echo 0 > /proc/sys/kernel/honeybest/locking`). This option take effectived only when enablement option is in turn on mode.
+
 ##### Interactive option - manual mode vs auto mode
-Interactive & auto mode only take effectively when enablement mode turn into true. The default interactive option is switch to auto mode, all activities occur in kernel are immediately tracking after enablement option turn into true. Selecting manual mode are mandatory to install libhoneybest-notify package (still in developing progress). Interactive mode toggle can be set via command (`echo 1 > /proc/sys/kernel/honeybest/interact` or `echo 0 > /proc/sys/kernel/honeybest/interact`)
+Interactive & auto mode only take effectively when enablement mode turn into true. The default interactive option is switch to auto mode, all activities occur in kernel are immediately tracking after enablement option turn into true. Selecting manual mode are mandatory to install libhoneybest-notify package (still in developing progress). Interactive mode toggle can be set via command (`echo 1 > /proc/sys/kernel/honeybest/interact` or `echo 0 > /proc/sys/kernel/honeybest/interact`). This option take effectived only when enablement option is in turn on mode; Locking option is in turn off mode.
+
+##### Black list option - whitelist mode vs blacklist mode
+The default mode is whitelist mode, all activities pass through the list will be allow as default. The easy way to think of this mode is iptables default policy, REJECT or ACCEPT.
 
 ### __Configure activities__
 Every single files in directory /proc/honeybest tracking different behavior. We will explain each single file corresponding on next section. In general, every file share the common column, e.g NO/FUNCTION/USER ID.
 * NO – sequence number, honeybest compare the occurrence activities begin from lower to higher number.
 * FUNCTION – functional identification, honeybest use to identify different activities. Under certain category such as ‘socket’, different activities are label as listen/bind/accept/open/setsocketopt and so on. 
-* USER ID – user identification, honeybest use to reference relationship between identity and function. 
+* USER ID – user identification, honeybest use to reference relationship between identity and function. This column support RE(regular expression, digits & '*' asterisk).
+* ACTION - Matching action refer to 'A'ccept or 'R'eject. Default value depend on bl option, accept actions are appended when bl toggle to 0; vice versa, reject actions are appended.
 
 #### Files
 * binprm – Tracking all executable file path name, process UID belong to and most importantly, calculate file context into HASH to protect the integrity.
