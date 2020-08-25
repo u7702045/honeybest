@@ -654,7 +654,8 @@ static int honeybest_capset(struct cred *new, const struct cred *old,
 	int err = 0;
 	kernel_cap_t dest, a, b;
        	struct task_struct *task = current;
-	char *pathname,*p;
+	char *pathname = NULL;
+	char *p = NULL;
 	struct mm_struct *mm = current->mm;
 
 	if (!enabled)

@@ -113,7 +113,7 @@ unsigned short lookup_source_port(struct socket *sock, struct sockaddr *address,
 		char *addrp = NULL;
 		if (family == PF_INET) {
 			if (addrlen < sizeof(struct sockaddr_in)) {
-				printk(KERN_ERR "addrlen less than sizeof struct sockaddr_in(%d)\n", sizeof(struct sockaddr_in));
+				printk(KERN_ERR "addrlen less than sizeof struct sockaddr_in(%lu)\n", sizeof(struct sockaddr_in));
 				goto out;
 			}
 			addr4 = (struct sockaddr_in *)address;
