@@ -175,10 +175,10 @@ int read_ptrace_record(struct seq_file *m, void *v)
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
-	seq_printf(m, "NO\tFUNC\tUID\tACTION\tPARENT\t\t\t\t\tCHILD\t\t\t\t\tMODE\n");
+	seq_printf(m, "NO\tFUNC\tUID\tACTION\tPARENT BINPRM\t\t\t\tCHILD BINPRM\t\t\t\tMODE\n");
 	list_for_each(pos, &hb_ptrace_list_head.list) {
 		tmp = list_entry(pos, hb_ptrace_ll, list);
-		seq_printf(m, "%lu\t%u\t%s\t%c\t%s\t%s\t\t\t\t\t%u\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->parent, tmp->child, tmp->mode);
+		seq_printf(m, "%lu\t%u\t%s\t%c\t%s\t\t\t\t%s\t\t\t\t%u\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->parent, tmp->child, tmp->mode);
 	}
 
 	return 0;
