@@ -15,6 +15,7 @@
  * GNU General Public License for more details.
  */
 #include <linux/init.h>
+#include <linux/version.h>
 #include <linux/kd.h>
 #include <linux/kernel.h>
 #include <linux/tracehook.h>
@@ -113,7 +114,11 @@ unsigned short lookup_source_port(struct socket *sock, struct sockaddr *address,
 		char *addrp = NULL;
 		if (family == PF_INET) {
 			if (addrlen < sizeof(struct sockaddr_in)) {
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,4,0)
+				printk(KERN_ERR "addrlen less than sizeof struct sockaddr_in(%d)\n", sizeof(struct sockaddr_in));
+#else
 				printk(KERN_ERR "addrlen less than sizeof struct sockaddr_in(%lu)\n", sizeof(struct sockaddr_in));
+#endif
 				goto out;
 			}
 			addr4 = (struct sockaddr_in *)address;

@@ -56,6 +56,8 @@
 #define HB_INODE_REMOVEXATTR		3018
 #define HB_INODE_LISTXATTR		3019
 
+#define HB_PTRACE_ACCESS_CHECK		6000
+
 #define HB_PATH_LINK			19
 #define HB_PATH_RENAME			20
 #define HB_PATH_CHMOD			21
@@ -90,4 +92,5 @@
 #define HB_SOCKET_PROC			"socket"
 #define HB_SB_PROC			"sb"
 #define HB_KMOD_PROC			"kmod"
+#define HB_PTRACE_PROC			"ptrace"
 #endif

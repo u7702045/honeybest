@@ -94,6 +94,7 @@
 #include "inode.h"
 #include "sb.h"
 #include "kmod.h"
+#include "ptrace.h"
 #include "honeybest.h"
 
 struct proc_dir_entry *hb_proc_notify_entry;
@@ -113,6 +114,16 @@ int add_notify_record(unsigned int fid, void *data)
 				strncpy(tmp->proc, HB_CREDS_PROC, strlen(HB_CREDS_PROC));
 				if (tmp->data == NULL) {
 					printk(KERN_ERR "unable to add binprm notify linked list\n");
+					err = -EOPNOTSUPP;
+				}
+				else
+					tmp->data = data;
+				break;
+			case HB_PTRACE_ACCESS_CHECK:
+				tmp->data = (void *)kmalloc(sizeof(hb_ptrace_ll), GFP_KERNEL);
+				strncpy(tmp->proc, HB_PTRACE_PROC, strlen(HB_PTRACE_PROC));
+				if (tmp->data == NULL) {
+					printk(KERN_ERR "unable to add ptrace notify linked list\n");
 					err = -EOPNOTSUPP;
 				}
 				else
@@ -233,6 +244,7 @@ int read_notify_record(struct seq_file *m, void *v)
        	hb_inode_ll *inodes = NULL;
        	hb_sb_ll *sbs = NULL;
        	hb_kmod_ll *kmods = NULL;
+       	hb_ptrace_ll *ptrace = NULL;
 
 	seq_printf(m, "ID\tFILE\tFUNC\tUID\tDATA\n");
 	list_for_each_safe(pos, q, &hb_notify_list_head.list) {
@@ -241,6 +253,10 @@ int read_notify_record(struct seq_file *m, void *v)
 			case HB_BPRM_SET_CREDS:
 				binprm = (hb_binprm_ll *)tmp->data;
 				seq_printf(m, "%lu\t%s\t%u\t%s\t%c\t%s\t%s\n", total++, tmp->proc, binprm->fid, binprm->uid, binprm->act_allow, binprm->digest, binprm->pathname);
+				break;
+			case HB_PTRACE_ACCESS_CHECK:
+				ptrace = (hb_ptrace_ll *)tmp->data;
+				seq_printf(m, "%lu\t%s\t%u\t%s\t%c\t%s\t%s\t%u\n", total++, tmp->proc, ptrace->fid, ptrace->uid, ptrace->act_allow, ptrace->parent, ptrace->child, ptrace->mode);
 				break;
 			case HB_FILE_OPEN:
 				files = (hb_file_ll *)tmp->data;

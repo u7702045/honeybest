@@ -96,6 +96,7 @@
 #include "path.h"
 #include "sb.h"
 #include "kmod.h"
+#include "ptrace.h"
 #include "notify.h"
 
 /**
@@ -133,6 +134,7 @@ extern hb_inode_ll hb_inode_list_head;
 extern hb_path_ll hb_path_list_head;
 extern hb_sb_ll hb_sb_list_head;
 extern hb_kmod_ll hb_kmod_list_head;
+extern hb_ptrace_ll hb_ptrace_list_head;
 extern hb_notify_ll hb_notify_list_head;
 
 extern struct proc_dir_entry *hb_proc_file_entry;
@@ -143,6 +145,7 @@ extern struct proc_dir_entry *hb_proc_inode_entry;
 extern struct proc_dir_entry *hb_proc_path_entry;
 extern struct proc_dir_entry *hb_proc_sb_entry;
 extern struct proc_dir_entry *hb_proc_kmod_entry;
+extern struct proc_dir_entry *hb_proc_ptrace_entry;
 extern struct proc_dir_entry *hb_proc_notify_entry;
 
 
@@ -471,6 +474,22 @@ static const struct file_operations hb_proc_kmod_fops = {
 	.release = single_release,
 };
 
+/**
+ * open_ptrace_proc provide read OP for user to acces current 
+ * kernel insmod/rmmod activities
+ */
+static int open_ptrace_proc(struct inode *inode, struct  file *file) {
+	  return single_open(file, read_ptrace_record, NULL);
+}
+
+static const struct file_operations hb_proc_ptrace_fops = {
+	.open  = open_ptrace_proc,
+	.read  = seq_read,
+	.write  = write_ptrace_record,
+	.llseek  = seq_lseek,
+	.release = single_release,
+};
+
 static void __init honeybest_init_sysctl(void)
 {
        	struct proc_dir_entry *honeybest_dir = proc_mkdir("honeybest", NULL);
@@ -507,6 +526,9 @@ static void __init honeybest_init_sysctl(void)
 
 	/* kernel modules tracing */
 	INIT_LIST_HEAD(&hb_kmod_list_head.list);
+
+	/* ptrace op tracing */
+	INIT_LIST_HEAD(&hb_ptrace_list_head.list);
 
 	/* prepare notify proc entry */
 	hb_proc_notify_entry = proc_create("notify", 0666, honeybest_dir, &hb_proc_notify_fops);
@@ -562,6 +584,12 @@ static void __init honeybest_init_sysctl(void)
 		printk(KERN_INFO "Error creating honeybest kmod proc entry");
 	}
 
+	/* prepare ptrace proc entry */
+	hb_proc_ptrace_entry = proc_create("ptrace", 0666, honeybest_dir, &hb_proc_ptrace_fops);
+	if (!hb_proc_ptrace_entry) {
+		printk(KERN_INFO "Error creating honeybest ptrace proc entry");
+	}
+
 	inject_honeybest_tracker(cred, HB_INITIALIZE);
 }
 
@@ -593,19 +621,100 @@ static int honeybest_ptrace_access_check(struct task_struct *child,
                                      unsigned int mode)
 {
 	int err = 0;
+	struct cred *cred = (struct cred *) current->real_cred;
+       	struct task_struct *parent_task = current;
+       	struct task_struct *child_task = child;
+	struct mm_struct *parent_mm = current->mm;
+	struct mm_struct *child_mm = child->mm;
+       	char *parent_binprm = NULL;
+       	char *child_binprm = NULL;
+       	char *parent_taskname = NULL;
+       	char *child_taskname = NULL;
+	hb_ptrace_ll *record = NULL;
+	char uid[UID_STR_SIZE];
 
 	if (!enabled)
-		err = -EOPNOTSUPP;
+		return err;
 
+	if (inject_honeybest_tracker(cred, HB_PTRACE_ACCESS_CHECK))
+	       	err = -ENOMEM;
+
+	task_lock(parent_task);
+	if (parent_mm) {
+		down_read(&parent_mm->mmap_sem);
+		if (parent_mm->exe_file) {
+			parent_taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (parent_taskname) {
+				parent_binprm = d_path(&parent_mm->exe_file->f_path, parent_taskname, PATH_MAX);
+				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+			}
+			else
+			       	goto out;
+		}
+		up_read(&parent_mm->mmap_sem);
+	}
+	task_unlock(parent_task);
+
+	if (!parent_binprm)
+		goto out1;
+
+	task_lock(child_task);
+	if (child_mm) {
+		down_read(&child_mm->mmap_sem);
+		if (child_mm->exe_file) {
+			child_taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (child_taskname) {
+				child_binprm = d_path(&child_mm->exe_file->f_path, child_taskname, PATH_MAX);
+				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+			}
+			else
+				goto out1;
+		}
+		up_read(&child_mm->mmap_sem);
+	}
+	task_unlock(child_task);
+
+	if (!child_binprm)
+		goto out2;
+
+//	printk(KERN_ERR "%s,%d -->%s, %s, %d\n", __FUNCTION__, __LINE__, parent_binprm, child_binprm, mode);
+
+	record = search_ptrace_record(HB_PTRACE_ACCESS_CHECK, current->cred->uid.val, parent_binprm, child_binprm, mode);
+
+	if (record) {
+	       	;//printk(KERN_INFO "Found ptrace record func=%u, parent=[%s]\n", record->fid, record->parent);
+		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+			err = -EOPNOTSUPP;
+	}
+	else {
+		sprintf(uid, "%u", current->cred->uid.val);
+
+		if ((locking == 0) && (bl == 0)) 
+			err = add_ptrace_record(HB_PTRACE_ACCESS_CHECK, uid, 'A', parent_binprm, child_binprm, mode, interact);
+
+		if ((locking == 0) && (bl == 1)) 
+			err = add_ptrace_record(HB_PTRACE_ACCESS_CHECK, uid, 'R', parent_binprm, child_binprm, mode, interact);
+
+		if ((locking == 1) && (bl == 0)) {
+			/* detect mode */
+			err = -EOPNOTSUPP;
+		}
+	}
+
+out2:
+	kfree(child_taskname);
+out1:
+	kfree(parent_taskname);
+out:
 	return err;
 }
 
 static int honeybest_ptrace_traceme(struct task_struct *parent)
 {
 	int err = 0;
-
+       	
 	if (!enabled)
-		err = -EOPNOTSUPP;
+		return err;
 
 	return err;
 }
@@ -1152,13 +1261,12 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
+			else
+				goto out1;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
-
-	if (!taskname)
-		goto out1;
 
 	if (!binprm)
 		goto out2;
@@ -1250,13 +1358,12 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
+			else
+				goto out1;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
-
-	if (!taskname)
-		goto out1;
 
 	if (!binprm)
 		goto out2;
@@ -1342,13 +1449,12 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
+			else
+				goto out1;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
-
-	if (!taskname)
-		goto out1;
 
 	if (!binprm)
 		goto out2;
@@ -1440,13 +1546,12 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
+			else
+				goto out1;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
-
-	if (!taskname)
-		goto out1;
 
 	if (!binprm)
 		goto out2;
@@ -1534,13 +1639,12 @@ static int honeybest_path_truncate(struct path *path)
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
+			else
+				goto out1;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
-
-	if (!taskname)
-		goto out1;
 
 	if (!binprm)
 		goto out2;
@@ -1628,13 +1732,12 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
+			else
+				goto out1;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
-
-	if (!taskname)
-		goto out1;
 
 	if (!binprm)
 		goto out2;
@@ -1741,13 +1844,12 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
+			else
+				goto out2;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
-
-	if (!taskname)
-		goto out2;
 
 	if (!binprm)
 		goto out3;
@@ -1851,13 +1953,12 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
+			else
+				goto out2;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
-
-	if (!taskname)
-		goto out2;
 
 	if (!binprm)
 		goto out3;
@@ -1943,13 +2044,12 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
+			else
+			       	goto out1;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
-
-	if (!taskname)
-		goto out1;
 
 	if (!binprm)
 		goto out2;
@@ -2033,13 +2133,12 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
+			else
+				goto out1;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
-
-	if (!taskname)
-		goto out1;
 
 	if (!binprm)
 		goto out2;
@@ -2588,13 +2687,12 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
+			else
+				goto out1;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
-
-	if (!taskname)
-		goto out1;
 
 	if (!binprm)
 		goto out2;
@@ -2858,13 +2956,12 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
+			else
+				goto out;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
-
-	if (!taskname)
-		goto out;
 
 	if (!binprm)
 		goto out1;
@@ -2992,13 +3089,12 @@ static int honeybest_socket_create(int family, int type,
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 			}
+			else
+				goto out;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
-
-	if (!taskname)
-		goto out;
 
 	if (!binprm)
 		goto out1;
@@ -3066,13 +3162,12 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 			}
+			else
+				goto out;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
-
-	if (!taskname)
-		goto out;
 
 	if (!binprm)
 		goto out1;
@@ -3139,13 +3234,12 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 			}
+			else
+				goto out;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
-
-	if (!taskname)
-		goto out;
 
 	if (!binprm)
 		goto out1;
@@ -3251,13 +3345,12 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 			}
+			else
+				goto out;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
-
-	if (!taskname)
-		goto out;
 
 	if (!binprm)
 		goto out1;
