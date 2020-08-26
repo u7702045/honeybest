@@ -23,6 +23,8 @@
 #define __task_cred(task)	\
 	rcu_dereference((task)->real_cred)
 
+#define SHA1_HONEYBEST_DIGEST_SIZE (SHA1_DIGEST_SIZE * 2)+1	// leave '\0' at the end
+
 #define HOOK_FUNC_STR_SIZE		5	/**< 4 digits with null terminal */
 #define UID_STR_SIZE			6	/**< unsigned int in string with null terminal */
 
@@ -78,7 +80,8 @@
 #define HB_SB_MOUNT			6034
 #define HB_SB_UMOUNT			6035
 
-#define HB_KMOD_REQ			7040
+#define HB_KMOD_REQ			7001
+#define HB_KMOD_LOAD_FROM_FILE		7002
 
 #define HB_DENTRY_INIT_SEC		160
 

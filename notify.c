@@ -308,10 +308,11 @@ int read_notify_record(struct seq_file *m, void *v)
 				seq_printf(m, "%lu\t%s\t%u\t%s\t%c\t%s\t%s\t%s\t%s\t%d\n", total++, tmp->proc, sbs->fid\
 						, sbs->uid, sbs->act_allow, sbs->s_id, sbs->name, sbs->dev_name, sbs->type, sbs->flags);
 				break;
+			case HB_KMOD_LOAD_FROM_FILE:
 			case HB_KMOD_REQ:
 				kmods = (hb_kmod_ll *)tmp->data;
-				seq_printf(m, "%lu\t%s\t%u\t%s\t%c\t%s\n", total++, tmp->proc, sbs->fid\
-						, sbs->uid, sbs->act_allow, sbs->name);
+				seq_printf(m, "%lu\t%s\t%u\t%s\t%c\t%s\t%s\t%s\n", total++, tmp->proc, kmods->fid\
+						, kmods->uid, kmods->act_allow, kmods->name, kmods->filename, kmods->digest);
 				break;
 			default:
 				break;

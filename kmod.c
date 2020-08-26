@@ -92,7 +92,7 @@
 
 struct proc_dir_entry *hb_proc_kmod_entry;
 hb_kmod_ll hb_kmod_list_head;
-hb_kmod_ll *search_kmod_record(unsigned int fid, uid_t uid, char *name)
+hb_kmod_ll *search_kmod_record(unsigned int fid, uid_t uid, char *name, char *filename, char *digest)
 {
 	hb_kmod_ll *tmp = NULL;
 	struct list_head *pos = NULL;
@@ -118,6 +118,13 @@ hb_kmod_ll *search_kmod_record(unsigned int fid, uid_t uid, char *name)
 					return tmp;
 				}
 				break;
+			case HB_KMOD_LOAD_FROM_FILE:
+				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->filename, strlen(tmp->filename), filename, strlen(filename)) && !strncmp(tmp->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE)) {
+					/* we find the record */
+					//printk(KERN_INFO "Found kernel load module record !!!!\n");
+					return tmp;
+				}
+				break;
 			default:
 				break;
 		} // switch
@@ -126,7 +133,7 @@ hb_kmod_ll *search_kmod_record(unsigned int fid, uid_t uid, char *name)
 	return NULL;
 }
 
-int add_kmod_record(unsigned int fid, char *uid, char act_allow, char *name, int interact)
+int add_kmod_record(unsigned int fid, char *uid, char act_allow, char *name, char *filename, char *digest, int interact)
 {
 	int err = 0;
 	hb_kmod_ll *tmp = NULL;
@@ -138,14 +145,31 @@ int add_kmod_record(unsigned int fid, char *uid, char act_allow, char *name, int
 		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
 		tmp->act_allow = act_allow;
 
-		tmp->name = kmalloc(strlen(name)+1, GFP_KERNEL);
-		if (tmp->name == NULL) {
-			err = -EOPNOTSUPP;
-			goto out;
-		}
-		memset(tmp->name, '\0', strlen(name)+1);
+		switch (fid) {
+			case HB_KMOD_REQ:
+			case HB_KMOD_LOAD_FROM_FILE:
+				tmp->name = kmalloc(strlen(name)+1, GFP_KERNEL);
+				if (tmp->name == NULL) {
+					err = -EOPNOTSUPP;
+					goto out;
+				}
+				memset(tmp->name, '\0', strlen(name)+1);
+				strncpy(tmp->name, name, strlen(name));
 
-		strncpy(tmp->name, name, strlen(name));
+				tmp->filename = kmalloc(strlen(filename)+1, GFP_KERNEL);
+				if (tmp->filename == NULL) {
+					err = -EOPNOTSUPP;
+					kfree(tmp->name);
+					goto out;
+				}
+				memset(tmp->filename, '\0', strlen(filename)+1);
+				strncpy(tmp->filename, filename, strlen(filename));
+
+				strncpy(tmp->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE);
+				break;
+			default:
+				break;
+		}
 
 		if ((err == 0) && (interact == 0))
 		       	list_add_tail(&(tmp->list), &(hb_kmod_list_head.list));
@@ -169,11 +193,11 @@ int read_kmod_record(struct seq_file *m, void *v)
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
-	seq_printf(m, "NO\tFUNC\tUID\tACTION\tNAME\n");
+	seq_printf(m, "NO\tFUNC\tUID\tACTION\tNAME\tFILE\t\t\tDIGEST\n");
 
 	list_for_each(pos, &hb_kmod_list_head.list) {
 		tmp = list_entry(pos, hb_kmod_ll, list);
-		seq_printf(m, "%lu\t%u\t%s\t%c\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->name);
+		seq_printf(m, "%lu\t%u\t%s\t%c\t%s\t\t\t%s\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->name, tmp->filename, tmp->digest);
 	}
 
 	return 0;
@@ -213,6 +237,7 @@ ssize_t write_kmod_record(struct file *file, const char __user *buffer, size_t c
 		tmp = list_entry(pos, hb_kmod_ll, list);
 		list_del(pos);
 		kfree(tmp->name);
+		kfree(tmp->filename);
 		kfree(tmp);
 		tmp = NULL;
 	}
@@ -224,17 +249,26 @@ ssize_t write_kmod_record(struct file *file, const char __user *buffer, size_t c
 		unsigned int fid = 0;
 		char act_allow = 'R';
 		char *name = NULL;
+		char *filename = NULL;
+	       	char digest[SHA1_HONEYBEST_DIGEST_SIZE];
 
 		name = (char *)kmalloc(32, GFP_KERNEL);
 		if (name == NULL) {
 			goto out;
 		}
 
-		sscanf(token, "%u %s %c %s", &fid, uid, &act_allow, name);
-		if (add_kmod_record(fid, uid, act_allow, name, 0) != 0) {
+		filename = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
+		if (filename == NULL) {
+			kfree(name);
+			goto out;
+		}
+
+		sscanf(token, "%u %s %c %s %s %s", &fid, uid, &act_allow, name, filename, digest);
+		if (add_kmod_record(fid, uid, act_allow, name, filename, digest, 0) != 0) {
 			printk(KERN_WARNING "Failure to add kmod record %s\n", name);
 		}
 
+		kfree(filename);
 		kfree(name);
 	}
 

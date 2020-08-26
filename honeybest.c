@@ -2967,11 +2967,74 @@ static int honeybest_kernel_create_files_as(struct cred *new, struct inode *inod
  * Trigger during insmod/rmmod
  * Tracking info: user id / driver register name
  */
+static int honeybest_kernel_module_from_file(struct file *file)
+{
+	int err = 0;
+	hb_kmod_ll *record = NULL;
+	struct cred *cred = (struct cred *) current->real_cred;
+	char *filename = NULL;
+	char *na = "N/A";
+	char uid[UID_STR_SIZE];
+	char digest[SHA1_HONEYBEST_DIGEST_SIZE];
+
+	if (!enabled) {
+		return err;
+	}
+
+	if (inject_honeybest_tracker(cred, HB_KMOD_LOAD_FROM_FILE))
+	       	err = -ENOMEM;
+
+	filename = kstrdup_quotable_file(file, GFP_KERNEL);
+
+	if (!filename)
+		goto out;
+
+	if (allow_file_whitelist(filename)) {
+		goto out1;
+	}
+
+	memset(digest, '\0', SHA1_HONEYBEST_DIGEST_SIZE);
+	lookup_binprm_digest(file, digest);
+
+	record = search_kmod_record(HB_KMOD_LOAD_FROM_FILE, current->cred->uid.val, na, filename, digest);
+
+	if (record) {
+	       	;//printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->filename);
+		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+			err = -EOPNOTSUPP;
+	}
+	else {
+		sprintf(uid, "%u", current->cred->uid.val);
+
+		if ((locking == 0) && (bl == 0))
+			err = add_kmod_record(HB_KMOD_LOAD_FROM_FILE, uid, 'A', na, filename, digest, interact);
+
+		if ((locking == 0) && (bl == 1))
+			err = add_kmod_record(HB_KMOD_LOAD_FROM_FILE, uid, 'R', na, filename, digest, interact);
+
+		if ((locking == 1) && (bl == 0)) {
+			/* detect mode */
+			err = -EOPNOTSUPP;
+		}
+	}
+out1:
+	kfree(filename);
+out:
+        return err;
+
+}
+
+/**
+ * This function use to tracking kernel load driver activity.
+ * Trigger during insmod/rmmod
+ * Tracking info: user id / driver register name
+ */
 static int honeybest_kernel_module_request(char *kmod_name)
 {
 	int err = 0;
 	struct cred *cred = (struct cred *) current->real_cred;
 	char uid[UID_STR_SIZE];
+	char *na = "N/A";
 	hb_kmod_ll *record = NULL;
 
 	if (!enabled) {
@@ -2981,7 +3044,7 @@ static int honeybest_kernel_module_request(char *kmod_name)
 	if (inject_honeybest_tracker(cred, HB_KMOD_REQ))
 	       	err = -ENOMEM;
 
-	record = search_kmod_record(HB_KMOD_REQ, current->cred->uid.val, kmod_name);
+	record = search_kmod_record(HB_KMOD_REQ, current->cred->uid.val, kmod_name, na, na);
 
 	if (record) {
 		;//printk(KERN_INFO "Found kmod record func=%u, uid %u, name=%s\n", record->fid, record->uid, record->name);
@@ -2992,10 +3055,10 @@ static int honeybest_kernel_module_request(char *kmod_name)
 		sprintf(uid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
-			err = add_kmod_record(HB_KMOD_REQ, uid, 'A', kmod_name, interact);
+			err = add_kmod_record(HB_KMOD_REQ, uid, 'A', kmod_name, na, na, interact);
 
 		if ((locking == 0) && (bl == 1)) 
-			err = add_kmod_record(HB_KMOD_REQ, uid, 'R', kmod_name, interact);
+			err = add_kmod_record(HB_KMOD_REQ, uid, 'R', kmod_name, na, na, interact);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -4142,6 +4205,7 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(kernel_act_as, honeybest_kernel_act_as),
         LSM_HOOK_INIT(kernel_create_files_as, honeybest_kernel_create_files_as),
         LSM_HOOK_INIT(kernel_module_request, honeybest_kernel_module_request),
+        LSM_HOOK_INIT(kernel_module_from_file, honeybest_kernel_module_from_file),
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
         LSM_HOOK_INIT(kernel_read_file, honeybest_kernel_read_file),
 #endif

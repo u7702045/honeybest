@@ -16,7 +16,6 @@
  */
 #include "honeybest.h"
 
-#define SHA1_HONEYBEST_DIGEST_SIZE (SHA1_DIGEST_SIZE * 2)+1	// leave '\0' at the end
 #define HB_BINPRM_DATA 
 typedef struct hb_binprm_ll_t {
 	unsigned int fid;				/**< security hook function binprm by program */
