@@ -35,6 +35,7 @@
 #define HB_TASK_CREATE			2002
 
 #define HB_FILE_OPEN			5000
+#define HB_FILE_IOCTL			5001
 
 #define HB_SOCKET_CREATE		4001
 #define HB_SOCKET_BIND			4002

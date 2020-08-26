@@ -2598,7 +2598,79 @@ static void honeybest_file_free_security(struct file *file)
 static int honeybest_file_ioctl(struct file *file, unsigned int cmd,
                               unsigned long arg)
 {
-	return 0;
+	int err = 0;
+       	struct task_struct *task = current;
+	struct cred *cred = (struct cred *) current->real_cred;
+	hb_file_ll *record = NULL;
+	struct mm_struct *mm = current->mm;
+	char *filename = NULL;
+       	char *binprm = NULL;
+	char uid[UID_STR_SIZE];
+       	char *taskname = NULL;
+
+	if (!enabled) {
+		return err;
+	}
+
+	if (inject_honeybest_tracker(cred, HB_FILE_IOCTL))
+	       	err = -ENOMEM;
+
+	filename = kstrdup_quotable_file(file, GFP_KERNEL);
+
+	if (!filename)
+		goto out;
+
+	if (allow_file_whitelist(filename)) {
+		goto out1;
+	}
+
+	task_lock(task);
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (taskname) {
+				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
+				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+			}
+			else
+				goto out1;
+		}
+		up_read(&mm->mmap_sem);
+	}
+	task_unlock(task);
+
+	if (!binprm)
+		goto out2;
+
+	record = search_file_record(HB_FILE_IOCTL, current->cred->uid.val, filename, binprm, cmd);
+
+	if (record) {
+	       	;//printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->filename);
+		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+			err = -EOPNOTSUPP;
+	}
+	else {
+		sprintf(uid, "%u", current->cred->uid.val);
+
+		if ((locking == 0) && (bl == 0))
+			err = add_file_record(HB_FILE_IOCTL, uid, 'A', filename, binprm, cmd, interact);
+
+		if ((locking == 0) && (bl == 1))
+			err = add_file_record(HB_FILE_IOCTL, uid, 'R', filename, binprm, cmd, interact);
+
+		if ((locking == 1) && (bl == 0)) {
+			/* detect mode */
+			err = -EOPNOTSUPP;
+		}
+	}
+out2:
+	kfree(taskname);
+out1:
+	kfree(filename);
+out:
+        return err;
+
 }
 
 static int honeybest_mmap_addr(unsigned long addr)
@@ -2697,7 +2769,7 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 	if (!binprm)
 		goto out2;
 
-	record = search_file_record(HB_FILE_OPEN, current->cred->uid.val, filename, binprm);
+	record = search_file_record(HB_FILE_OPEN, current->cred->uid.val, filename, binprm, 0);
 
 	if (record) {
 	       	;//printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->filename);
@@ -2708,10 +2780,10 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 		sprintf(uid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0))
-			err = add_file_record(HB_FILE_OPEN, uid, 'A', filename, binprm, interact);
+			err = add_file_record(HB_FILE_OPEN, uid, 'A', filename, binprm, 0, interact);
 
 		if ((locking == 0) && (bl == 1))
-			err = add_file_record(HB_FILE_OPEN, uid, 'R', filename, binprm, interact);
+			err = add_file_record(HB_FILE_OPEN, uid, 'R', filename, binprm, 0, interact);
 
 		if ((locking == 1) && (bl == 0)) {
 			/* detect mode */

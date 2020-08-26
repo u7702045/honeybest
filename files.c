@@ -92,7 +92,7 @@
 
 struct proc_dir_entry *hb_proc_file_entry;
 hb_file_ll hb_file_list_head;
-hb_file_ll *search_file_record(unsigned int fid, uid_t uid, char *filename, char *binprm)
+hb_file_ll *search_file_record(unsigned int fid, uid_t uid, char *filename, char *binprm, unsigned int cmd)
 {
 	hb_file_ll *tmp = NULL;
 	struct list_head *pos = NULL;
@@ -110,17 +110,30 @@ hb_file_ll *search_file_record(unsigned int fid, uid_t uid, char *filename, char
 				do_compare_uid = (uid == list_uid) ;
 		}
 
-		if ((tmp->fid == HB_FILE_OPEN) && do_compare_uid && !compare_regex(tmp->filename, strlen(tmp->filename), filename, strlen(filename)) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
-			/* we find the record */
-			//printk(KERN_INFO "Found file set record %s, %s!!!!\n", filename, tmp->filename);
-			return tmp;
-		}
-	}
+		switch (fid) {
+			case HB_FILE_IOCTL:
+				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->filename, strlen(tmp->filename), filename, strlen(filename)) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm)) && (tmp->cmd == cmd)) {
+					/* we find the record */
+					//printk(KERN_INFO "Found file ioctl record %s, %s!!!!\n", filename, tmp->filename);
+					return tmp;
+				}
+				break;
+			case HB_FILE_OPEN:
+				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->filename, strlen(tmp->filename), filename, strlen(filename)) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
+					/* we find the record */
+					//printk(KERN_INFO "Found file set record %s, %s!!!!\n", filename, tmp->filename);
+					return tmp;
+				}
+				break;
+			default:
+				break;
+		} // switch
+	} // file linked list
 
 	return NULL;
 }
 
-int add_file_record(unsigned int fid, char *uid, char act_allow, char *filename, char *binprm, int interact)
+int add_file_record(unsigned int fid, char *uid, char act_allow, char *filename, char *binprm, unsigned int cmd, int interact)
 {
 	int err = 0;
 	hb_file_ll *tmp = NULL;
@@ -137,6 +150,8 @@ int add_file_record(unsigned int fid, char *uid, char act_allow, char *filename,
 		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
 		tmp->act_allow = act_allow;
 		switch (fid) {
+			case HB_FILE_IOCTL:
+				tmp->cmd = cmd;
 			case HB_FILE_OPEN:
 				tmp->filename = kmalloc(file_len+1, GFP_KERNEL);
 				if (tmp->filename == NULL) {
@@ -178,10 +193,10 @@ int read_file_record(struct seq_file *m, void *v)
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
-	seq_printf(m, "NO\tFUNC\tUID\tACTION\t\tPATH\t\t\t\tBINPRM\n");
+	seq_printf(m, "NO\tFUNC\tUID\tACTION\t\tPATH\t\t\t\tBINPRM\t\t\t\tCMD\tARG\n");
 	list_for_each(pos, &hb_file_list_head.list) {
 		tmp = list_entry(pos, hb_file_ll, list);
-		seq_printf(m, "%lu\t%u\t%s\t%c\t%s\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->filename, tmp->binprm);
+		seq_printf(m, "%lu\t%u\t%s\t%c\t%s\t%s\t%u\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->filename, tmp->binprm, tmp->cmd);
 	}
 
 	return 0;
@@ -234,6 +249,7 @@ ssize_t write_file_record(struct file *file, const char __user *buffer, size_t c
 		char *filename = NULL;
 		char act_allow = 'R';
 		char *binprm = NULL;
+		unsigned int cmd = 0;
 
 		filename = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
 		if (filename == NULL) {
@@ -246,8 +262,8 @@ ssize_t write_file_record(struct file *file, const char __user *buffer, size_t c
 			continue;
 		}
 
-		sscanf(token, "%u %s %c %s %s", &fid, uid, &act_allow, filename, binprm);
-		if (add_file_record(HB_FILE_OPEN, uid, act_allow, filename, binprm, 0) != 0) {
+		sscanf(token, "%u %s %c %s %s %u", &fid, uid, &act_allow, filename, binprm, &cmd);
+		if (add_file_record(fid, uid, act_allow, filename, binprm, cmd, 0) != 0) {
 			printk(KERN_WARNING "Failure to add file record %s, %s, %s\n", uid, filename, binprm);
 		}
 
