@@ -119,6 +119,7 @@ hb_file_ll *search_file_record(unsigned int fid, uid_t uid, char *filename, char
 				}
 				break;
 			case HB_FILE_OPEN:
+			case HB_FILE_RECEIVE:
 				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->filename, strlen(tmp->filename), filename, strlen(filename)) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
 					/* we find the record */
 					//printk(KERN_INFO "Found file set record %s, %s!!!!\n", filename, tmp->filename);
@@ -152,6 +153,7 @@ int add_file_record(unsigned int fid, char *uid, char act_allow, char *filename,
 		switch (fid) {
 			case HB_FILE_IOCTL:
 				tmp->cmd = cmd;
+			case HB_FILE_RECEIVE:
 			case HB_FILE_OPEN:
 				tmp->filename = kmalloc(file_len+1, GFP_KERNEL);
 				if (tmp->filename == NULL) {

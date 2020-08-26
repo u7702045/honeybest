@@ -259,9 +259,7 @@ int read_notify_record(struct seq_file *m, void *v)
 				seq_printf(m, "%lu\t%s\t%u\t%s\t%c\t%s\t%s\t%u\n", total++, tmp->proc, ptrace->fid, ptrace->uid, ptrace->act_allow, ptrace->parent, ptrace->child, ptrace->mode);
 				break;
 			case HB_FILE_OPEN:
-				files = (hb_file_ll *)tmp->data;
-				seq_printf(m, "%lu\t%s\t%u\t%s\t%c\t%s\t%s\t%u\n", total++, tmp->proc, files->fid, files->uid, files->act_allow, files->filename, files->binprm, files->cmd);
-				break;
+			case HB_FILE_RECEIVE:
 			case HB_FILE_IOCTL:
 				files = (hb_file_ll *)tmp->data;
 				seq_printf(m, "%lu\t%s\t%u\t%s\t%c\t%s\t%s\t%u\n", total++, tmp->proc, files->fid, files->uid, files->act_allow, files->filename, files->binprm, files->cmd);

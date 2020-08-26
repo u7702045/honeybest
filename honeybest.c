@@ -2714,7 +2714,79 @@ static int honeybest_file_send_sigiotask(struct task_struct *tsk,
 
 static int honeybest_file_receive(struct file *file)
 {
-	return 0;
+	int err = 0;
+       	struct task_struct *task = current;
+	struct cred *cred = (struct cred *) current->real_cred;
+	hb_file_ll *record = NULL;
+	struct mm_struct *mm = current->mm;
+	char *filename = NULL;
+       	char *binprm = NULL;
+	char uid[UID_STR_SIZE];
+       	char *taskname = NULL;
+
+	if (!enabled) {
+		return err;
+	}
+
+	if (inject_honeybest_tracker(cred, HB_FILE_RECEIVE))
+	       	err = -ENOMEM;
+
+	filename = kstrdup_quotable_file(file, GFP_KERNEL);
+
+	if (!filename)
+		goto out;
+
+	if (allow_file_whitelist(filename)) {
+		goto out1;
+	}
+
+	task_lock(task);
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (taskname) {
+				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
+				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+			}
+			else
+				goto out1;
+		}
+		up_read(&mm->mmap_sem);
+	}
+	task_unlock(task);
+
+	if (!binprm)
+		goto out2;
+
+	record = search_file_record(HB_FILE_RECEIVE, current->cred->uid.val, filename, binprm, 0);
+
+	if (record) {
+	       	;//printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->filename);
+		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+			err = -EOPNOTSUPP;
+	}
+	else {
+		sprintf(uid, "%u", current->cred->uid.val);
+
+		if ((locking == 0) && (bl == 0))
+			err = add_file_record(HB_FILE_RECEIVE, uid, 'A', filename, binprm, 0, interact);
+
+		if ((locking == 0) && (bl == 1))
+			err = add_file_record(HB_FILE_RECEIVE, uid, 'R', filename, binprm, 0, interact);
+
+		if ((locking == 1) && (bl == 0)) {
+			/* detect mode */
+			err = -EOPNOTSUPP;
+		}
+	}
+out2:
+	kfree(taskname);
+out1:
+	kfree(filename);
+out:
+        return err;
+
 }
 
 /**
