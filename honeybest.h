@@ -80,8 +80,10 @@
 #define HB_SB_MOUNT			6034
 #define HB_SB_UMOUNT			6035
 
-#define HB_KMOD_REQ			7001
-#define HB_KMOD_LOAD_FROM_FILE		7002
+#define HB_KMOD_REQ			7000
+#define HB_KMOD_LOAD_FROM_FILE		7001
+
+#define HB_IPC_PERM			8000
 
 #define HB_DENTRY_INIT_SEC		160
 
@@ -98,4 +100,5 @@
 #define HB_SB_PROC			"sb"
 #define HB_KMOD_PROC			"kmod"
 #define HB_PTRACE_PROC			"ptrace"
+#define HB_IPC_PROC			"ipc"
 #endif

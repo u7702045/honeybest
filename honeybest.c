@@ -97,6 +97,7 @@
 #include "sb.h"
 #include "kmod.h"
 #include "ptrace.h"
+#include "ipc.h"
 #include "notify.h"
 
 /**
@@ -135,6 +136,7 @@ extern hb_path_ll hb_path_list_head;
 extern hb_sb_ll hb_sb_list_head;
 extern hb_kmod_ll hb_kmod_list_head;
 extern hb_ptrace_ll hb_ptrace_list_head;
+extern hb_ipc_ll hb_ipc_list_head;
 extern hb_notify_ll hb_notify_list_head;
 
 extern struct proc_dir_entry *hb_proc_file_entry;
@@ -146,6 +148,7 @@ extern struct proc_dir_entry *hb_proc_path_entry;
 extern struct proc_dir_entry *hb_proc_sb_entry;
 extern struct proc_dir_entry *hb_proc_kmod_entry;
 extern struct proc_dir_entry *hb_proc_ptrace_entry;
+extern struct proc_dir_entry *hb_proc_ipc_entry;
 extern struct proc_dir_entry *hb_proc_notify_entry;
 
 
@@ -490,6 +493,21 @@ static const struct file_operations hb_proc_ptrace_fops = {
 	.release = single_release,
 };
 
+/**
+ * open_ipc_proc provide OP for user to read/write current activities
+ */
+static int open_ipc_proc(struct inode *inode, struct  file *file) {
+	  return single_open(file, read_ipc_record, NULL);
+}
+
+static const struct file_operations hb_proc_ipc_fops = {
+	.open  = open_ipc_proc,
+	.read  = seq_read,
+	.write  = write_ipc_record,
+	.llseek  = seq_lseek,
+	.release = single_release,
+};
+
 static void __init honeybest_init_sysctl(void)
 {
        	struct proc_dir_entry *honeybest_dir = proc_mkdir("honeybest", NULL);
@@ -529,6 +547,9 @@ static void __init honeybest_init_sysctl(void)
 
 	/* ptrace op tracing */
 	INIT_LIST_HEAD(&hb_ptrace_list_head.list);
+
+	/* ipc request tracing */
+	INIT_LIST_HEAD(&hb_ipc_list_head.list);
 
 	/* prepare notify proc entry */
 	hb_proc_notify_entry = proc_create("notify", 0666, honeybest_dir, &hb_proc_notify_fops);
@@ -588,6 +609,12 @@ static void __init honeybest_init_sysctl(void)
 	hb_proc_ptrace_entry = proc_create("ptrace", 0666, honeybest_dir, &hb_proc_ptrace_fops);
 	if (!hb_proc_ptrace_entry) {
 		printk(KERN_INFO "Error creating honeybest ptrace proc entry");
+	}
+
+	/* prepare ipc proc entry */
+	hb_proc_ipc_entry = proc_create("ipc", 0666, honeybest_dir, &hb_proc_ipc_fops);
+	if (!hb_proc_ipc_entry) {
+		printk(KERN_INFO "Error creating honeybest ipc proc entry");
 	}
 
 	inject_honeybest_tracker(cred, HB_INITIALIZE);
@@ -3945,7 +3972,70 @@ static int honeybest_sem_semop(struct sem_array *sma,
 
 static int honeybest_ipc_permission(struct kern_ipc_perm *ipcp, short flag)
 {
-        return 0;
+	int err = 0;
+       	struct task_struct *task = current;
+	struct mm_struct *mm = current->mm;
+	struct cred *cred = (struct cred *) current->real_cred;
+	hb_ipc_ll *record = NULL;
+       	char *taskname = NULL;
+       	char *binprm = NULL;
+	char uid[UID_STR_SIZE];
+	uid_t ipc_uid = ipcp->uid.val;
+	uid_t ipc_gid = ipcp->gid.val;
+	uid_t ipc_cuid = ipcp->cuid.val;
+	uid_t ipc_cgid = ipcp->cgid.val;
+	umode_t mode = ipcp->mode;
+
+	if (!enabled)
+		return err;
+
+	if (inject_honeybest_tracker(cred, HB_IPC_PERM))
+	       	err = -ENOMEM;
+
+	task_lock(task);
+	if (mm) {
+		down_read(&mm->mmap_sem);
+		if (mm->exe_file) {
+			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
+			if (taskname) {
+				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
+				//printk(KERN_ERR "binprm %s, flag %d, uid %d, gid %d, cuid %d, cgid %d, mode %u\n", binprm, flag, ipc_uid, ipc_gid, ipc_cuid, ipc_cgid, mode);
+			}
+			else
+				goto out;
+		}
+		up_read(&mm->mmap_sem);
+	}
+	task_unlock(task);
+
+	record = search_ipc_record(HB_IPC_PERM, current->cred->uid.val, binprm, \
+			ipc_uid, ipc_gid, ipc_cuid, ipc_cgid, flag);
+
+	if (record) {
+	       	//printk(KERN_INFO "Found ipc open record func=%u, path=[%s]\n", record->fid, record->binprm);
+		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+			err = -EOPNOTSUPP;
+	}
+	else {
+		sprintf(uid, "%u", current->cred->uid.val);
+
+		if ((locking == 0) && (bl == 0))
+			err = add_ipc_record(HB_IPC_PERM, uid, 'A', binprm, \
+					ipc_uid, ipc_gid, ipc_cuid, ipc_cgid, flag, interact);
+
+		if ((locking == 0) && (bl == 1))
+			err = add_ipc_record(HB_IPC_PERM, uid, 'R', binprm, \
+					ipc_uid, ipc_gid, ipc_cuid, ipc_cgid, flag, interact);
+
+		if ((locking == 1) && (bl == 0)) {
+			/* detect mode */
+			err = -EOPNOTSUPP;
+		}
+	}
+
+	kfree(taskname);
+out:
+	return err;
 }
 
 static void honeybest_ipc_getsecid(struct kern_ipc_perm *ipcp, u32 *secid)

@@ -95,6 +95,7 @@
 #include "sb.h"
 #include "kmod.h"
 #include "ptrace.h"
+#include "ipc.h"
 #include "honeybest.h"
 
 struct proc_dir_entry *hb_proc_notify_entry;
@@ -217,6 +218,16 @@ int add_notify_record(unsigned int fid, void *data)
 				else
 					tmp->data = data;
 				break;
+			case HB_IPC_PERM:
+				tmp->data = (void *)kmalloc(sizeof(hb_ipc_ll), GFP_KERNEL);
+				strncpy(tmp->proc, HB_IPC_PROC, strlen(HB_IPC_PROC));
+				if (tmp->data == NULL) {
+					printk(KERN_ERR "unable to add ipc notify linked list\n");
+					err = -EOPNOTSUPP;
+				}
+				else
+					tmp->data = data;
+				break;
 			default:
 				break;
 		}
@@ -244,6 +255,7 @@ int read_notify_record(struct seq_file *m, void *v)
        	hb_inode_ll *inodes = NULL;
        	hb_sb_ll *sbs = NULL;
        	hb_kmod_ll *kmods = NULL;
+       	hb_ipc_ll *ipc = NULL;
        	hb_ptrace_ll *ptrace = NULL;
 
 	seq_printf(m, "ID\tFILE\tFUNC\tUID\tDATA\n");
@@ -313,6 +325,12 @@ int read_notify_record(struct seq_file *m, void *v)
 				kmods = (hb_kmod_ll *)tmp->data;
 				seq_printf(m, "%lu\t%s\t%u\t%s\t%c\t%s\t%s\t%s\n", total++, tmp->proc, kmods->fid\
 						, kmods->uid, kmods->act_allow, kmods->name, kmods->filename, kmods->digest);
+				break;
+			case HB_IPC_PERM:
+				ipc = (hb_ipc_ll *)tmp->data;
+				seq_printf(m, "%lu\t%s\t%u\t%s\t%c\t%s\t%d\t%d\t%d\t%d\t%d\n", total++, tmp->proc, ipc->fid, \
+						ipc->uid, ipc->act_allow, ipc->binprm, ipc->ipc_uid, ipc->ipc_gid, \
+						ipc->ipc_cuid, ipc->ipc_cgid, ipc->flag);
 				break;
 			default:
 				break;
