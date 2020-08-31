@@ -141,6 +141,52 @@ out:
 	return 0;
 }
 
+int match_socket_record(hb_socket_ll *data, unsigned int fid, uid_t uid, int family, int type, int protocol,
+		int port, int level, int optname, char *binprm)
+{
+	int match = 0;
+	bool do_compare_uid = false;
+	unsigned long list_uid = 0;
+
+	if (data->uid[0] == '*')
+		do_compare_uid = true;
+	else {
+		if ((kstrtoul(data->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
+			do_compare_uid = (uid == list_uid) ;
+	}
+
+	switch (fid) {
+		case HB_SOCKET_CONNECT:
+			if ((data->fid == fid) && do_compare_uid && (data->family == family) && (data->type == type) && (data->protocol == protocol) && (data->port == port) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+				match = 1;
+			}
+			break;
+		case HB_SOCKET_CREATE:
+			if ((data->fid == fid) && do_compare_uid && (data->family == family) && (data->type == type) && (data->protocol == protocol) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+				//printk(KERN_INFO "Found socket create record !!!!\n");
+				match = 1;
+			}
+			break;
+		case HB_SOCKET_BIND:
+			if ((data->fid == fid) && do_compare_uid && (data->port == port) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+				//printk(KERN_INFO "Found socket bind record !!!!\n");
+				match = 1;
+			}
+			break;
+		case HB_SOCKET_SETSOCKOPT:
+			if ((data->fid == fid) && do_compare_uid && (data->level == level) && (data->optname == optname) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+				//printk(KERN_INFO "Found socket setsockopt record !!!!\n");
+				match = 1;
+			}
+			break;
+		default:
+			break;
+	} // switch
+
+
+	return match;
+}
+
 hb_socket_ll *search_socket_record(unsigned int fid, uid_t uid, int family, int type, int protocol,
 		int port, int level, int optname, char *binprm)
 {
@@ -148,45 +194,11 @@ hb_socket_ll *search_socket_record(unsigned int fid, uid_t uid, int family, int 
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_socket_list_head.list) {
-		bool do_compare_uid = false;
-		unsigned long list_uid = 0;
 
 		tmp = list_entry(pos, hb_socket_ll, list);
 
-		if (tmp->uid[0] == '*')
-			do_compare_uid = true;
-		else {
-			if ((kstrtoul(tmp->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
-				do_compare_uid = (uid == list_uid) ;
-		}
-
-		switch (fid) {
-			case HB_SOCKET_CONNECT:
-				if ((tmp->fid == fid) && do_compare_uid && (tmp->family == family) && (tmp->type == type) && (tmp->protocol == protocol) && (tmp->port == port) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
-					return tmp;
-				}
-				break;
-			case HB_SOCKET_CREATE:
-				if ((tmp->fid == fid) && do_compare_uid && (tmp->family == family) && (tmp->type == type) && (tmp->protocol == protocol) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
-					//printk(KERN_INFO "Found socket create record !!!!\n");
-					return tmp;
-				}
-				break;
-			case HB_SOCKET_BIND:
-				if ((tmp->fid == fid) && do_compare_uid && (tmp->port == port) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
-					//printk(KERN_INFO "Found socket bind record !!!!\n");
-					return tmp;
-				}
-				break;
-			case HB_SOCKET_SETSOCKOPT:
-				if ((tmp->fid == fid) && do_compare_uid && (tmp->level == level) && (tmp->optname == optname) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
-					//printk(KERN_INFO "Found socket setsockopt record !!!!\n");
-					return tmp;
-				}
-				break;
-			default:
-				break;
-		} // switch
+		if(match_socket_record(tmp, fid, uid, family, type, protocol, port, level, optname, binprm))
+			return tmp;
 	} // socket linked list
 
 	return NULL;
@@ -221,6 +233,7 @@ int add_socket_record(unsigned int fid, char *uid, char act_allow, int family, i
 		tmp->act_allow = act_allow;
 		tmp->binprm = kmalloc(strlen(binprm), GFP_KERNEL);
 		if (!tmp->binprm) {
+			err = -EOPNOTSUPP;
 			kfree(tmp);
 			goto out;
 		}
@@ -252,7 +265,14 @@ int add_socket_record(unsigned int fid, char *uid, char act_allow, int family, i
 	else
 		err = -EOPNOTSUPP;
 out:
+	if(err != 0)
+		kfree(tmp);
 	return err;
+}
+
+void free_socket_record(hb_socket_ll *data)
+{
+	kfree(data->binprm);
 }
 
 ssize_t write_socket_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
@@ -287,7 +307,7 @@ ssize_t write_socket_record(struct file *file, const char __user *buffer, size_t
 	/* clean all acts_buff */
 	list_for_each_safe(pos, q, &hb_socket_list_head.list) {
 		tmp = list_entry(pos, hb_socket_ll, list);
-		kfree(tmp->binprm);
+		free_socket_record(tmp);
 		list_del(pos);
 		kfree(tmp);
 		tmp = NULL;

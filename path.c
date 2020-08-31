@@ -92,62 +92,74 @@
 
 struct proc_dir_entry *hb_proc_path_entry;
 hb_path_ll hb_path_list_head;
+
+int match_path_record(hb_path_ll *data, unsigned int fid, uid_t uid, umode_t mode, char *s_path, char *t_path, uid_t suid, uid_t sgid, unsigned int dev, char *binprm)
+{
+	int match = 0;
+	bool do_compare_uid = false;
+	unsigned long list_uid = 0;
+
+	if (data->uid[0] == '*')
+		do_compare_uid = true;
+	else {
+		if ((kstrtoul(data->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
+			do_compare_uid = (uid == list_uid) ;
+	}
+
+	switch (fid) {
+		case HB_PATH_RENAME:
+		case HB_PATH_TRUNCATE:
+		case HB_PATH_RMDIR:
+		case HB_PATH_SYMLINK:
+		case HB_PATH_LINK:
+		case HB_PATH_UNLINK:
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_path, strlen(data->s_path), s_path, strlen(s_path)) && !compare_regex(data->t_path, strlen(data->t_path), t_path, strlen(t_path)) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+				/* we find the record */
+				//printk(KERN_INFO "Found link/rename/rmdir/symlink/unlink path record !!!!\n");
+				match = 1;
+			}
+			break;
+		case HB_PATH_MKDIR:
+		case HB_PATH_CHMOD:
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_path, strlen(data->s_path), s_path, strlen(s_path)) && (data->mode == mode) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+				/* we find the record */
+				//printk(KERN_INFO "Found chmod path record !!!!\n");
+				match = 1;
+			}
+			break;
+		case HB_PATH_CHOWN:
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_path, strlen(data->s_path), s_path, strlen(s_path)) && (data->suid == suid) && (data->sgid == sgid) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+				/* we find the record */
+				//printk(KERN_INFO "Found chown path record !!!!\n");
+				match = 1;
+			}
+			break;
+		case HB_PATH_MKNOD:
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_path, strlen(data->s_path), s_path, strlen(s_path)) && (data->dev == dev) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+				/* we find the record */
+				//printk(KERN_INFO "Found mknod path record !!!!\n");
+				match = 1;
+			}
+			break;
+		default:
+			break;
+	} // switch
+
+
+	return match;
+}
+
 hb_path_ll *search_path_record(unsigned int fid, uid_t uid, umode_t mode, char *s_path, char *t_path, uid_t suid, uid_t sgid, unsigned int dev, char *binprm)
 {
 	hb_path_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_path_list_head.list) {
-		bool do_compare_uid = false;
-		unsigned long list_uid = 0;
 
 		tmp = list_entry(pos, hb_path_ll, list);
 
-		if (tmp->uid[0] == '*')
-			do_compare_uid = true;
-		else {
-			if ((kstrtoul(tmp->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
-				do_compare_uid = (uid == list_uid) ;
-		}
-
-		switch (fid) {
-			case HB_PATH_RENAME:
-			case HB_PATH_TRUNCATE:
-			case HB_PATH_RMDIR:
-			case HB_PATH_SYMLINK:
-			case HB_PATH_LINK:
-			case HB_PATH_UNLINK:
-				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->s_path, strlen(tmp->s_path), s_path, strlen(s_path)) && !compare_regex(tmp->t_path, strlen(tmp->t_path), t_path, strlen(t_path)) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
-					/* we find the record */
-					//printk(KERN_INFO "Found link/rename/rmdir/symlink/unlink path record !!!!\n");
-					return tmp;
-				}
-				break;
-			case HB_PATH_MKDIR:
-			case HB_PATH_CHMOD:
-				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->s_path, strlen(tmp->s_path), s_path, strlen(s_path)) && (tmp->mode == mode) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
-					/* we find the record */
-					//printk(KERN_INFO "Found chmod path record !!!!\n");
-					return tmp;
-				}
-				break;
-			case HB_PATH_CHOWN:
-				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->s_path, strlen(tmp->s_path), s_path, strlen(s_path)) && (tmp->suid == suid) && (tmp->sgid == sgid) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
-					/* we find the record */
-					//printk(KERN_INFO "Found chown path record !!!!\n");
-					return tmp;
-				}
-				break;
-			case HB_PATH_MKNOD:
-				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->s_path, strlen(tmp->s_path), s_path, strlen(s_path)) && (tmp->dev == dev) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
-					/* we find the record */
-					//printk(KERN_INFO "Found mknod path record !!!!\n");
-					return tmp;
-				}
-				break;
-			default:
-				break;
-		} // switch
+		if(match_path_record(tmp, fid, uid, mode, s_path, t_path, suid, sgid, dev, binprm))
+			return tmp;
 	} // path linked list
 
 	return NULL;
@@ -255,6 +267,13 @@ int read_path_record(struct seq_file *m, void *v)
 	return 0;
 }
 
+void free_path_record(hb_path_ll *data)
+{
+	kfree(data->s_path);
+	kfree(data->t_path);
+	kfree(data->binprm);
+}
+
 ssize_t write_path_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
 {
 	char *acts_buff = NULL;
@@ -287,9 +306,7 @@ ssize_t write_path_record(struct file *file, const char __user *buffer, size_t c
 	/* clean all acts_buff */
 	list_for_each_safe(pos, q, &hb_path_list_head.list) {
 		tmp = list_entry(pos, hb_path_ll, list);
-		kfree(tmp->s_path);
-		kfree(tmp->t_path);
-		kfree(tmp->binprm);
+		free_path_record(tmp);
 		list_del(pos);
 		kfree(tmp);
 		tmp = NULL;

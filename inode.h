@@ -30,3 +30,4 @@ int add_inode_record(unsigned int fid, char *uid, char act_allow, char *name, ch
 
 int read_inode_record(struct seq_file *m, void *v);
 ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos);
+void free_inode_record(hb_inode_ll *data);

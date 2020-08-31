@@ -93,29 +93,41 @@
 
 struct proc_dir_entry *hb_proc_ptrace_entry;
 hb_ptrace_ll hb_ptrace_list_head;
+
+int match_ptrace_record(hb_ptrace_ll *data, unsigned int fid, uid_t uid, char *parent, char *child, unsigned int mode)
+{
+	int match = 0;
+	bool do_compare_uid = false;
+	unsigned long list_uid = 0;
+
+	if (data->uid[0] == '*')
+		do_compare_uid = true;
+	else {
+		if ((kstrtoul(data->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
+			do_compare_uid = (uid == list_uid) ;
+	}
+
+	if ((data->fid == HB_PTRACE_ACCESS_CHECK) && do_compare_uid && !compare_regex(data->parent, strlen(data->parent), parent, strlen(parent)) && !compare_regex(data->child, strlen(data->child), child, strlen(child)) && (data->mode == mode)) {
+		/* we find the record */
+		//printk(KERN_INFO "Found ptrace access record !!!!\n");
+		match = 1;
+	}
+
+
+	return match;
+}
+
 hb_ptrace_ll *search_ptrace_record(unsigned int fid, uid_t uid, char *parent, char *child, unsigned int mode)
 {
 	hb_ptrace_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_ptrace_list_head.list) {
-		bool do_compare_uid = false;
-		unsigned long list_uid = 0;
 
 		tmp = list_entry(pos, hb_ptrace_ll, list);
 
-		if (tmp->uid[0] == '*')
-			do_compare_uid = true;
-		else {
-			if ((kstrtoul(tmp->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
-				do_compare_uid = (uid == list_uid) ;
-		}
-
-		if ((tmp->fid == HB_PTRACE_ACCESS_CHECK) && do_compare_uid && !compare_regex(tmp->parent, strlen(tmp->parent), parent, strlen(parent)) && !compare_regex(tmp->child, strlen(tmp->child), child, strlen(child)) && (tmp->mode == mode)) {
-			/* we find the record */
-			//printk(KERN_INFO "Found ptrace access record !!!!\n");
+		if(match_ptrace_record(tmp, fid, uid, parent, child, mode))
 			return tmp;
-		}
 	}
 
 	return NULL;
@@ -134,22 +146,24 @@ int add_ptrace_record(unsigned int fid, char *uid, char act_allow, char *parent,
 		tmp->fid = fid;
 		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
 		tmp->act_allow = act_allow;
+		tmp->parent = kmalloc(parent_len+1, GFP_KERNEL);
+		if (tmp->parent == NULL) {
+			err = -EOPNOTSUPP;
+			goto out;
+		}
+
+		tmp->child = kmalloc(child_len+1, GFP_KERNEL);
+		if (tmp->child == NULL) {
+			err = -EOPNOTSUPP;
+			kfree(tmp->parent);
+			goto out;
+		}
+
 		switch (fid) {
 			case HB_PTRACE_ACCESS_CHECK:
 				tmp->mode = mode;
-				tmp->parent = kmalloc(parent_len+1, GFP_KERNEL);
-				if (tmp->parent == NULL)
-					err = -EOPNOTSUPP;
-				else
-					strcpy(tmp->parent, parent);
-
-				tmp->child = kmalloc(child_len+1, GFP_KERNEL);
-				if (tmp->child == NULL) {
-					err = -EOPNOTSUPP;
-					kfree(tmp->parent);
-				}
-				else
-					strcpy(tmp->child, child);
+				strcpy(tmp->parent, parent);
+				strcpy(tmp->child, child);
 			       	break;
 			default:
 				break;
@@ -163,6 +177,7 @@ int add_ptrace_record(unsigned int fid, char *uid, char act_allow, char *parent,
 	else
 		err = -EOPNOTSUPP;
 
+out:
 	if(err != 0)
 		kfree(tmp);
 
@@ -182,6 +197,12 @@ int read_ptrace_record(struct seq_file *m, void *v)
 	}
 
 	return 0;
+}
+
+void free_ptrace_record(hb_ptrace_ll *data)
+{
+	kfree(data->parent);
+	kfree(data->child);
 }
 
 ssize_t write_ptrace_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
@@ -217,8 +238,7 @@ ssize_t write_ptrace_record(struct file *file, const char __user *buffer, size_t
 	list_for_each_safe(pos, q, &hb_ptrace_list_head.list) {
 		tmp = list_entry(pos, hb_ptrace_ll, list);
 		list_del(pos);
-		kfree(tmp->parent);
-		kfree(tmp->child);
+		free_ptrace_record(tmp);
 		kfree(tmp);
 		tmp = NULL;
 	}

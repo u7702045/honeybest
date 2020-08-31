@@ -32,3 +32,4 @@ int lookup_binprm_digest(struct file *file, char *digest);
 
 int read_binprm_record(struct seq_file *m, void *v);
 ssize_t write_binprm_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos);
+void free_cred_record(hb_binprm_ll *data);

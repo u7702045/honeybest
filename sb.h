@@ -35,4 +35,4 @@ int add_sb_record(unsigned int fid, char *uid, char act_allow, char *s_id, char 
 
 int read_sb_record(struct seq_file *m, void *v);
 ssize_t write_sb_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos);
-
+void free_sb_record(hb_sb_ll *data);

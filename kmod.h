@@ -31,5 +31,6 @@ int add_kmod_record(unsigned int fid, char *uid, char act_allow, char *name, cha
 
 int read_kmod_record(struct seq_file *m, void *v);
 ssize_t write_kmod_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos);
+void free_kmod_record(hb_kmod_ll *data);
 
 

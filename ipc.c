@@ -92,6 +92,36 @@
 
 struct proc_dir_entry *hb_proc_ipc_entry;
 hb_ipc_ll hb_ipc_list_head;
+
+int match_ipc_record(hb_ipc_ll *data, unsigned int fid, uid_t uid, char *binprm, \
+		uid_t ipc_uid, uid_t ipc_gid, uid_t ipc_cuid, uid_t ipc_cgid, short flag)
+{
+	int match = 0;
+	bool do_compare_uid = false;
+	unsigned long list_uid = 0;
+
+	if (data->uid[0] == '*')
+		do_compare_uid = true;
+	else {
+		if ((kstrtoul(data->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
+			do_compare_uid = (uid == list_uid) ;
+	}
+
+	switch (fid) {
+		case HB_IPC_PERM:
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm)) && (data->ipc_uid == ipc_uid) && (data->ipc_gid == ipc_gid) && (data->ipc_cuid == ipc_cuid) && (data->ipc_cgid == ipc_cgid) && (data->flag == flag)) {
+				/* we find the record */
+				//printk(KERN_INFO "Found ipc perm record %s, %s!!!!\n", filename, data->filename);
+				match = 1;
+			}
+			break;
+		default:
+			break;
+	} // switch
+
+	return match;
+}
+
 hb_ipc_ll *search_ipc_record(unsigned int fid, uid_t uid, char *binprm, \
 		uid_t ipc_uid, uid_t ipc_gid, uid_t ipc_cuid, uid_t ipc_cgid, short flag)
 {
@@ -99,29 +129,11 @@ hb_ipc_ll *search_ipc_record(unsigned int fid, uid_t uid, char *binprm, \
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_ipc_list_head.list) {
-		bool do_compare_uid = false;
-		unsigned long list_uid = 0;
 
 		tmp = list_entry(pos, hb_ipc_ll, list);
 
-		if (tmp->uid[0] == '*')
-			do_compare_uid = true;
-		else {
-			if ((kstrtoul(tmp->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
-				do_compare_uid = (uid == list_uid) ;
-		}
-
-		switch (fid) {
-			case HB_IPC_PERM:
-				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm)) && (tmp->ipc_uid == ipc_uid) && (tmp->ipc_gid == ipc_gid) && (tmp->ipc_cuid == ipc_cuid) && (tmp->ipc_cgid == ipc_cgid) && (tmp->flag == flag)) {
-					/* we find the record */
-					//printk(KERN_INFO "Found ipc perm record %s, %s!!!!\n", filename, tmp->filename);
-					return tmp;
-				}
-				break;
-			default:
-				break;
-		} // switch
+		if(match_ipc_record(tmp, fid, uid, binprm, ipc_uid, ipc_gid, ipc_cuid, ipc_cgid, flag))
+			return tmp;
 	} // ipc linked list
 
 	return NULL;
@@ -143,6 +155,12 @@ int add_ipc_record(unsigned int fid, char *uid, char act_allow, char *binprm, \
 		tmp->fid = fid;
 		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
 		tmp->act_allow = act_allow;
+		tmp->binprm = kmalloc(binprm_len+1, GFP_KERNEL);
+		if (tmp->binprm == NULL) {
+			err = -EOPNOTSUPP;
+			goto out;
+		}
+
 		switch (fid) {
 			case HB_IPC_PERM:
 				tmp->ipc_uid = ipc_uid;
@@ -150,11 +168,6 @@ int add_ipc_record(unsigned int fid, char *uid, char act_allow, char *binprm, \
 				tmp->ipc_cuid = ipc_cuid;
 				tmp->ipc_cgid = ipc_cgid;
 				tmp->flag = flag;
-				tmp->binprm = kmalloc(binprm_len+1, GFP_KERNEL);
-				if (tmp->binprm == NULL) {
-					err = -EOPNOTSUPP;
-					goto out;
-				}
 				strcpy(tmp->binprm, binprm);
 			       	break;
 			default:
@@ -191,6 +204,11 @@ int read_ipc_record(struct seq_file *m, void *v)
 	return 0;
 }
 
+void free_ipc_record(hb_ipc_ll *data)
+{
+	kfree(data->binprm);
+}
+
 ssize_t write_ipc_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
 {
 	char *acts_buff = NULL;
@@ -224,7 +242,7 @@ ssize_t write_ipc_record(struct file *file, const char __user *buffer, size_t co
 	list_for_each_safe(pos, q, &hb_ipc_list_head.list) {
 		tmp = list_entry(pos, hb_ipc_ll, list);
 		list_del(pos);
-		kfree(tmp->binprm);
+		free_ipc_record(tmp);
 		kfree(tmp);
 		tmp = NULL;
 	}

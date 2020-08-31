@@ -39,6 +39,7 @@ hb_socket_ll *search_socket_record(unsigned int fid, uid_t uid, int family, int 
 int add_socket_record(unsigned int fid, char *uid, char act_allow, int family, int type, int protocol,
 	       	int port, int level, int optname, char *binprm, int interact);
 
+void free_socket_record(hb_socket_ll *data);
 int read_socket_record(struct seq_file *m, void *v);
 ssize_t write_socket_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos);
 unsigned short lookup_source_port(struct socket *sock, struct sockaddr *address, int addrlen);

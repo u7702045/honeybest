@@ -92,6 +92,59 @@
 
 struct proc_dir_entry *hb_proc_sb_entry;
 hb_sb_ll hb_sb_list_head;
+
+int match_sb_record(hb_sb_ll *data, unsigned int fid, uid_t uid, char *s_id, char *name, \
+		char *dev_name, char *type, int flags)
+{
+	int match = 0;
+	bool do_compare_uid = false;
+	unsigned long list_uid = 0;
+
+	if (data->uid[0] == '*')
+		do_compare_uid = true;
+	else {
+		if ((kstrtoul(data->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
+			do_compare_uid = (uid == list_uid) ;
+	}
+
+	switch (fid) {
+		case HB_SB_COPY_DATA:
+			if ((data->fid == fid) && do_compare_uid) {
+				/* we find the record */
+				//printk(KERN_INFO "Found sb copy data record !!!!\n");
+				match = 1;
+			}
+			break;
+		case HB_SB_STATFS:
+		case HB_SB_REMOUNT:
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_id, strlen(data->s_id), s_id, strlen(s_id)) && !compare_regex(data->name, strlen(data->name), name, strlen(name))) {
+				/* we find the record */
+				//printk(KERN_INFO "Found sb remount/statfs data record !!!!\n");
+				match = 1;
+			}
+			break;
+		case HB_SB_UMOUNT:
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_id, strlen(data->s_id), s_id, strlen(s_id)) && !compare_regex(data->name, strlen(data->name), name, strlen(name)) && (data->flags == flags)) {
+				/* we find the record */
+				//printk(KERN_INFO "Found sb umount data record !!!!\n");
+				match = 1;
+			}
+			break;
+		case HB_SB_MOUNT:
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->dev_name, strlen(data->dev_name), dev_name, strlen(dev_name)) && !strncmp(data->type, type, strlen(data->type)) && (data->flags == flags)) {
+				/* we find the record */
+				//printk(KERN_INFO "Found sb mount data record !!!!\n");
+				match = 1;
+			}
+			break;
+		default:
+			break;
+	} // switch
+
+
+	return match;
+}
+
 hb_sb_ll *search_sb_record(unsigned int fid, uid_t uid, char *s_id, char *name, \
 		char *dev_name, char *type, int flags)
 {
@@ -99,51 +152,11 @@ hb_sb_ll *search_sb_record(unsigned int fid, uid_t uid, char *s_id, char *name, 
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_sb_list_head.list) {
-		bool do_compare_uid = false;
-		unsigned long list_uid = 0;
 
 		tmp = list_entry(pos, hb_sb_ll, list);
 
-		if (tmp->uid[0] == '*')
-			do_compare_uid = true;
-		else {
-			if ((kstrtoul(tmp->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
-				do_compare_uid = (uid == list_uid) ;
-		}
-
-		switch (fid) {
-			case HB_SB_COPY_DATA:
-				if ((tmp->fid == fid) && do_compare_uid) {
-					/* we find the record */
-					//printk(KERN_INFO "Found sb copy data record !!!!\n");
-					return tmp;
-				}
-				break;
-			case HB_SB_STATFS:
-			case HB_SB_REMOUNT:
-				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->s_id, strlen(tmp->s_id), s_id, strlen(s_id)) && !compare_regex(tmp->name, strlen(tmp->name), name, strlen(name))) {
-					/* we find the record */
-					//printk(KERN_INFO "Found sb remount/statfs data record !!!!\n");
-					return tmp;
-				}
-				break;
-			case HB_SB_UMOUNT:
-				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->s_id, strlen(tmp->s_id), s_id, strlen(s_id)) && !compare_regex(tmp->name, strlen(tmp->name), name, strlen(name)) && (tmp->flags == flags)) {
-					/* we find the record */
-					//printk(KERN_INFO "Found sb umount data record !!!!\n");
-					return tmp;
-				}
-				break;
-			case HB_SB_MOUNT:
-				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->dev_name, strlen(tmp->dev_name), dev_name, strlen(dev_name)) && !strncmp(tmp->type, type, strlen(tmp->type)) && (tmp->flags == flags)) {
-					/* we find the record */
-					//printk(KERN_INFO "Found sb mount data record !!!!\n");
-					return tmp;
-				}
-				break;
-			default:
-				break;
-		} // switch
+		if(match_sb_record(tmp, fid, uid, s_id, name, dev_name, type, flags))
+			return tmp;
 	} // path linked list
 
 	return NULL;
@@ -248,6 +261,14 @@ int read_sb_record(struct seq_file *m, void *v)
 	return 0;
 }
 
+void free_sb_record(hb_sb_ll *data)
+{
+	kfree(data->s_id);
+	kfree(data->name);
+	kfree(data->dev_name);
+	kfree(data->type);
+}
+
 ssize_t write_sb_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
 {
 	char *acts_buff = NULL;
@@ -281,10 +302,7 @@ ssize_t write_sb_record(struct file *file, const char __user *buffer, size_t cou
 	list_for_each_safe(pos, q, &hb_sb_list_head.list) {
 		tmp = list_entry(pos, hb_sb_ll, list);
 		list_del(pos);
-		kfree(tmp->s_id);
-		kfree(tmp->name);
-		kfree(tmp->dev_name);
-		kfree(tmp->type);
+		free_sb_record(tmp);
 		kfree(tmp);
 		tmp = NULL;
 	}

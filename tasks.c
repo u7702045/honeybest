@@ -92,29 +92,41 @@
 
 struct proc_dir_entry *hb_proc_task_entry;
 hb_task_ll hb_task_list_head;
+
+int match_task_record(hb_task_ll *data, unsigned int fid, uid_t uid, struct siginfo *info, int sig, u32 secid, char *binprm)
+{
+	int match = 0;
+	bool do_compare_uid = false;
+	unsigned long list_uid = 0;
+
+	if (data->uid[0] == '*')
+		do_compare_uid = true;
+	else {
+		if ((kstrtoul(data->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
+			do_compare_uid = (uid == list_uid) ;
+	}
+
+	if ((data->fid == HB_TASK_SIGNAL) && do_compare_uid && (data->sig == sig) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+		/* we find the record */
+		//printk(KERN_INFO "Found task open record !!!!\n");
+		match = 1;
+	}
+
+
+	return match;
+}
+
 hb_task_ll *search_task_record(unsigned int fid, uid_t uid, struct siginfo *info, int sig, u32 secid, char *binprm)
 {
 	hb_task_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_task_list_head.list) {
-		bool do_compare_uid = false;
-		unsigned long list_uid = 0;
 
 		tmp = list_entry(pos, hb_task_ll, list);
 
-		if (tmp->uid[0] == '*')
-			do_compare_uid = true;
-		else {
-			if ((kstrtoul(tmp->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
-				do_compare_uid = (uid == list_uid) ;
-		}
-
-		if ((tmp->fid == HB_TASK_SIGNAL) && do_compare_uid && (tmp->sig == sig) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
-			/* we find the record */
-			//printk(KERN_INFO "Found task open record !!!!\n");
+		if(match_task_record(tmp, fid, uid, info, sig, secid, binprm))
 			return tmp;
-		}
 	}
 
 	return NULL;
@@ -176,6 +188,11 @@ int read_task_record(struct seq_file *m, void *v)
 	return 0;
 }
 
+void free_task_record(hb_task_ll *data)
+{
+	kfree(data->binprm);
+}
+
 ssize_t write_task_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
 {
 	char *acts_buff = NULL;
@@ -208,7 +225,7 @@ ssize_t write_task_record(struct file *file, const char __user *buffer, size_t c
 	/* clean all acts_buff */
 	list_for_each_safe(pos, q, &hb_task_list_head.list) {
 		tmp = list_entry(pos, hb_task_ll, list);
-		kfree(tmp->binprm);
+		free_task_record(tmp);
 		list_del(pos);
 		kfree(tmp);
 		tmp = NULL;

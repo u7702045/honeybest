@@ -35,3 +35,4 @@ int add_path_record(unsigned int fid, char *uid, char act_allow, umode_t mode, c
 
 int read_path_record(struct seq_file *m, void *v);
 ssize_t write_path_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos);
+void free_path_record(hb_path_ll *data);

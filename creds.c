@@ -93,29 +93,41 @@
 
 struct proc_dir_entry *hb_proc_binprm_entry;
 hb_binprm_ll hb_binprm_list_head;
+
+int match_binprm_record(hb_binprm_ll *data, unsigned int fid, uid_t uid, char *pathname, char *digest)
+{
+	int match = 0;
+	bool do_compare_uid = false;
+	unsigned long list_uid = 0;
+
+	if (data->uid[0] == '*')
+		do_compare_uid = true;
+	else {
+		if ((kstrtoul(data->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
+			do_compare_uid = (uid == list_uid) ;
+	}
+
+	if ((data->fid == HB_BPRM_SET_CREDS) && !memcmp(data->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE-1) && do_compare_uid && !compare_regex(data->pathname, strlen(data->pathname), pathname, strlen(pathname))) {
+		/* we find the record */
+		//printk(KERN_INFO "Found binprm set record !!!!\n");
+		match = 1;
+	}
+
+	return match;
+
+}
+
 hb_binprm_ll *search_binprm_record(unsigned int fid, uid_t uid, char *pathname, char *digest)
 {
 	hb_binprm_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_binprm_list_head.list) {
-		bool do_compare_uid = false;
-		unsigned long list_uid = 0;
 
 		tmp = list_entry(pos, hb_binprm_ll, list);
 
-		if (tmp->uid[0] == '*')
-			do_compare_uid = true;
-		else {
-			if ((kstrtoul(tmp->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
-				do_compare_uid = (uid == list_uid) ;
-		}
-
-		if ((tmp->fid == HB_BPRM_SET_CREDS) && !memcmp(tmp->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE-1) && do_compare_uid && !compare_regex(tmp->pathname, strlen(tmp->pathname), pathname, strlen(pathname))) {
-			/* we find the record */
-			//printk(KERN_INFO "Found binprm set record !!!!\n");
+		if(match_binprm_record(tmp, fid, uid, pathname, digest))
 			return tmp;
-		}
 	}
 
 	return NULL;
@@ -133,14 +145,16 @@ int add_binprm_record(unsigned int fid, char *uid, char act_allow, char *pathnam
 		tmp->fid = fid;
 		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
 		tmp->act_allow = act_allow;
+		strcpy(tmp->digest, digest);
+		tmp->pathname = kmalloc(len+1, GFP_KERNEL);
+		if (tmp->pathname == NULL) {
+			err = -EOPNOTSUPP;
+			goto out;
+		}
+
 		switch (fid) {
 			case HB_BPRM_SET_CREDS:
-				strcpy(tmp->digest, digest);
-				tmp->pathname = kmalloc(len+1, GFP_KERNEL);
-				if (tmp->pathname == NULL)
-					err = -EOPNOTSUPP;
-				else
-					strcpy(tmp->pathname, pathname);
+				strcpy(tmp->pathname, pathname);
 			       	break;
 			default:
 				break;
@@ -154,6 +168,7 @@ int add_binprm_record(unsigned int fid, char *uid, char act_allow, char *pathnam
 	else
 		err = -EOPNOTSUPP;
 
+out:
 	if(err != 0)
 		kfree(tmp);
 
@@ -263,6 +278,11 @@ int read_binprm_record(struct seq_file *m, void *v)
 	return 0;
 }
 
+void free_cred_record(hb_binprm_ll *data)
+{
+	kfree(data->pathname);
+}
+
 ssize_t write_binprm_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
 {
 	char *acts_buff = NULL;
@@ -296,7 +316,7 @@ ssize_t write_binprm_record(struct file *file, const char __user *buffer, size_t
 	list_for_each_safe(pos, q, &hb_binprm_list_head.list) {
 		tmp = list_entry(pos, hb_binprm_ll, list);
 		list_del(pos);
-		kfree(tmp->pathname);
+		free_cred_record(tmp);
 		kfree(tmp);
 		tmp = NULL;
 	}

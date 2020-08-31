@@ -34,3 +34,4 @@ int add_task_record(unsigned int fid, char *uid, char act_allow, int sig, int si
 
 int read_task_record(struct seq_file *m, void *v);
 ssize_t write_task_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos);
+void free_task_record(hb_task_ll *data);

@@ -92,43 +92,54 @@
 
 struct proc_dir_entry *hb_proc_file_entry;
 hb_file_ll hb_file_list_head;
+
+int match_file_record(hb_file_ll *data, unsigned int fid, uid_t uid, char *filename, char *binprm, unsigned int cmd)
+{
+	int match = 0;
+	bool do_compare_uid = false;
+	unsigned long list_uid = 0;
+
+	if (data->uid[0] == '*')
+		do_compare_uid = true;
+	else {
+		if ((kstrtoul(data->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
+			do_compare_uid = (uid == list_uid) ;
+	}
+
+	switch (fid) {
+		case HB_FILE_IOCTL:
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->filename, strlen(data->filename), filename, strlen(filename)) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm)) && (data->cmd == cmd)) {
+				/* we find the record */
+				//printk(KERN_INFO "Found file ioctl record %s, %s!!!!\n", filename, data->filename);
+				match = 1;
+			}
+			break;
+		case HB_FILE_OPEN:
+		case HB_FILE_RECEIVE:
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->filename, strlen(data->filename), filename, strlen(filename)) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+				/* we find the record */
+				//printk(KERN_INFO "Found file set record %s, %s!!!!\n", filename, data->filename);
+				match = 1;
+			}
+			break;
+		default:
+			break;
+	} // switch
+
+	return match;
+}
+
 hb_file_ll *search_file_record(unsigned int fid, uid_t uid, char *filename, char *binprm, unsigned int cmd)
 {
 	hb_file_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_file_list_head.list) {
-		bool do_compare_uid = false;
-		unsigned long list_uid = 0;
 
 		tmp = list_entry(pos, hb_file_ll, list);
 
-		if (tmp->uid[0] == '*')
-			do_compare_uid = true;
-		else {
-			if ((kstrtoul(tmp->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
-				do_compare_uid = (uid == list_uid) ;
-		}
-
-		switch (fid) {
-			case HB_FILE_IOCTL:
-				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->filename, strlen(tmp->filename), filename, strlen(filename)) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm)) && (tmp->cmd == cmd)) {
-					/* we find the record */
-					//printk(KERN_INFO "Found file ioctl record %s, %s!!!!\n", filename, tmp->filename);
-					return tmp;
-				}
-				break;
-			case HB_FILE_OPEN:
-			case HB_FILE_RECEIVE:
-				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->filename, strlen(tmp->filename), filename, strlen(filename)) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
-					/* we find the record */
-					//printk(KERN_INFO "Found file set record %s, %s!!!!\n", filename, tmp->filename);
-					return tmp;
-				}
-				break;
-			default:
-				break;
-		} // switch
+		if(match_file_record(tmp, fid, uid, filename, binprm, cmd))
+			return tmp;
 	} // file linked list
 
 	return NULL;
@@ -150,24 +161,27 @@ int add_file_record(unsigned int fid, char *uid, char act_allow, char *filename,
 		tmp->fid = fid;
 		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
 		tmp->act_allow = act_allow;
+		tmp->filename = kmalloc(file_len+1, GFP_KERNEL);
+		if (tmp->filename == NULL) {
+			err = -EOPNOTSUPP;
+			goto out;
+		}
+		memset(tmp->filename, '\0', file_len);
+
+		tmp->binprm = kmalloc(binprm_len+1, GFP_KERNEL);
+		if (tmp->binprm == NULL) {
+			kfree(tmp->filename);
+			err = -EOPNOTSUPP;
+			goto out;
+		}
+		memset(tmp->binprm, '\0', binprm_len);
+
 		switch (fid) {
 			case HB_FILE_IOCTL:
 				tmp->cmd = cmd;
 			case HB_FILE_RECEIVE:
 			case HB_FILE_OPEN:
-				tmp->filename = kmalloc(file_len+1, GFP_KERNEL);
-				if (tmp->filename == NULL) {
-					err = -EOPNOTSUPP;
-					goto out;
-				}
 				strcpy(tmp->filename, filename);
-
-				tmp->binprm = kmalloc(binprm_len+1, GFP_KERNEL);
-				if (tmp->binprm == NULL) {
-					kfree(tmp->filename);
-					err = -EOPNOTSUPP;
-					goto out;
-				}
 				strcpy(tmp->binprm, binprm);
 			       	break;
 			default:
@@ -204,6 +218,12 @@ int read_file_record(struct seq_file *m, void *v)
 	return 0;
 }
 
+void free_file_record(hb_file_ll *data)
+{
+	kfree(data->filename);
+	kfree(data->binprm);
+}
+
 ssize_t write_file_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
 {
 	char *acts_buff = NULL;
@@ -237,8 +257,7 @@ ssize_t write_file_record(struct file *file, const char __user *buffer, size_t c
 	list_for_each_safe(pos, q, &hb_file_list_head.list) {
 		tmp = list_entry(pos, hb_file_ll, list);
 		list_del(pos);
-		kfree(tmp->filename);
-		kfree(tmp->binprm);
+		free_file_record(tmp);
 		kfree(tmp);
 		tmp = NULL;
 	}

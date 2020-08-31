@@ -36,4 +36,5 @@ int add_ipc_record(unsigned int fid, char *uid, char act_allow, char *binprm, \
 
 int read_ipc_record(struct seq_file *m, void *v);
 ssize_t write_ipc_record(struct file *file, const char __user *buffer, size_t count, loff_t *pos);
+void free_ipc_record(hb_ipc_ll *data);
 

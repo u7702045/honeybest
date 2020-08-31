@@ -3214,13 +3214,13 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 			if (info == NULL)
 				err = add_task_record(HB_TASK_SIGNAL, uid, 'A', 0, 0, sig, secid, binprm, interact);
 			else
-				err = add_task_record(HB_TASK_SIGNAL, uid, 'R', info->si_signo\
+				err = add_task_record(HB_TASK_SIGNAL, uid, 'A', info->si_signo\
 						, info->si_errno, sig, secid, binprm, interact);
 		}
 
 		if ((locking == 0) && (bl == 1)) {
 			if (info == NULL)
-				err = add_task_record(HB_TASK_SIGNAL, uid, 'A', 0, 0, sig, secid, binprm, interact);
+				err = add_task_record(HB_TASK_SIGNAL, uid, 'R', 0, 0, sig, secid, binprm, interact);
 			else
 				err = add_task_record(HB_TASK_SIGNAL, uid, 'R', info->si_signo\
 						, info->si_errno, sig, secid, binprm, interact);

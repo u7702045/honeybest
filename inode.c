@@ -92,6 +92,38 @@
 
 struct proc_dir_entry *hb_proc_inode_entry;
 hb_inode_ll hb_inode_list_head;
+
+int match_inode_record(hb_inode_ll *data, unsigned int fid, uid_t uid, char *name, char *binprm)
+{
+	int match = 0;
+	bool do_compare_uid = false;
+	unsigned long list_uid = 0;
+
+	if (data->uid[0] == '*')
+		do_compare_uid = true;
+	else {
+		if ((kstrtoul(data->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
+			do_compare_uid = (uid == list_uid) ;
+	}
+
+	switch (fid) {
+		case HB_INODE_GETXATTR:
+		case HB_INODE_LISTXATTR:
+		case HB_INODE_REMOVEXATTR:
+		case HB_INODE_SETXATTR:
+			if ((fid == data->fid) && do_compare_uid && !compare_regex(data->name, strlen(data->name), name, strlen(name)) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+				/* we find the record */
+				//printk(KERN_INFO "Found inode open record !!!!\n");
+				match = 1;
+			}
+			break;
+		default:
+			break;
+	}
+
+	return match;
+}
+
 hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *name, char *binprm)
 {
 	hb_inode_ll *tmp = NULL;
@@ -101,32 +133,11 @@ hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *name, char *
 		return NULL;
 
 	list_for_each(pos, &hb_inode_list_head.list) {
-		bool do_compare_uid = false;
-		unsigned long list_uid = 0;
 
 		tmp = list_entry(pos, hb_inode_ll, list);
 
-		if (tmp->uid[0] == '*')
-			do_compare_uid = true;
-		else {
-			if ((kstrtoul(tmp->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
-				do_compare_uid = (uid == list_uid) ;
-		}
-
-		switch (fid) {
-			case HB_INODE_GETXATTR:
-			case HB_INODE_LISTXATTR:
-			case HB_INODE_REMOVEXATTR:
-			case HB_INODE_SETXATTR:
-				if ((fid == tmp->fid) && do_compare_uid && !compare_regex(tmp->name, strlen(tmp->name), name, strlen(name)) && !compare_regex(tmp->binprm, strlen(tmp->binprm), binprm, strlen(binprm))) {
-					/* we find the record */
-					//printk(KERN_INFO "Found inode open record !!!!\n");
-					return tmp;
-				}
-				break;
-			default:
-				break;
-		}
+		if(match_inode_record(tmp, fid, uid, name, binprm))
+			return tmp;
 	}
 	return NULL;
 }
@@ -204,6 +215,12 @@ int read_inode_record(struct seq_file *m, void *v)
 	return 0;
 }
 
+void free_inode_record(hb_inode_ll *data)
+{
+	kfree(data->name);
+	kfree(data->binprm);
+}
+
 ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
 {
 	char *acts_buff = NULL;
@@ -237,8 +254,7 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 	list_for_each_safe(pos, q, &hb_inode_list_head.list) {
 		tmp = list_entry(pos, hb_inode_ll, list);
 		list_del(pos);
-		kfree(tmp->name);
-		kfree(tmp->binprm);
+		free_inode_record(tmp);
 		kfree(tmp);
 		tmp = NULL;
 	}

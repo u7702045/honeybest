@@ -92,42 +92,53 @@
 
 struct proc_dir_entry *hb_proc_kmod_entry;
 hb_kmod_ll hb_kmod_list_head;
+
+int match_kmod_record(hb_kmod_ll *data, unsigned int fid, uid_t uid, char *name, char *filename, char *digest)
+{
+	int match = 0;
+	bool do_compare_uid = false;
+	unsigned long list_uid = 0;
+
+	if (data->uid[0] == '*')
+		do_compare_uid = true;
+	else {
+		if ((kstrtoul(data->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
+			do_compare_uid = (uid == list_uid) ;
+	}
+
+	switch (fid) {
+		case HB_KMOD_REQ:
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->name, strlen(data->name), name, strlen(name))) {
+				/* we find the record */
+				//printk(KERN_INFO "Found kernel module record !!!!\n");
+				match = 1;
+			}
+			break;
+		case HB_KMOD_LOAD_FROM_FILE:
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->filename, strlen(data->filename), filename, strlen(filename)) && !strncmp(data->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE)) {
+				/* we find the record */
+				//printk(KERN_INFO "Found kernel load module record !!!!\n");
+				match = 1;
+			}
+			break;
+		default:
+			break;
+	} // switch
+
+	return match;
+}
+
 hb_kmod_ll *search_kmod_record(unsigned int fid, uid_t uid, char *name, char *filename, char *digest)
 {
 	hb_kmod_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_kmod_list_head.list) {
-		bool do_compare_uid = false;
-		unsigned long list_uid = 0;
 
 		tmp = list_entry(pos, hb_kmod_ll, list);
 
-		if (tmp->uid[0] == '*')
-			do_compare_uid = true;
-		else {
-			if ((kstrtoul(tmp->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
-				do_compare_uid = (uid == list_uid) ;
-		}
-
-		switch (fid) {
-			case HB_KMOD_REQ:
-				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->name, strlen(tmp->name), name, strlen(name))) {
-					/* we find the record */
-					//printk(KERN_INFO "Found kernel module record !!!!\n");
-					return tmp;
-				}
-				break;
-			case HB_KMOD_LOAD_FROM_FILE:
-				if ((tmp->fid == fid) && do_compare_uid && !compare_regex(tmp->filename, strlen(tmp->filename), filename, strlen(filename)) && !strncmp(tmp->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE)) {
-					/* we find the record */
-					//printk(KERN_INFO "Found kernel load module record !!!!\n");
-					return tmp;
-				}
-				break;
-			default:
-				break;
-		} // switch
+		if(match_kmod_record(tmp, fid, uid, name, filename, digest))
+			return tmp;
 	} // linked list
 
 	return NULL;
@@ -144,25 +155,26 @@ int add_kmod_record(unsigned int fid, char *uid, char act_allow, char *name, cha
 		tmp->fid = fid;
 		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
 		tmp->act_allow = act_allow;
+		tmp->name = kmalloc(strlen(name)+1, GFP_KERNEL);
+		if (tmp->name == NULL) {
+			err = -EOPNOTSUPP;
+			goto out;
+		}
+		memset(tmp->name, '\0', strlen(name)+1);
+
+		tmp->filename = kmalloc(strlen(filename)+1, GFP_KERNEL);
+		if (tmp->filename == NULL) {
+			err = -EOPNOTSUPP;
+			kfree(tmp->name);
+			goto out;
+		}
+		memset(tmp->filename, '\0', strlen(filename)+1);
+
 
 		switch (fid) {
 			case HB_KMOD_REQ:
 			case HB_KMOD_LOAD_FROM_FILE:
-				tmp->name = kmalloc(strlen(name)+1, GFP_KERNEL);
-				if (tmp->name == NULL) {
-					err = -EOPNOTSUPP;
-					goto out;
-				}
-				memset(tmp->name, '\0', strlen(name)+1);
 				strncpy(tmp->name, name, strlen(name));
-
-				tmp->filename = kmalloc(strlen(filename)+1, GFP_KERNEL);
-				if (tmp->filename == NULL) {
-					err = -EOPNOTSUPP;
-					kfree(tmp->name);
-					goto out;
-				}
-				memset(tmp->filename, '\0', strlen(filename)+1);
 				strncpy(tmp->filename, filename, strlen(filename));
 
 				strncpy(tmp->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE);
@@ -203,6 +215,12 @@ int read_kmod_record(struct seq_file *m, void *v)
 	return 0;
 }
 
+void free_kmod_record(hb_kmod_ll *data)
+{
+	kfree(data->name);
+	kfree(data->filename);
+}
+
 ssize_t write_kmod_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
 {
 	char *acts_buff = NULL;
@@ -236,8 +254,7 @@ ssize_t write_kmod_record(struct file *file, const char __user *buffer, size_t c
 	list_for_each_safe(pos, q, &hb_kmod_list_head.list) {
 		tmp = list_entry(pos, hb_kmod_ll, list);
 		list_del(pos);
-		kfree(tmp->name);
-		kfree(tmp->filename);
+		free_kmod_record(tmp);
 		kfree(tmp);
 		tmp = NULL;
 	}
