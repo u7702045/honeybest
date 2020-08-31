@@ -69,7 +69,9 @@ Every single files in directory /proc/honeybest tracking different behavior. We 
 * socket – Tracking TCP/UDP/ICMP socket activity, including port number.
 * task – Tracking activity between process, such as signal exchanging.
 * sb – Tracking superblock information. Activities such as mount/umount/df will stamp into this category. Highly relate to file/path categories due to system register /proc information.
-* kmod – Tracking Linux kernel modules activity. Kernel modprobe will stamp into this category. 
+* kmod – Tracking Linux kernel modules activity. Kernel modprobe will stamp into this category.
+* ptrace - Tracking ptrace activities.
+* ipc - Tracking Linux internal process communication activities such as share memory, message queue & semaphore.
 * notify – Notification between security module and user space application. In interactive mode, detect to unexpected events are save into this file for user space program to notify user later. Dialogue pop up to acquiring security expertise allow or ignore such activities. Once the interactive mode is enable, all events go through this file could expose memory exhaust. Thurs, design a READ scheduler from user space program is vital. Context in notify file will be cleaned after each single READ operation is executed.
 ##### Tuning example (`/proc/honeybest/path`)
 In general, developer usually run through the flow below: <br/>
