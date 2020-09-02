@@ -90,6 +90,7 @@
 #include "notify.h"
 #include "honeybest.h"
 
+extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_path_entry;
 hb_path_ll hb_path_list_head;
 
@@ -165,6 +166,31 @@ hb_path_ll *search_path_record(unsigned int fid, uid_t uid, umode_t mode, char *
 	return NULL;
 }
 
+hb_path_ll *search_notify_path_record(unsigned int fid, char *uid, umode_t mode, char *s_path, char *t_path, uid_t suid, uid_t sgid, unsigned int dev, char *binprm)
+{
+	hb_notify_ll *tmp = NULL;
+	struct list_head *pos = NULL;
+
+	list_for_each(pos, &hb_notify_list_head.list) {
+
+		tmp = list_entry(pos, hb_notify_ll, list);
+
+		if (strstr(tmp->proc, HB_PATH_PROC)) {
+			hb_path_ll *data = tmp->data;
+			unsigned long list_uid = 0;
+
+			if(kstrtoul(uid, 10, &list_uid) != 0)
+				printk(KERN_ERR "UID convert error\n");
+
+			if(match_path_record(data, fid, list_uid, mode, s_path, t_path, suid, sgid, dev, binprm)) {
+				return data;
+			}
+		}
+	} // notify linked list
+
+	return NULL;
+}
+
 int add_path_record(unsigned int fid, char *uid, char act_allow, umode_t mode, char *s_path, char *t_path, \
 		uid_t suid, uid_t sgid, unsigned int dev, char *binprm, int interact)
 {
@@ -233,8 +259,14 @@ int add_path_record(unsigned int fid, char *uid, char act_allow, umode_t mode, c
 		if ((err == 0) && (interact == 0))
 		       	list_add_tail(&(tmp->list), &(hb_path_list_head.list));
 
-		if ((err == 0) && (interact == 1))
-			add_notify_record(fid, tmp);
+		if ((err == 0) && (interact == 1)) {
+			if (!search_notify_path_record(fid, uid, mode, s_path, t_path, suid, sgid, dev, binprm))
+			       	add_notify_record(fid, tmp);
+			else {
+				free_path_record(tmp);
+				kfree(tmp);
+			}
+		}
 	}
 	else
 		err = -EOPNOTSUPP;

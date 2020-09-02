@@ -90,6 +90,7 @@
 #include "regex.h"
 #include "honeybest.h"
 
+extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_kmod_entry;
 hb_kmod_ll hb_kmod_list_head;
 
@@ -144,6 +145,31 @@ hb_kmod_ll *search_kmod_record(unsigned int fid, uid_t uid, char *name, char *fi
 	return NULL;
 }
 
+hb_kmod_ll *search_notify_kmod_record(unsigned int fid, char *uid, char *name, char *filename, char *digest)
+{
+	hb_notify_ll *tmp = NULL;
+	struct list_head *pos = NULL;
+
+	list_for_each(pos, &hb_notify_list_head.list) {
+
+		tmp = list_entry(pos, hb_notify_ll, list);
+
+		if (strstr(tmp->proc, HB_KMOD_PROC)) {
+			hb_kmod_ll *data = tmp->data;
+			unsigned long list_uid = 0;
+
+			if(kstrtoul(uid, 10, &list_uid) != 0)
+				printk(KERN_ERR "UID convert error\n");
+
+			if(match_kmod_record(data, fid, list_uid, name, filename, digest)) {
+				return data;
+			}
+		}
+	} // notify linked list
+
+	return NULL;
+}
+
 int add_kmod_record(unsigned int fid, char *uid, char act_allow, char *name, char *filename, char *digest, int interact)
 {
 	int err = 0;
@@ -186,8 +212,14 @@ int add_kmod_record(unsigned int fid, char *uid, char act_allow, char *name, cha
 		if ((err == 0) && (interact == 0))
 		       	list_add_tail(&(tmp->list), &(hb_kmod_list_head.list));
 
-		if ((err == 0) && (interact == 1))
-			add_notify_record(fid, tmp);
+		if ((err == 0) && (interact == 1)) {
+			if (!search_notify_kmod_record(fid, uid, name, filename, digest))
+			       	add_notify_record(fid, tmp);
+			else {
+				free_kmod_record(tmp);
+				kfree(tmp);
+			}
+		}
 
 	}
 	else

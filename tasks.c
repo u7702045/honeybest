@@ -90,10 +90,11 @@
 #include "regex.h"
 #include "honeybest.h"
 
+extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_task_entry;
 hb_task_ll hb_task_list_head;
 
-int match_task_record(hb_task_ll *data, unsigned int fid, uid_t uid, struct siginfo *info, int sig, u32 secid, char *binprm)
+int match_task_record(hb_task_ll *data, unsigned int fid, uid_t uid, int sig, u32 secid, char *binprm)
 {
 	int match = 0;
 	bool do_compare_uid = false;
@@ -116,7 +117,7 @@ int match_task_record(hb_task_ll *data, unsigned int fid, uid_t uid, struct sigi
 	return match;
 }
 
-hb_task_ll *search_task_record(unsigned int fid, uid_t uid, struct siginfo *info, int sig, u32 secid, char *binprm)
+hb_task_ll *search_task_record(unsigned int fid, uid_t uid, int sig, u32 secid, char *binprm)
 {
 	hb_task_ll *tmp = NULL;
 	struct list_head *pos = NULL;
@@ -125,14 +126,39 @@ hb_task_ll *search_task_record(unsigned int fid, uid_t uid, struct siginfo *info
 
 		tmp = list_entry(pos, hb_task_ll, list);
 
-		if(match_task_record(tmp, fid, uid, info, sig, secid, binprm))
+		if(match_task_record(tmp, fid, uid, sig, secid, binprm))
 			return tmp;
 	}
 
 	return NULL;
 }
 
-int add_task_record(unsigned int fid, char *uid, char act_allow, int sig, int si_signo, int si_errno, u32 secid, char *binprm, int interact)
+hb_task_ll *search_notify_task_record(unsigned int fid, char *uid, int sig, u32 secid, char *binprm)
+{
+	hb_notify_ll *tmp = NULL;
+	struct list_head *pos = NULL;
+
+	list_for_each(pos, &hb_notify_list_head.list) {
+
+		tmp = list_entry(pos, hb_notify_ll, list);
+
+		if (strstr(tmp->proc, HB_TASK_PROC)) {
+			hb_task_ll *data = tmp->data;
+			unsigned long list_uid = 0;
+
+			if(kstrtoul(uid, 10, &list_uid) != 0)
+				printk(KERN_ERR "UID convert error\n");
+
+			if(match_task_record(data, fid, list_uid, sig, secid, binprm)) {
+				return data;
+			}
+		}
+	} // notify linked list
+
+	return NULL;
+}
+
+int add_task_record(unsigned int fid, char *uid, char act_allow, int sig, u32 secid, char *binprm, int interact)
 {
 	int err = 0;
 	hb_task_ll *tmp = NULL;
@@ -152,8 +178,6 @@ int add_task_record(unsigned int fid, char *uid, char act_allow, int sig, int si
 		switch (fid) {
 			case HB_TASK_SIGNAL:
 				tmp->sig = sig;
-				tmp->si_signo = si_signo;
-				tmp->si_errno = si_errno;
 				tmp->secid = secid;
 				break;
 			default:
@@ -162,8 +186,14 @@ int add_task_record(unsigned int fid, char *uid, char act_allow, int sig, int si
 		if ((err == 0) && (interact == 0))
 		       	list_add_tail(&(tmp->list), &(hb_task_list_head.list));
 
-		if ((err == 0) && (interact == 1))
-			add_notify_record(fid, tmp);
+		if ((err == 0) && (interact == 1)) {
+			if (!search_notify_task_record(fid, uid, sig, secid, binprm))
+			       	add_notify_record(fid, tmp);
+			else {
+				free_task_record(tmp);
+				kfree(tmp);
+			}
+		}
 	}
 	else
 		err = -EOPNOTSUPP;
@@ -182,7 +212,7 @@ int read_task_record(struct seq_file *m, void *v)
 	seq_printf(m, "NO\tFUNC\tUID\tACTION\tSIGNAL\tSIGNO\tERRNO\tSECID\tBINPRM\n");
 	list_for_each(pos, &hb_task_list_head.list) {
 		tmp = list_entry(pos, hb_task_ll, list);
-		seq_printf(m, "%lu\t%u\t%s\t%c\t%d\t%d\t%d\t%u\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->sig, tmp->si_signo, tmp->si_errno, tmp->secid, tmp->binprm);
+		seq_printf(m, "%lu\t%u\t%s\t%c\t%d\t%u\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->sig, tmp->secid, tmp->binprm);
 	}
 
 	return 0;
@@ -237,8 +267,6 @@ ssize_t write_task_record(struct file *file, const char __user *buffer, size_t c
 		char uid[UID_STR_SIZE];
 		unsigned int fid = 0;
 		int sig = 0;
-		int si_signo = 0;
-		int si_errno = 0;
 		u32 secid = 0;
 		char act_allow = 'R';
 		char *binprm = NULL;
@@ -249,8 +277,8 @@ ssize_t write_task_record(struct file *file, const char __user *buffer, size_t c
 			continue;
 		}
 
-		sscanf(token, "%u %s %c %d %d %d %u %s", &fid, uid, &act_allow, &sig, &si_signo, &si_errno, &secid, binprm);
-		if (add_task_record(HB_TASK_SIGNAL, uid, act_allow, sig, si_signo, si_errno, secid, binprm, 0) != 0) {
+		sscanf(token, "%u %s %c %d %u %s", &fid, uid, &act_allow, &sig, &secid, binprm);
+		if (add_task_record(HB_TASK_SIGNAL, uid, act_allow, sig, secid, binprm, 0) != 0) {
 			printk(KERN_WARNING "Failure to add task record %s, %d, %s\n", uid, sig, binprm);
 		}
 	}

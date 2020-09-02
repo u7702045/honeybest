@@ -90,6 +90,7 @@
 #include "regex.h"
 #include "honeybest.h"
 
+extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_sb_entry;
 hb_sb_ll hb_sb_list_head;
 
@@ -162,6 +163,32 @@ hb_sb_ll *search_sb_record(unsigned int fid, uid_t uid, char *s_id, char *name, 
 	return NULL;
 }
 
+hb_sb_ll *search_notify_sb_record(unsigned int fid, char *uid, char *s_id, char *name, \
+		char *dev_name, char *type, int flags)
+{
+	hb_notify_ll *tmp = NULL;
+	struct list_head *pos = NULL;
+
+	list_for_each(pos, &hb_notify_list_head.list) {
+
+		tmp = list_entry(pos, hb_notify_ll, list);
+
+		if (strstr(tmp->proc, HB_SB_PROC)) {
+			hb_sb_ll *data = tmp->data;
+			unsigned long list_uid = 0;
+
+			if(kstrtoul(uid, 10, &list_uid) != 0)
+				printk(KERN_ERR "UID convert error\n");
+
+			if(match_sb_record(data, fid, list_uid, s_id, name, dev_name, type, flags)) {
+				return data;
+			}
+		}
+	} // notify linked list
+
+	return NULL;
+}
+
 int add_sb_record(unsigned int fid, char *uid, char act_allow, char *s_id, char *name, \
 		char *dev_name, char *type, int flags, int interact)
 {
@@ -221,8 +248,14 @@ int add_sb_record(unsigned int fid, char *uid, char act_allow, char *s_id, char 
 		if ((err == 0) && (interact == 0))
 		       	list_add_tail(&(tmp->list), &(hb_sb_list_head.list));
 
-		if ((err == 0) && (interact == 1))
-			add_notify_record(fid, tmp);
+		if ((err == 0) && (interact == 1)) {
+			if (!search_notify_sb_record(fid, uid, s_id, name, dev_name, type, flags))
+			       	add_notify_record(fid, tmp);
+			else {
+				free_sb_record(tmp);
+				kfree(tmp);
+			}
+		}
 	}
 	else
 		err = -EOPNOTSUPP;

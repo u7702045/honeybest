@@ -25,3 +25,7 @@ typedef struct hb_notify_ll_t {
 int add_notify_record(unsigned int fid, void *data);
 int read_notify_record(struct seq_file *m, void *v);
 
+void *hb_notify_seq_start(struct seq_file *s, loff_t *pos);
+void *hb_notify_seq_next(struct seq_file *s, void *v, loff_t *pos);
+void hb_notify_seq_stop(struct seq_file *s, void *v);
+int hb_notify_seq_show(struct seq_file *s, void *v);

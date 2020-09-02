@@ -90,6 +90,7 @@
 #include "notify.h"
 #include "honeybest.h"
 
+extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_inode_entry;
 hb_inode_ll hb_inode_list_head;
 
@@ -142,6 +143,31 @@ hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *name, char *
 	return NULL;
 }
 
+hb_inode_ll *search_notify_inode_record(unsigned int fid, char *uid, char *name, char *binprm)
+{
+	hb_notify_ll *tmp = NULL;
+	struct list_head *pos = NULL;
+
+	list_for_each(pos, &hb_notify_list_head.list) {
+
+		tmp = list_entry(pos, hb_notify_ll, list);
+
+		if (strstr(tmp->proc, HB_INODE_PROC)) {
+			hb_inode_ll *data = tmp->data;
+			unsigned long list_uid = 0;
+
+			if(kstrtoul(uid, 10, &list_uid) != 0)
+				printk(KERN_ERR "UID convert error\n");
+
+			if(match_inode_record(data, fid, list_uid, name, binprm)) {
+				return data;
+			}
+		}
+	} // notify linked list
+
+	return NULL;
+}
+
 int add_inode_record(unsigned int fid, char *uid, char act_allow, char *name, char *binprm, int interact)
 {
 	int err = 0;
@@ -182,8 +208,14 @@ int add_inode_record(unsigned int fid, char *uid, char act_allow, char *name, ch
 		if ((err == 0) && (interact == 0))
 		       	list_add(&(tmp->list), &(hb_inode_list_head.list));
 
-		if ((err == 0) && (interact == 1))
-			add_notify_record(fid, tmp);
+		if ((err == 0) && (interact == 1)) {
+			if (!search_notify_inode_record(fid, uid, name, binprm))
+			       	add_notify_record(fid, tmp);
+			else {
+				free_inode_record(tmp);
+				kfree(tmp);
+			}
+		}
 	}
 	else
 		err = -EOPNOTSUPP;

@@ -91,6 +91,7 @@
 #include "notify.h"
 #include "honeybest.h"
 
+extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_ptrace_entry;
 hb_ptrace_ll hb_ptrace_list_head;
 
@@ -133,6 +134,31 @@ hb_ptrace_ll *search_ptrace_record(unsigned int fid, uid_t uid, char *parent, ch
 	return NULL;
 }
 
+hb_ptrace_ll *search_notify_ptrace_record(unsigned int fid, char *uid, char *parent, char *child, unsigned int mode)
+{
+	hb_notify_ll *tmp = NULL;
+	struct list_head *pos = NULL;
+
+	list_for_each(pos, &hb_notify_list_head.list) {
+
+		tmp = list_entry(pos, hb_notify_ll, list);
+
+		if (strstr(tmp->proc, HB_PTRACE_PROC)) {
+			hb_ptrace_ll *data = tmp->data;
+			unsigned long list_uid = 0;
+
+			if(kstrtoul(uid, 10, &list_uid) != 0)
+				printk(KERN_ERR "UID convert error\n");
+
+			if(match_ptrace_record(data, fid, list_uid, parent, child, mode)) {
+				return data;
+			}
+		}
+	} // notify linked list
+
+	return NULL;
+}
+
 int add_ptrace_record(unsigned int fid, char *uid, char act_allow, char *parent, char *child, unsigned int mode, int interact)
 {
 	int err = 0;
@@ -171,8 +197,14 @@ int add_ptrace_record(unsigned int fid, char *uid, char act_allow, char *parent,
 		if ((err == 0) && (interact == 0))
 		       	list_add_tail(&(tmp->list), &(hb_ptrace_list_head.list));
 
-		if ((err == 0) && (interact == 1))
-			add_notify_record(fid, tmp);
+		if ((err == 0) && (interact == 1)) {
+			if (!search_notify_ptrace_record(fid, uid, parent, child, mode))
+			       	add_notify_record(fid, tmp);
+			else {
+				free_ptrace_record(tmp);
+				kfree(tmp);
+			}
+		}
 	}
 	else
 		err = -EOPNOTSUPP;

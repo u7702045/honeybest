@@ -91,6 +91,7 @@
 #include "regex.h"
 #include "honeybest.h"
 
+extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_socket_entry;
 hb_socket_ll hb_socket_list_head;
 
@@ -204,6 +205,32 @@ hb_socket_ll *search_socket_record(unsigned int fid, uid_t uid, int family, int 
 	return NULL;
 }
 
+hb_socket_ll *search_notify_socket_record(unsigned int fid, char *uid, int family, int type, int protocol,
+		int port, int level, int optname, char *binprm)
+{
+	hb_notify_ll *tmp = NULL;
+	struct list_head *pos = NULL;
+
+	list_for_each(pos, &hb_notify_list_head.list) {
+
+		tmp = list_entry(pos, hb_notify_ll, list);
+
+		if (strstr(tmp->proc, HB_SOCKET_PROC)) {
+			hb_socket_ll *data = tmp->data;
+			unsigned long list_uid = 0;
+
+			if(kstrtoul(uid, 10, &list_uid) != 0)
+				printk(KERN_ERR "UID convert error\n");
+
+			if(match_socket_record(data, fid, list_uid, family, type, protocol, port, level, optname, binprm)) {
+				return data;
+			}
+		}
+	} // notify linked list
+
+	return NULL;
+}
+
 int read_socket_record(struct seq_file *m, void *v)
 {
 	hb_socket_ll *tmp = NULL;
@@ -259,8 +286,14 @@ int add_socket_record(unsigned int fid, char *uid, char act_allow, int family, i
 		if ((err == 0) && (interact == 0))
 			list_add(&(tmp->list), &(hb_socket_list_head.list));
 
-		if ((err == 0) && (interact == 1))
-			add_notify_record(fid, tmp);
+		if ((err == 0) && (interact == 1)) {
+			if (!search_notify_socket_record(fid, uid, family, type, protocol, port, level, optname, binprm))
+			       	add_notify_record(fid, tmp);
+			else {
+				free_socket_record(tmp);
+				kfree(tmp);
+			}
+		}
 	}
 	else
 		err = -EOPNOTSUPP;

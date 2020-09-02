@@ -339,8 +339,15 @@ int inject_honeybest_tracker(struct cred *cred, unsigned int fid)
  * open_notify_proc provide read OP for user to acces all activities
  * while /proc/sys/kernel/interact < 1
  */
+static struct seq_operations hb_notify_seq_ops = {
+	.start = hb_notify_seq_start,
+	.next  = hb_notify_seq_next,
+	.stop  = hb_notify_seq_stop,
+	.show  = hb_notify_seq_show
+};
 static int open_notify_proc(struct inode *inode, struct  file *file) {
-	  return single_open(file, read_notify_record, NULL);
+	  return seq_open(file, &hb_notify_seq_ops);
+	  //return single_open(file, read_notify_record, NULL);
 }
 
 static const struct file_operations hb_proc_notify_fops = {
@@ -348,7 +355,7 @@ static const struct file_operations hb_proc_notify_fops = {
 	.read  = seq_read,
 	//.write  = write_notify_record,
 	.llseek  = seq_lseek,
-	.release = single_release,
+	.release = seq_release,
 };
 
 /**
@@ -3200,7 +3207,7 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 	if (!binprm)
 		goto out1;
 
-	record = search_task_record(HB_TASK_SIGNAL, current->cred->uid.val, info, sig, secid, binprm);
+	record = search_task_record(HB_TASK_SIGNAL, current->cred->uid.val, sig, secid, binprm);
 
 	if (record) {
 		;//printk(KERN_INFO "Found task struct sig %d, secid %d, signo %d, errno %d\n", record->sig, record->secid, record->si_signo, record->si_errno);
@@ -3210,21 +3217,11 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 	else {
 		sprintf(uid, "%u", current->cred->uid.val);
 
-		if ((locking == 0) && (bl == 0)) {
-			if (info == NULL)
-				err = add_task_record(HB_TASK_SIGNAL, uid, 'A', 0, 0, sig, secid, binprm, interact);
-			else
-				err = add_task_record(HB_TASK_SIGNAL, uid, 'A', info->si_signo\
-						, info->si_errno, sig, secid, binprm, interact);
-		}
+		if ((locking == 0) && (bl == 0))
+			err = add_task_record(HB_TASK_SIGNAL, uid, 'A', sig, secid, binprm, interact);
 
-		if ((locking == 0) && (bl == 1)) {
-			if (info == NULL)
-				err = add_task_record(HB_TASK_SIGNAL, uid, 'R', 0, 0, sig, secid, binprm, interact);
-			else
-				err = add_task_record(HB_TASK_SIGNAL, uid, 'R', info->si_signo\
-						, info->si_errno, sig, secid, binprm, interact);
-		}
+		if ((locking == 0) && (bl == 1))
+			err = add_task_record(HB_TASK_SIGNAL, uid, 'R', sig, secid, binprm, interact);
 
 		if ((locking == 1) && (bl == 0)) {
 			/* detect mode */

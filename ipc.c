@@ -90,6 +90,7 @@
 #include "notify.h"
 #include "honeybest.h"
 
+extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_ipc_entry;
 hb_ipc_ll hb_ipc_list_head;
 
@@ -139,6 +140,31 @@ hb_ipc_ll *search_ipc_record(unsigned int fid, uid_t uid, char *binprm, \
 	return NULL;
 }
 
+hb_ipc_ll *search_notify_ipc_record(unsigned int fid, char *uid, char *binprm, uid_t ipc_uid, uid_t ipc_gid, uid_t ipc_cuid, uid_t ipc_cgid, short flag)
+{
+	hb_notify_ll *tmp = NULL;
+	struct list_head *pos = NULL;
+
+	list_for_each(pos, &hb_notify_list_head.list) {
+
+		tmp = list_entry(pos, hb_notify_ll, list);
+
+		if (strstr(tmp->proc, HB_IPC_PROC)) {
+			hb_ipc_ll *data = tmp->data;
+			unsigned long list_uid = 0;
+
+			if(kstrtoul(uid, 10, &list_uid) != 0)
+				printk(KERN_ERR "UID convert error\n");
+
+			if(match_ipc_record(data, fid, list_uid, binprm, ipc_uid, ipc_gid, ipc_cuid, ipc_cgid, flag)) {
+				return data;
+			}
+		}
+	} // notify linked list
+
+	return NULL;
+}
+
 int add_ipc_record(unsigned int fid, char *uid, char act_allow, char *binprm, \
 		uid_t ipc_uid, uid_t ipc_gid, uid_t ipc_cuid, uid_t ipc_cgid, short flag, int interact)
 {
@@ -177,8 +203,14 @@ int add_ipc_record(unsigned int fid, char *uid, char act_allow, char *binprm, \
 		if ((err == 0) && (interact == 0))
 		       	list_add_tail(&(tmp->list), &(hb_ipc_list_head.list));
 
-		if ((err == 0) && (interact == 1))
-			add_notify_record(fid, tmp);
+		if ((err == 0) && (interact == 1)) {
+			if (!search_notify_ipc_record(fid, uid, binprm, ipc_uid, ipc_gid, ipc_cuid, ipc_cgid, flag))
+			       	add_notify_record(fid, tmp);
+			else {
+				free_ipc_record(tmp);
+				kfree(tmp);
+			}
+		}
 	}
 	else
 		err = -EOPNOTSUPP;
