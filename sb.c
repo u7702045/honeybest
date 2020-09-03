@@ -90,6 +90,7 @@
 #include "regex.h"
 #include "honeybest.h"
 
+extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_sb_entry;
 hb_sb_ll hb_sb_list_head;
@@ -249,9 +250,10 @@ int add_sb_record(unsigned int fid, char *uid, char act_allow, char *s_id, char 
 		       	list_add_tail(&(tmp->list), &(hb_sb_list_head.list));
 
 		if ((err == 0) && (interact == 1)) {
-			if (!search_notify_sb_record(fid, uid, s_id, name, dev_name, type, flags))
+			if (!search_notify_sb_record(fid, uid, s_id, name, dev_name, type, flags) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
+				printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
 				free_sb_record(tmp);
 				kfree(tmp);
 			}

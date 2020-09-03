@@ -90,6 +90,7 @@
 #include "notify.h"
 #include "honeybest.h"
 
+extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_path_entry;
 hb_path_ll hb_path_list_head;
@@ -260,9 +261,10 @@ int add_path_record(unsigned int fid, char *uid, char act_allow, umode_t mode, c
 		       	list_add_tail(&(tmp->list), &(hb_path_list_head.list));
 
 		if ((err == 0) && (interact == 1)) {
-			if (!search_notify_path_record(fid, uid, mode, s_path, t_path, suid, sgid, dev, binprm))
+			if (!search_notify_path_record(fid, uid, mode, s_path, t_path, suid, sgid, dev, binprm) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
+				printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
 				free_path_record(tmp);
 				kfree(tmp);
 			}

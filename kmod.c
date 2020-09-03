@@ -90,6 +90,7 @@
 #include "regex.h"
 #include "honeybest.h"
 
+extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_kmod_entry;
 hb_kmod_ll hb_kmod_list_head;
@@ -213,9 +214,10 @@ int add_kmod_record(unsigned int fid, char *uid, char act_allow, char *name, cha
 		       	list_add_tail(&(tmp->list), &(hb_kmod_list_head.list));
 
 		if ((err == 0) && (interact == 1)) {
-			if (!search_notify_kmod_record(fid, uid, name, filename, digest))
+			if (!search_notify_kmod_record(fid, uid, name, filename, digest) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
+				printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
 				free_kmod_record(tmp);
 				kfree(tmp);
 			}

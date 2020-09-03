@@ -655,11 +655,11 @@ static int honeybest_ptrace_access_check(struct task_struct *child,
                                      unsigned int mode)
 {
 	int err = 0;
-	struct cred *cred = (struct cred *) current->real_cred;
-       	struct task_struct *parent_task = current;
-       	struct task_struct *child_task = child;
-	struct mm_struct *parent_mm = current->mm;
-	struct mm_struct *child_mm = child->mm;
+	struct cred *cred;
+       	struct task_struct *parent_task = NULL;
+       	struct task_struct *child_task = NULL;
+	struct mm_struct *parent_mm = NULL;
+	struct mm_struct *child_mm = NULL;
        	char *parent_binprm = NULL;
        	char *child_binprm = NULL;
        	char *parent_taskname = NULL;
@@ -670,10 +670,17 @@ static int honeybest_ptrace_access_check(struct task_struct *child,
 	if (!enabled)
 		return err;
 
+	rcu_read_lock();
+
+	cred = (struct cred *) current->real_cred;
+       	parent_task = current;
+       	child_task = child;
+	parent_mm = current->mm;
+	child_mm = child->mm;
+
 	if (inject_honeybest_tracker(cred, HB_PTRACE_ACCESS_CHECK))
 	       	err = -ENOMEM;
 
-	task_lock(parent_task);
 	if (parent_mm) {
 		down_read(&parent_mm->mmap_sem);
 		if (parent_mm->exe_file) {
@@ -682,17 +689,13 @@ static int honeybest_ptrace_access_check(struct task_struct *child,
 				parent_binprm = d_path(&parent_mm->exe_file->f_path, parent_taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
-			else
-			       	goto out;
 		}
 		up_read(&parent_mm->mmap_sem);
 	}
-	task_unlock(parent_task);
 
 	if (!parent_binprm)
-		goto out1;
+		goto out;
 
-	task_lock(child_task);
 	if (child_mm) {
 		down_read(&child_mm->mmap_sem);
 		if (child_mm->exe_file) {
@@ -701,15 +704,12 @@ static int honeybest_ptrace_access_check(struct task_struct *child,
 				child_binprm = d_path(&child_mm->exe_file->f_path, child_taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
-			else
-				goto out1;
 		}
 		up_read(&child_mm->mmap_sem);
 	}
-	task_unlock(child_task);
 
 	if (!child_binprm)
-		goto out2;
+		goto out1;
 
 //	printk(KERN_ERR "%s,%d -->%s, %s, %d\n", __FUNCTION__, __LINE__, parent_binprm, child_binprm, mode);
 
@@ -735,11 +735,11 @@ static int honeybest_ptrace_access_check(struct task_struct *child,
 		}
 	}
 
-out2:
-	kfree(child_taskname);
 out1:
-	kfree(parent_taskname);
+	kfree(child_taskname);
 out:
+	kfree(parent_taskname);
+	rcu_read_unlock();
 	return err;
 }
 
@@ -796,13 +796,18 @@ static int honeybest_capset(struct cred *new, const struct cred *old,
 {
 	int err = 0;
 	kernel_cap_t dest, a, b;
-       	struct task_struct *task = current;
 	char *pathname = NULL;
 	char *p = NULL;
-	struct mm_struct *mm = current->mm;
+	struct mm_struct *mm = NULL;
+       	struct task_struct *task = NULL;
 
 	if (!enabled)
 		return err;
+
+	rcu_read_lock();
+
+	mm = current->mm;
+       	task = current;
 
 	task_lock(task);
 	if (mm) {
@@ -818,7 +823,6 @@ static int honeybest_capset(struct cred *new, const struct cred *old,
 	task_unlock(task);
 
 	cap_clear(dest);
-	rcu_read_lock();
 
 	a = *effective;
 	b = *permitted;
@@ -826,6 +830,7 @@ static int honeybest_capset(struct cred *new, const struct cred *old,
 	//printk(KERN_ERR "program %s, old uid=%u, new uid=%u, effec=%u, inherit=%u, permit=%u, dest=%u\n", p, old->uid.val, new->uid.val, (u32)effective->cap, (u32)inheritable->cap, (u32)permitted->cap, (u32)dest.cap); rcu_read_unlock();
 	kfree(pathname);
 
+	rcu_read_unlock();
 	return err;
 }
 
@@ -862,7 +867,7 @@ static int honeybest_vm_enough_memory(struct mm_struct *mm, long pages)
 static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 {
 	int err = 0;
-	struct cred *cred = (struct cred *) current->real_cred;
+	struct cred *cred = NULL;
 	char digest[SHA1_HONEYBEST_DIGEST_SIZE];
 	hb_binprm_ll *record = NULL;
 	char *pathname;
@@ -870,6 +875,10 @@ static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 
 	if (!enabled)
 		return err;
+
+	rcu_read_lock();
+
+	cred = (struct cred *) current->real_cred;
 
 	if (inject_honeybest_tracker(cred, HB_BPRM_SET_CREDS))
 	       	err = -ENOMEM;
@@ -913,6 +922,7 @@ static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 out1:
 	kfree(pathname);
 out:
+	rcu_read_unlock();
 	return err;
 }
 
@@ -985,10 +995,14 @@ static int honeybest_sb_remount(struct super_block *sb, void *data)
 	char *na = "N/A";
 	char uid[UID_STR_SIZE];
 	hb_sb_ll *record = NULL;
-	struct cred *cred = (struct cred *) current->real_cred;
+	struct cred *cred = NULL;
 
 	if (!enabled)
 		return err;
+
+	rcu_read_lock();
+
+	cred = (struct cred *) current->real_cred;
 
 	if (inject_honeybest_tracker(cred, HB_SB_MOUNT))
 	       	err = -ENOMEM;
@@ -1020,6 +1034,7 @@ static int honeybest_sb_remount(struct super_block *sb, void *data)
 				err = -EOPNOTSUPP;
 		}
 	}
+	rcu_read_unlock();
 	return err;
 }
 
@@ -1043,7 +1058,7 @@ static int honeybest_sb_kern_mount(struct super_block *sb, int flags, void *data
 static int honeybest_sb_statfs(struct dentry *dentry)
 {
 	int err = 0;
-	struct cred *cred = (struct cred *) current->real_cred;
+	struct cred *cred = NULL;
        	struct super_block *sb = dentry->d_sb;
 	char *na = "N/A";
 	char uid[UID_STR_SIZE];
@@ -1054,6 +1069,10 @@ static int honeybest_sb_statfs(struct dentry *dentry)
 
 	if (!sb)
 		return err;
+
+	rcu_read_lock();
+
+	cred = (struct cred *) current->real_cred;
 
 	if (inject_honeybest_tracker(cred, HB_SB_STATFS))
 	       	err = -ENOMEM;
@@ -1077,6 +1096,7 @@ static int honeybest_sb_statfs(struct dentry *dentry)
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
 	}
+	rcu_read_unlock();
 	return err;
 }
 
@@ -1127,7 +1147,7 @@ static int honeybest_mount(const char *dev_name, struct path *path,
 #endif
 {
 	int err = 0;
-	struct cred *cred = (struct cred *) current->real_cred;
+	struct cred *cred = NULL;
 	char *na = "N/A";
 	char uid[UID_STR_SIZE];
 	hb_sb_ll *record = NULL;
@@ -1135,8 +1155,15 @@ static int honeybest_mount(const char *dev_name, struct path *path,
 	if (!enabled)
 		return err;
 
+	rcu_read_lock();
+
+	cred = (struct cred *) current->real_cred;
+
 	if (inject_honeybest_tracker(cred, HB_SB_MOUNT))
 	       	err = -ENOMEM;
+
+	if (!dev_name || !path || !type)
+		goto out;
 
 	record = search_sb_record(HB_SB_MOUNT, current->cred->uid.val, na, (char *)na, (char *)dev_name, (char *)type, flags);
 
@@ -1158,6 +1185,8 @@ static int honeybest_mount(const char *dev_name, struct path *path,
 			err = -EOPNOTSUPP;
 	}
 
+out:
+	rcu_read_unlock();
 	return err;
 }
 
@@ -1169,14 +1198,19 @@ static int honeybest_mount(const char *dev_name, struct path *path,
 static int honeybest_umount(struct vfsmount *mnt, int flags)
 {
 	int err = 0;
-	struct cred *cred = (struct cred *) current->real_cred;
-       	struct super_block *sb = mnt->mnt_sb;
+	struct cred *cred = NULL;
+       	struct super_block *sb = NULL;
 	char *na = "N/A";
 	char uid[UID_STR_SIZE];
 	hb_sb_ll *record = NULL;
 
 	if (!enabled)
 		return err;
+
+	rcu_read_lock();
+
+       	sb = mnt->mnt_sb;
+	cred = (struct cred *) current->real_cred;
 
 	if (inject_honeybest_tracker(cred, HB_SB_UMOUNT))
 	       	err = -ENOMEM;
@@ -1204,6 +1238,7 @@ static int honeybest_umount(struct vfsmount *mnt, int flags)
 			err = -EOPNOTSUPP;
 	}
 
+	rcu_read_unlock();
 	return err;
 }
 
@@ -1250,9 +1285,6 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 {
 
 	int err = 0;
-       	struct task_struct *task = current;
-	struct cred *cred = (struct cred *) current->real_cred;
-	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
        	char *taskname = NULL;
 	struct path source = { dir->mnt, dentry };
@@ -1261,9 +1293,18 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 	char *s_buff = NULL;
 	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
+       	struct task_struct *task = NULL;
+	struct cred *cred = NULL;
+	struct mm_struct *mm = NULL;
 
 	if (!enabled)
 		return err;
+
+	rcu_read_lock();
+
+       	task = current;
+	cred = (struct cred *) current->real_cred;
+	mm = current->mm;
 
 	if (inject_honeybest_tracker(cred, HB_PATH_UNLINK))
 	       	err = -ENOMEM;
@@ -1295,8 +1336,6 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
-			else
-				goto out1;
 		}
 		up_read(&mm->mmap_sem);
 	}
@@ -1329,6 +1368,7 @@ out2:
 out1:
 	kfree(s_buff);
 out:
+	rcu_read_unlock();
 	return err;
 }
 
@@ -1347,9 +1387,6 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 {
 
 	int err = 0;
-       	struct task_struct *task = current;
-	struct cred *cred = (struct cred *) current->real_cred;
-	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
        	char *taskname = NULL;
 	struct path source = { dir->mnt, dentry };
@@ -1357,10 +1394,19 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
        	char *t_path = "N/A";
 	char *s_buff = NULL;
 	char tuid[UID_STR_SIZE];
+       	struct task_struct *task = NULL;
+	struct cred *cred = NULL;
+	struct mm_struct *mm = NULL;
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
 		return err;
+
+	rcu_read_lock();
+
+       	task = current;
+	cred = (struct cred *) current->real_cred;
+	mm = current->mm;
 
 	if (inject_honeybest_tracker(cred, HB_PATH_MKDIR))
 	       	err = -ENOMEM;
@@ -1392,8 +1438,6 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
-			else
-				goto out1;
 		}
 		up_read(&mm->mmap_sem);
 	}
@@ -1426,6 +1470,7 @@ out2:
 out1:
 	kfree(s_buff);
 out:
+	rcu_read_unlock();
 	return err;
 }
 
@@ -1442,20 +1487,26 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 {
 
 	int err = 0;
-       	struct task_struct *task = current;
-	struct cred *cred = (struct cred *) current->real_cred;
-	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
        	char *taskname = NULL;
 	struct path source = { dir->mnt, dentry };
 	char *s_path = NULL;
        	char *t_path = "N/A";
 	char *s_buff = NULL;
+       	struct task_struct *task = NULL;
+	struct cred *cred = NULL;
+	struct mm_struct *mm = NULL;
 	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
 		return err;
+
+	rcu_read_lock();
+
+       	task = current;
+	cred = (struct cred *) current->real_cred;
+	mm = current->mm;
 
 	if (inject_honeybest_tracker(cred, HB_PATH_RMDIR))
 	       	err = -ENOMEM;
@@ -1483,8 +1534,6 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
-			else
-				goto out1;
 		}
 		up_read(&mm->mmap_sem);
 	}
@@ -1517,6 +1566,7 @@ out2:
 out1:
 	kfree(s_buff);
 out:
+	rcu_read_unlock();
 	return err;
 }
 
@@ -1535,20 +1585,26 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 {
 
 	int err = 0;
-       	struct task_struct *task = current;
-	struct cred *cred = (struct cred *) current->real_cred;
-	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
        	char *taskname = NULL;
 	struct path source = { dir->mnt, dentry };
 	char *s_path = NULL;
        	char *t_path = "N/A";
 	char *s_buff = NULL;
+       	struct task_struct *task = NULL;
+	struct cred *cred = NULL;
+	struct mm_struct *mm = NULL;
 	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
 		return err;
+
+	rcu_read_lock();
+
+       	task = current;
+	cred = (struct cred *) current->real_cred;
+	mm = current->mm;
 
 	if (inject_honeybest_tracker(cred, HB_PATH_MKNOD))
 	       	err = -ENOMEM;
@@ -1580,8 +1636,6 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
-			else
-				goto out1;
 		}
 		up_read(&mm->mmap_sem);
 	}
@@ -1614,9 +1668,15 @@ out2:
 out1:
 	kfree(s_buff);
 out:
+	rcu_read_unlock();
 	return err;
 }
 
+
+static inline bool mediated_filesystem(struct dentry *dentry)
+{
+	return !(dentry->d_sb->s_flags & MS_NOUSER);
+}
 /**
  * This function use to tracking resize file activity.
  * Trigger during resize file
@@ -1629,19 +1689,28 @@ static int honeybest_path_truncate(struct path *path)
 #endif
 {
 	int err = 0;
-       	struct task_struct *task = current;
-	struct cred *cred = (struct cred *) current->real_cred;
-	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
        	char *taskname = NULL;
 	char *s_path = NULL;
        	char *t_path = "N/A";
 	char *s_buff = NULL;
+       	struct task_struct *task = NULL;
+	struct cred *cred = NULL;
+	struct mm_struct *mm = NULL;
 	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
 		return err;
+
+	if (!mediated_filesystem(path->dentry))
+		return err;
+
+	rcu_read_lock();
+
+       	task = current;
+	cred = (struct cred *) current->real_cred;
+	mm = current->mm;
 
 	if (inject_honeybest_tracker(cred, HB_PATH_TRUNCATE))
 	       	err = -ENOMEM;
@@ -1673,8 +1742,6 @@ static int honeybest_path_truncate(struct path *path)
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
-			else
-				goto out1;
 		}
 		up_read(&mm->mmap_sem);
 	}
@@ -1707,6 +1774,7 @@ out2:
 out1:
 	kfree(s_buff);
 out:
+	rcu_read_unlock();
 	return err;
 }
 
@@ -1725,20 +1793,26 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 {
 
 	int err = 0;
-       	struct task_struct *task = current;
-	struct cred *cred = (struct cred *) current->real_cred;
-	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
        	char *taskname = NULL;
 	struct path target = { dir->mnt, dentry };
 	char *s_path = (char *)old_name;
        	char *t_path = NULL;
 	char *t_buff = NULL;
+       	struct task_struct *task = NULL;
+	struct cred *cred = NULL;
+	struct mm_struct *mm = NULL;
 	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
 		return err;
+
+	rcu_read_lock();
+
+       	task = current;
+	cred = (struct cred *) current->real_cred;
+	mm = current->mm;
 
 	if (inject_honeybest_tracker(cred, HB_PATH_SYMLINK))
 	       	err = -ENOMEM;
@@ -1766,8 +1840,6 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
-			else
-				goto out1;
 		}
 		up_read(&mm->mmap_sem);
 	}
@@ -1800,6 +1872,7 @@ out2:
 out1:
 	kfree(t_buff);
 out:
+	rcu_read_unlock();
 	return err;
 }
 
@@ -1818,9 +1891,6 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 #endif
 {
 	int err = 0;
-       	struct task_struct *task = current;
-	struct cred *cred = (struct cred *) current->real_cred;
-	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
        	char *taskname = NULL;
 	struct path source = { new_dir->mnt, new_dentry };
@@ -1829,11 +1899,20 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
        	char *t_path = NULL;
 	char *s_buff = NULL;
 	char *t_buff = NULL;
+       	struct task_struct *task = NULL;
+	struct cred *cred = NULL;
+	struct mm_struct *mm = NULL;
 	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
 		return err;
+
+	rcu_read_lock();
+
+       	task = current;
+	cred = (struct cred *) current->real_cred;
+	mm = current->mm;
 
 	if (inject_honeybest_tracker(cred, HB_PATH_LINK))
 	       	err = -ENOMEM;
@@ -1878,8 +1957,6 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
-			else
-				goto out2;
 		}
 		up_read(&mm->mmap_sem);
 	}
@@ -1914,6 +1991,7 @@ out2:
 out1:
 	kfree(s_buff);
 out:
+	rcu_read_unlock();
 	return err;
 }
 
@@ -1931,9 +2009,6 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 #endif
 {
 	int err = 0;
-       	struct task_struct *task = current;
-	struct cred *cred = (struct cred *) current->real_cred;
-	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
        	char *taskname = NULL;
 	struct path target = { new_dir->mnt, new_dentry };
@@ -1942,11 +2017,20 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
        	char *t_path = NULL;
 	char *s_buff = NULL;
 	char *t_buff = NULL;
+       	struct task_struct *task = NULL;
+	struct cred *cred = NULL;
+	struct mm_struct *mm = NULL;
 	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
 		return err;
+
+	rcu_read_lock();
+
+       	task = current;
+	cred = (struct cred *) current->real_cred;
+	mm = current->mm;
 
 	if (inject_honeybest_tracker(cred, HB_PATH_RENAME))
 	       	err = -ENOMEM;
@@ -1987,8 +2071,6 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
-			else
-				goto out2;
 		}
 		up_read(&mm->mmap_sem);
 	}
@@ -2023,6 +2105,7 @@ out2:
 out1:
 	kfree(s_buff);
 out:
+	rcu_read_unlock();
 	return err;
 }
 
@@ -2038,19 +2121,25 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 #endif
 {
 	int err = 0;
-       	struct task_struct *task = current;
-	struct cred *cred = (struct cred *) current->real_cred;
-	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
        	char *taskname = NULL;
 	char *s_path = NULL;
        	char *t_path = "N/A";
 	char *s_buff = NULL;
+       	struct task_struct *task = NULL;
+	struct cred *cred = NULL;
+	struct mm_struct *mm = NULL;
 	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
 		return err;
+
+	rcu_read_lock();
+
+       	task = current;
+	cred = (struct cred *) current->real_cred;
+	mm = current->mm;
 
 	if (inject_honeybest_tracker(cred, HB_PATH_CHMOD))
 	       	err = -ENOMEM;
@@ -2078,8 +2167,6 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
-			else
-			       	goto out1;
 		}
 		up_read(&mm->mmap_sem);
 	}
@@ -2112,6 +2199,7 @@ out2:
 out1:
 	kfree(s_buff);
 out:
+	rcu_read_unlock();
 	return err;
 }
 
@@ -2127,19 +2215,25 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 #endif
 {
 	int err = 0;
-       	struct task_struct *task = current;
-	struct cred *cred = (struct cred *) current->real_cred;
-	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
        	char *taskname = NULL;
 	char *s_path = NULL;
        	char *t_path = "N/A";
 	char *s_buff = NULL;
+       	struct task_struct *task = NULL;
+	struct cred *cred = NULL;
+	struct mm_struct *mm = NULL;
 	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
 	if (!enabled)
 		return err;
+
+	rcu_read_lock();
+
+       	task = current;
+	cred = (struct cred *) current->real_cred;
+	mm = current->mm;
 
 	if (inject_honeybest_tracker(cred, HB_PATH_CHOWN))
 	       	err = -ENOMEM;
@@ -2167,8 +2261,6 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
-			else
-				goto out1;
 		}
 		up_read(&mm->mmap_sem);
 	}
@@ -2201,6 +2293,7 @@ out2:
 out1:
 	kfree(s_buff);
 out:
+	rcu_read_unlock();
 	return err;
 }
 
@@ -2358,14 +2451,18 @@ static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
                                   const void *value, size_t size, int flags)
 {
 	int err = 0;
-	struct cred *cred = (struct cred *) current->real_cred;
 	char *pathname = NULL;
        	char *binprm = NULL;
 	char uid[UID_STR_SIZE];
+	struct cred *cred = NULL;
 	hb_inode_ll *record;
 
 	if (!enabled)
 		return err;
+
+	rcu_read_lock();
+
+	cred = (struct cred *) current->real_cred;
 
 	if (inject_honeybest_tracker(cred, HB_INODE_SETXATTR))
 	       	err = -ENOMEM;
@@ -2404,6 +2501,7 @@ static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
 out1:
 	kfree(pathname);
 out:
+	rcu_read_unlock();
         return err;
 }
 
@@ -2422,14 +2520,18 @@ static void honeybest_inode_post_setxattr(struct dentry *dentry, const char *nam
 static int honeybest_inode_getxattr(struct dentry *dentry, const char *name)
 {
 	int err = 0;
-	struct cred *cred = (struct cred *) current->real_cred;
 	char *pathname = NULL;
        	char *binprm = NULL;
 	char uid[UID_STR_SIZE];
+	struct cred *cred = NULL;
 	hb_inode_ll *record;
 
 	if (!enabled)
 		return err;
+
+	rcu_read_lock();
+
+	cred = (struct cred *) current->real_cred;
 
 	if (inject_honeybest_tracker(cred, HB_INODE_GETXATTR))
 	       	err = -ENOMEM;
@@ -2468,21 +2570,26 @@ static int honeybest_inode_getxattr(struct dentry *dentry, const char *name)
 out1:
 	kfree(pathname);
 out:
+	rcu_read_unlock();
         return err;
 }
 
 static int honeybest_inode_listxattr(struct dentry *dentry)
 {
 	int err = 0;
-	struct cred *cred = (struct cred *) current->real_cred;
 	char *name = "N/A";
 	char *pathname = NULL;
        	char *binprm = NULL;
 	hb_inode_ll *record;
+	struct cred *cred = NULL;
 	char uid[UID_STR_SIZE];
 
 	if (!enabled)
 		return err;
+
+	rcu_read_lock();
+
+	cred = (struct cred *) current->real_cred;
 
 	if (inject_honeybest_tracker(cred, HB_INODE_LISTXATTR))
 	       	err = -ENOMEM;
@@ -2521,6 +2628,7 @@ static int honeybest_inode_listxattr(struct dentry *dentry)
 out1:
 	kfree(pathname);
 out:
+	rcu_read_unlock();
         return err;
 }
 
@@ -2532,14 +2640,18 @@ out:
 static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
 {
 	int err = 0;
-	struct cred *cred = (struct cred *) current->real_cred;
 	char *pathname = NULL;
        	char *binprm = NULL;
 	hb_inode_ll *record;
+	struct cred *cred = NULL;
 	char uid[UID_STR_SIZE];
 
 	if (!enabled)
 		return err;
+
+	rcu_read_lock();
+
+	cred = (struct cred *) current->real_cred;
 
 	if (inject_honeybest_tracker(cred, HB_INODE_REMOVEXATTR))
 	       	err = -ENOMEM;
@@ -2577,6 +2689,7 @@ static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
 out1:
 	kfree(pathname);
 out:
+	rcu_read_unlock();
         return err;
 }
 
@@ -2633,18 +2746,24 @@ static int honeybest_file_ioctl(struct file *file, unsigned int cmd,
                               unsigned long arg)
 {
 	int err = 0;
-       	struct task_struct *task = current;
-	struct cred *cred = (struct cred *) current->real_cred;
 	hb_file_ll *record = NULL;
-	struct mm_struct *mm = current->mm;
 	char *filename = NULL;
        	char *binprm = NULL;
+       	struct task_struct *task = NULL;
+	struct cred *cred = NULL;
+	struct mm_struct *mm = NULL;
 	char uid[UID_STR_SIZE];
        	char *taskname = NULL;
 
 	if (!enabled) {
 		return err;
 	}
+
+	rcu_read_lock();
+
+       	task = current;
+	cred = (struct cred *) current->real_cred;
+	mm = current->mm;
 
 	if (inject_honeybest_tracker(cred, HB_FILE_IOCTL))
 	       	err = -ENOMEM;
@@ -2667,8 +2786,6 @@ static int honeybest_file_ioctl(struct file *file, unsigned int cmd,
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
-			else
-				goto out1;
 		}
 		up_read(&mm->mmap_sem);
 	}
@@ -2703,6 +2820,7 @@ out2:
 out1:
 	kfree(filename);
 out:
+	rcu_read_unlock();
         return err;
 
 }
@@ -2749,18 +2867,24 @@ static int honeybest_file_send_sigiotask(struct task_struct *tsk,
 static int honeybest_file_receive(struct file *file)
 {
 	int err = 0;
-       	struct task_struct *task = current;
-	struct cred *cred = (struct cred *) current->real_cred;
 	hb_file_ll *record = NULL;
-	struct mm_struct *mm = current->mm;
 	char *filename = NULL;
        	char *binprm = NULL;
+       	struct task_struct *task = NULL;
+	struct cred *cred = NULL;
+	struct mm_struct *mm = NULL;
 	char uid[UID_STR_SIZE];
        	char *taskname = NULL;
 
 	if (!enabled) {
 		return err;
 	}
+
+	rcu_read_lock();
+
+       	task = current;
+	cred = (struct cred *) current->real_cred;
+	mm = current->mm;
 
 	if (inject_honeybest_tracker(cred, HB_FILE_RECEIVE))
 	       	err = -ENOMEM;
@@ -2774,7 +2898,7 @@ static int honeybest_file_receive(struct file *file)
 		goto out1;
 	}
 
-	task_lock(task);
+	//task_lock(task);
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
@@ -2783,12 +2907,10 @@ static int honeybest_file_receive(struct file *file)
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
-			else
-				goto out1;
 		}
 		up_read(&mm->mmap_sem);
 	}
-	task_unlock(task);
+	//task_unlock(task);
 
 	if (!binprm)
 		goto out2;
@@ -2819,6 +2941,7 @@ out2:
 out1:
 	kfree(filename);
 out:
+	rcu_read_unlock();
         return err;
 
 }
@@ -2831,18 +2954,27 @@ out:
 static int honeybest_file_open(struct file *file, const struct cred *cred)
 {
 	int err = 0;
-       	struct task_struct *task = current;
 	hb_file_ll *record = NULL;
-	struct cred *file_cred = (struct cred *)cred;
-	struct mm_struct *mm = current->mm;
 	char *filename = NULL;
        	char *binprm = NULL;
+       	struct task_struct *task = NULL;
+	struct cred *file_cred = NULL;
+	struct mm_struct *mm = NULL;
 	char uid[UID_STR_SIZE];
        	char *taskname = NULL;
 
 	if (!enabled) {
 		return err;
 	}
+
+	if (!mediated_filesystem(file->f_path.dentry))
+		return 0;
+
+	rcu_read_lock();
+
+       	task = current;
+	file_cred = (struct cred *) current->real_cred;
+	mm = current->mm;
 
 	if (inject_honeybest_tracker(file_cred, HB_FILE_OPEN))
 	       	err = -ENOMEM;
@@ -2856,7 +2988,7 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 		goto out1;
 	}
 
-	task_lock(task);
+	//task_lock(task);
 	if (mm) {
 		down_read(&mm->mmap_sem);
 		if (mm->exe_file) {
@@ -2865,12 +2997,10 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
-			else
-				goto out1;
 		}
 		up_read(&mm->mmap_sem);
 	}
-	task_unlock(task);
+	//task_unlock(task);
 
 	if (!binprm)
 		goto out2;
@@ -2901,6 +3031,7 @@ out2:
 out1:
 	kfree(filename);
 out:
+	rcu_read_unlock();
         return err;
 
 }
@@ -2924,8 +3055,12 @@ static int honeybest_cred_alloc_blank(struct cred *cred, gfp_t gfp)
 		return err;
 	}
 
+	rcu_read_lock();
+
 	if (inject_honeybest_tracker(cred, HB_CRED_ALLOC_BLANK))
 	       	err = -ENOMEM;
+
+	rcu_read_unlock();
 
         return err;
 }
@@ -2937,8 +3072,12 @@ static void honeybest_cred_free(struct cred *cred)
 	if (!enabled)
 		return;
 
+	rcu_read_lock();
+
 	if (free_honeybest_tracker(cred))
 	       	err = -ENOMEM;
+
+	rcu_read_unlock();
 
 	return;
 }
@@ -2954,6 +3093,8 @@ static int honeybest_cred_prepare(struct cred *new, const struct cred *old,
 	if (!enabled)
 		return err;
 
+	rcu_read_lock();
+
 	old_sec = old->security;
 	if (old_sec) {
 		new_sec = kmemdup(old_sec, sizeof(hb_track_info), gfp);
@@ -2963,6 +3104,7 @@ static int honeybest_cred_prepare(struct cred *new, const struct cred *old,
 		else
 			err = -ENOMEM;
 	}
+	rcu_read_unlock();
 
         return err;
 }
@@ -2974,10 +3116,14 @@ static void honeybest_cred_transfer(struct cred *new, const struct cred *old)
 	if (!enabled)
 		return;
 
+	rcu_read_lock();
+
 	if (sec) {
 		sec->tsid = task_seq;
 		new->security = (hb_track_info *)sec;
 	}
+
+	rcu_read_unlock();
 }
 
 static int honeybest_kernel_act_as(struct cred *new, u32 secid)
@@ -2996,6 +3142,7 @@ static int honeybest_kernel_create_files_as(struct cred *new, struct inode *inod
         return err;
 }
 
+#if LINUX_VERSION_CODE == KERNEL_VERSION(4,9,0)
 /**
  * This function use to tracking kernel load driver activity.
  * Trigger during insmod/rmmod
@@ -3005,15 +3152,19 @@ static int honeybest_kernel_module_from_file(struct file *file)
 {
 	int err = 0;
 	hb_kmod_ll *record = NULL;
-	struct cred *cred = (struct cred *) current->real_cred;
 	char *filename = NULL;
 	char *na = "N/A";
 	char uid[UID_STR_SIZE];
+	struct cred *cred = NULL;
 	char digest[SHA1_HONEYBEST_DIGEST_SIZE];
 
 	if (!enabled) {
 		return err;
 	}
+
+	rcu_read_lock();
+
+	cred = (struct cred *) current->real_cred;
 
 	if (inject_honeybest_tracker(cred, HB_KMOD_LOAD_FROM_FILE))
 	       	err = -ENOMEM;
@@ -3054,9 +3205,11 @@ static int honeybest_kernel_module_from_file(struct file *file)
 out1:
 	kfree(filename);
 out:
+	rcu_read_unlock();
         return err;
 
 }
+#endif
 
 /**
  * This function use to tracking kernel load driver activity.
@@ -3066,7 +3219,7 @@ out:
 static int honeybest_kernel_module_request(char *kmod_name)
 {
 	int err = 0;
-	struct cred *cred = (struct cred *) current->real_cred;
+	struct cred *cred = NULL;
 	char uid[UID_STR_SIZE];
 	char *na = "N/A";
 	hb_kmod_ll *record = NULL;
@@ -3074,6 +3227,10 @@ static int honeybest_kernel_module_request(char *kmod_name)
 	if (!enabled) {
 		return err;
 	}
+
+	rcu_read_lock();
+
+	cred = (struct cred *) current->real_cred;
 
 	if (inject_honeybest_tracker(cred, HB_KMOD_REQ))
 	       	err = -ENOMEM;
@@ -3098,6 +3255,7 @@ static int honeybest_kernel_module_request(char *kmod_name)
 			err = -EOPNOTSUPP;
 	}
 
+	rcu_read_unlock();
         return err;
 }
 
@@ -3173,17 +3331,23 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
                                 int sig, u32 secid)
 {
 	int err = 0;
-       	struct task_struct *task = current;
-	struct cred *cred = (struct cred *) current->real_cred;
-	struct mm_struct *mm = current->mm;
        	char *binprm = NULL;
        	char *taskname = NULL;
+       	struct task_struct *task = NULL;
+	struct cred *cred = NULL;
+	struct mm_struct *mm = NULL;
 	char uid[UID_STR_SIZE];
 	hb_task_ll *record;
 
 	if (!enabled) {
 		return err;
 	}
+
+	rcu_read_lock();
+
+       	task = current;
+	cred = (struct cred *) current->real_cred;
+	mm = current->mm;
 
 	if (inject_honeybest_tracker(cred, HB_TASK_SIGNAL))
 	       	err = -ENOMEM;
@@ -3197,15 +3361,13 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
 			}
-			else
-				goto out;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
 
 	if (!binprm)
-		goto out1;
+		goto out;
 
 	record = search_task_record(HB_TASK_SIGNAL, current->cred->uid.val, sig, secid, binprm);
 
@@ -3229,9 +3391,9 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 		}
 	}
 
-out1:
-	kfree(taskname);
 out:
+	kfree(taskname);
+	rcu_read_unlock();
         return err;
 
 }
@@ -3298,16 +3460,22 @@ static int honeybest_socket_create(int family, int type,
                                  int protocol, int kern)
 {
 	int err = 0;
-       	struct task_struct *task = current;
-	struct cred *cred = (struct cred *)task->cred;
-	struct mm_struct *mm = current->mm;
 	char *taskname = NULL;
 	char *binprm = NULL;
+       	struct task_struct *task = NULL;
+	struct cred *cred = NULL;
+	struct mm_struct *mm = NULL;
 	char uid[UID_STR_SIZE];
 	hb_socket_ll *record;
 
 	if (!enabled)
 	       	return err;
+
+	rcu_read_lock();
+
+       	task = current;
+	cred = (struct cred *) current->real_cred;
+	mm = current->mm;
 
 	if (inject_honeybest_tracker(cred, HB_SOCKET_CREATE))
 		err = -ENOMEM;
@@ -3320,15 +3488,13 @@ static int honeybest_socket_create(int family, int type,
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 			}
-			else
-				goto out;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
 
-	if (!binprm)
-		goto out1;
+	if (!binprm || (strlen(binprm)>0))
+		goto out;
 
 	record = search_socket_record(HB_SOCKET_CREATE, current->cred->uid.val, family, type, protocol, 0, 0, 0, binprm);
 
@@ -3350,9 +3516,9 @@ static int honeybest_socket_create(int family, int type,
 			err = -EOPNOTSUPP;
 	}
 
-out1:
-	kfree(taskname);
 out:
+	kfree(taskname);
+	rcu_read_unlock();
 	return err;
 }
 
@@ -3369,11 +3535,11 @@ static int honeybest_socket_post_create(struct socket *sock, int family,
  */
 static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, int addrlen)
 {
-       	struct task_struct *task = current;
-	struct cred *cred = (struct cred *)task->cred;
-	struct mm_struct *mm = current->mm;
 	char *taskname = NULL;
 	char *binprm = NULL;
+       	struct task_struct *task = NULL;
+	struct cred *cred = NULL;
+	struct mm_struct *mm = NULL;
 	char uid[UID_STR_SIZE];
 	hb_socket_ll *record;
 	int port = 0;
@@ -3381,6 +3547,12 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 
 	if (!enabled)
 	       	return err;
+
+	rcu_read_lock();
+
+       	task = current;
+	cred = (struct cred *) current->real_cred;
+	mm = current->mm;
 
 	if (inject_honeybest_tracker(cred, HB_SOCKET_BIND))
 		err = -ENOMEM;
@@ -3393,15 +3565,13 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 			}
-			else
-				goto out;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
 
 	if (!binprm)
-		goto out1;
+		goto out;
 
 	port = lookup_source_port(sock, address, addrlen);
 
@@ -3428,9 +3598,9 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 			err = -EOPNOTSUPP;
 		}
 	}
-out1:
-	kfree(taskname);
 out:
+	kfree(taskname);
+	rcu_read_unlock();
 	return err;
 }
 
@@ -3441,18 +3611,24 @@ out:
  */
 static int honeybest_socket_connect(struct socket *sock, struct sockaddr *address, int addrlen)
 {
-       	struct task_struct *task = current;
-	struct cred *cred = (struct cred *)task->cred;
-	struct mm_struct *mm = current->mm;
 	char *taskname = NULL;
 	char *binprm = NULL;
 	char uid[UID_STR_SIZE];
+       	struct task_struct *task = NULL;
+	struct cred *cred = NULL;
+	struct mm_struct *mm = NULL;
 	hb_socket_ll *record;
 	int port = 0;
 	int err = 0;
 
 	if (!enabled)
 	       	return err;
+
+	rcu_read_lock();
+
+       	task = current;
+	cred = (struct cred *) current->real_cred;
+	mm = current->mm;
 
 	if (inject_honeybest_tracker(cred, HB_SOCKET_CONNECT))
 		err = -ENOMEM;
@@ -3465,15 +3641,13 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 			}
-			else
-				goto out;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
 
 	if (!binprm)
-		goto out1;
+		goto out;
 
 	port = lookup_source_port(sock, address, addrlen);
 
@@ -3498,9 +3672,9 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 			err = -EOPNOTSUPP;
 		}
 	}
-out1:
-	kfree(taskname);
 out:
+	kfree(taskname);
+	rcu_read_unlock();
 	return err;
 }
 
@@ -3553,17 +3727,23 @@ static int honeybest_socket_getpeername(struct socket *sock)
  */
 static int honeybest_socket_setsockopt(struct socket *sock, int level, int optname)
 {
-       	struct task_struct *task = current;
-	struct cred *cred = (struct cred *)task->cred;
-	struct mm_struct *mm = current->mm;
 	char *taskname = NULL;
 	char *binprm = NULL;
+       	struct task_struct *task = NULL;
+	struct cred *cred = NULL;
+	struct mm_struct *mm = NULL;
 	char uid[UID_STR_SIZE];
 	hb_socket_ll *record;
 	int err = 0;
 
 	if (!enabled)
 	       	return err;
+
+	rcu_read_lock();
+
+       	task = current;
+	cred = (struct cred *) current->real_cred;
+	mm = current->mm;
 
 	if (inject_honeybest_tracker(cred, HB_SOCKET_SETSOCKOPT))
 		err = -ENOMEM;
@@ -3576,15 +3756,13 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 			}
-			else
-				goto out;
 		}
 		up_read(&mm->mmap_sem);
 	}
 	task_unlock(task);
 
-	if (!binprm)
-		goto out1;
+	if (!binprm || (strlen(binprm)>0))
+		goto out;
 
 	record = search_socket_record(HB_SOCKET_SETSOCKOPT, current->cred->uid.val, 0, 0, 0, 0, level, optname, binprm);
 
@@ -3605,9 +3783,9 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 		if ((locking == 1) && (bl == 0)) 
 			err = -EOPNOTSUPP;
 	}
-out1:
-	kfree(taskname);
 out:
+	kfree(taskname);
+	rcu_read_unlock();
 	return err;
 }
 
@@ -3970,12 +4148,12 @@ static int honeybest_sem_semop(struct sem_array *sma,
 static int honeybest_ipc_permission(struct kern_ipc_perm *ipcp, short flag)
 {
 	int err = 0;
-       	struct task_struct *task = current;
-	struct mm_struct *mm = current->mm;
-	struct cred *cred = (struct cred *) current->real_cred;
 	hb_ipc_ll *record = NULL;
        	char *taskname = NULL;
        	char *binprm = NULL;
+       	struct task_struct *task = NULL;
+	struct cred *cred = NULL;
+	struct mm_struct *mm = NULL;
 	char uid[UID_STR_SIZE];
 	uid_t ipc_uid = ipcp->uid.val;
 	uid_t ipc_gid = ipcp->gid.val;
@@ -3985,6 +4163,12 @@ static int honeybest_ipc_permission(struct kern_ipc_perm *ipcp, short flag)
 
 	if (!enabled)
 		return err;
+
+	rcu_read_lock();
+
+       	task = current;
+	cred = (struct cred *) current->real_cred;
+	mm = current->mm;
 
 	if (inject_honeybest_tracker(cred, HB_IPC_PERM))
 	       	err = -ENOMEM;
@@ -3998,8 +4182,6 @@ static int honeybest_ipc_permission(struct kern_ipc_perm *ipcp, short flag)
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 				//printk(KERN_ERR "binprm %s, flag %d, uid %d, gid %d, cuid %d, cgid %d, mode %u\n", binprm, flag, ipc_uid, ipc_gid, ipc_cuid, ipc_cgid, mode);
 			}
-			else
-				goto out;
 		}
 		up_read(&mm->mmap_sem);
 	}
@@ -4031,7 +4213,8 @@ static int honeybest_ipc_permission(struct kern_ipc_perm *ipcp, short flag)
 	}
 
 	kfree(taskname);
-out:
+
+	rcu_read_unlock();
 	return err;
 }
 
@@ -4229,7 +4412,8 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(dentry_init_security, honeybest_dentry_init_security),
 #endif
 
-#ifdef CONFIG_SECURITY_PATH
+//#ifdef CONFIG_SECURITY_PATH
+	LSM_HOOK_INIT(path_truncate, honeybest_path_truncate),
 	LSM_HOOK_INIT(path_link, honeybest_path_link),
 	LSM_HOOK_INIT(path_unlink, honeybest_path_unlink),
 	LSM_HOOK_INIT(path_symlink, honeybest_path_symlink),
@@ -4239,8 +4423,6 @@ static struct security_hook_list honeybest_hooks[] = {
 	LSM_HOOK_INIT(path_rename, honeybest_path_rename),
 	LSM_HOOK_INIT(path_chmod, honeybest_path_chmod),
 	LSM_HOOK_INIT(path_chown, honeybest_path_chown),
-	LSM_HOOK_INIT(path_truncate, honeybest_path_truncate),
-#endif
 
         LSM_HOOK_INIT(inode_alloc_security, honeybest_inode_alloc_security),
         LSM_HOOK_INIT(inode_free_security, honeybest_inode_free_security),
@@ -4292,9 +4474,11 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(kernel_act_as, honeybest_kernel_act_as),
         LSM_HOOK_INIT(kernel_create_files_as, honeybest_kernel_create_files_as),
         LSM_HOOK_INIT(kernel_module_request, honeybest_kernel_module_request),
-        LSM_HOOK_INIT(kernel_module_from_file, honeybest_kernel_module_from_file),
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
         LSM_HOOK_INIT(kernel_read_file, honeybest_kernel_read_file),
+#endif
+#if LINUX_VERSION_CODE == KERNEL_VERSION(4,9,0)
+        LSM_HOOK_INIT(kernel_module_from_file, honeybest_kernel_module_from_file),
 #endif
         LSM_HOOK_INIT(task_setpgid, honeybest_task_setpgid),
         LSM_HOOK_INIT(task_getpgid, honeybest_task_getpgid),
@@ -4421,6 +4605,7 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(audit_rule_match, honeybest_audit_rule_match),
         LSM_HOOK_INIT(audit_rule_free, honeybest_audit_rule_free),
 #endif
+
 };
 
 void __init honeybest_add_hooks(void)

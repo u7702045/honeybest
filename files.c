@@ -90,6 +90,7 @@
 #include "notify.h"
 #include "honeybest.h"
 
+extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_file_entry;
 hb_file_ll hb_file_list_head;
@@ -218,9 +219,10 @@ int add_file_record(unsigned int fid, char *uid, char act_allow, char *filename,
 		       	list_add_tail(&(tmp->list), &(hb_file_list_head.list));
 
 		if ((err == 0) && (interact == 1)) {
-			if (!search_notify_file_record(fid, uid, filename, binprm, cmd))
+			if (!search_notify_file_record(fid, uid, filename, binprm, cmd) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
+				printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
 				free_file_record(tmp);
 				kfree(tmp);
 			}
@@ -332,9 +334,14 @@ out:
 // true if match
 int allow_file_whitelist(char *path)
 {
+	if(!path)
+		goto out;
+
 	if (!strncmp(path, "/proc/sys/kernel/honeybest/", 27) || (!strncmp(path, "/proc/honeybest/", 16)) || (!strcmp(path, "/"))) {
 		//printk(KERN_ERR "Whitelist pass!!\n");
 		return 1;
 	}
+
+out:
 	return 0;
 }

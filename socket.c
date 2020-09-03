@@ -91,6 +91,7 @@
 #include "regex.h"
 #include "honeybest.h"
 
+extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_socket_entry;
 hb_socket_ll hb_socket_list_head;
@@ -287,9 +288,10 @@ int add_socket_record(unsigned int fid, char *uid, char act_allow, int family, i
 			list_add(&(tmp->list), &(hb_socket_list_head.list));
 
 		if ((err == 0) && (interact == 1)) {
-			if (!search_notify_socket_record(fid, uid, family, type, protocol, port, level, optname, binprm))
+			if (!search_notify_socket_record(fid, uid, family, type, protocol, port, level, optname, binprm) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
+				printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
 				free_socket_record(tmp);
 				kfree(tmp);
 			}
