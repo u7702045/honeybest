@@ -213,7 +213,7 @@ int add_inode_record(unsigned int fid, char *uid, char act_allow, char *name, ch
 			if (!search_notify_inode_record(fid, uid, name, binprm) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
-				printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+				//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
 				free_inode_record(tmp);
 				kfree(tmp);
 			}

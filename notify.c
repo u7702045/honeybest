@@ -285,6 +285,8 @@ void hb_notify_seq_stop(struct seq_file *s, void *v)
 
 	list_for_each_safe(pos, q, &hb_notify_list_head.list) {
 		tmp = list_entry(pos, hb_notify_ll, list);
+		if (tmp->dirty != true)
+			continue;
 		switch (tmp->fid) {
 			case HB_BPRM_SET_CREDS:
 				binprm = (hb_binprm_ll *)tmp->data;
@@ -377,24 +379,30 @@ int hb_notify_seq_show(struct seq_file *s, void *v)
 
 	list_for_each_safe(pos, q, &hb_notify_list_head.list) {
 		tmp = list_entry(pos, hb_notify_ll, list);
+		if (tmp->dirty == true)
+			continue;
 		switch (tmp->fid) {
 			case HB_BPRM_SET_CREDS:
 				binprm = (hb_binprm_ll *)tmp->data;
 				seq_printf(s, "%lu\t%s\t%u\t%s\t%c\t%s\t%s\n", total++, tmp->proc, binprm->fid, binprm->uid, binprm->act_allow, binprm->digest, binprm->pathname);
+				tmp->dirty = true;
 				break;
 			case HB_PTRACE_ACCESS_CHECK:
 				ptrace = (hb_ptrace_ll *)tmp->data;
 				seq_printf(s, "%lu\t%s\t%u\t%s\t%c\t%s\t%s\t%u\n", total++, tmp->proc, ptrace->fid, ptrace->uid, ptrace->act_allow, ptrace->parent, ptrace->child, ptrace->mode);
+				tmp->dirty = true;
 				break;
 			case HB_FILE_OPEN:
 			case HB_FILE_RECEIVE:
 			case HB_FILE_IOCTL:
 				files = (hb_file_ll *)tmp->data;
 				seq_printf(s, "%lu\t%s\t%u\t%s\t%c\t%s\t%s\t%u\n", total++, tmp->proc, files->fid, files->uid, files->act_allow, files->filename, files->binprm, files->cmd);
+				tmp->dirty = true;
 				break;
 			case HB_TASK_SIGNAL:
 				tasks = (hb_task_ll *)tmp->data;
 				seq_printf(s, "%lu\t%s\t%u\t%s\t%c\t%d\t%u\n", total++, tmp->proc, tasks->fid, tasks->uid, tasks->act_allow, tasks->sig, tasks->secid);
+				tmp->dirty = true;
 				break;
 			case HB_SOCKET_CREATE:
 			case HB_SOCKET_CONNECT:
@@ -402,6 +410,7 @@ int hb_notify_seq_show(struct seq_file *s, void *v)
 			case HB_SOCKET_SETSOCKOPT:
 				sockets = (hb_socket_ll *)tmp->data;
 				seq_printf(s, "%lu\t%s\t%u\t%s\t%c\t%d\t%d\t%d\t%d\t%d\t%d\t%s\n", total++, tmp->proc, sockets->fid, sockets->uid, sockets->act_allow, sockets->family, sockets->type, sockets->protocol, sockets->port, sockets->level, sockets->optname, sockets->binprm);
+				tmp->dirty = true;
 				break;
 			case HB_PATH_RENAME:
 			case HB_PATH_SYMLINK:
@@ -415,12 +424,14 @@ int hb_notify_seq_show(struct seq_file *s, void *v)
 			case HB_PATH_CHMOD:
 				paths = (hb_path_ll *)tmp->data;
 				seq_printf(s, "%lu\t%s\t%u\t%s\t%c\t%u\t%u\t%u\t%u\t%s\t\t%s\t\t%s\n", total++, tmp->proc, paths->fid , paths->uid, paths->act_allow, paths->mode, paths->suid, paths->sgid, paths->dev, paths->s_path, paths->t_path, paths->binprm);
+				tmp->dirty = true;
 				break;
 			case HB_INODE_REMOVEXATTR:
 			case HB_INODE_GETXATTR:
 			case HB_INODE_SETXATTR:
 				inodes = (hb_inode_ll *)tmp->data;
 				seq_printf(s, "%lu\t%s\t%u\t%s\t%c\t%s\t%s\n", total++, tmp->proc, inodes->fid , inodes->uid, inodes->act_allow, inodes->name, inodes->binprm);
+				tmp->dirty = true;
 				break;
 			case HB_SB_COPY_DATA:
 			case HB_SB_STATFS:
@@ -429,130 +440,25 @@ int hb_notify_seq_show(struct seq_file *s, void *v)
 			case HB_SB_MOUNT:
 				sbs = (hb_sb_ll *)tmp->data;
 				seq_printf(s, "%lu\t%s\t%u\t%s\t%c\t%s\t%s\t%s\t%s\t%d\n", total++, tmp->proc, sbs->fid , sbs->uid, sbs->act_allow, sbs->s_id, sbs->name, sbs->dev_name, sbs->type, sbs->flags);
+				tmp->dirty = true;
 				break;
 			case HB_KMOD_LOAD_FROM_FILE:
 			case HB_KMOD_REQ:
 				kmods = (hb_kmod_ll *)tmp->data;
 				seq_printf(s, "%lu\t%s\t%u\t%s\t%c\t%s\t%s\t%s\n", total++, tmp->proc, kmods->fid , kmods->uid, kmods->act_allow, kmods->name, kmods->filename, kmods->digest);
+				tmp->dirty = true;
 				break;
 			case HB_IPC_PERM:
 				ipc = (hb_ipc_ll *)tmp->data;
 				seq_printf(s, "%lu\t%s\t%u\t%s\t%c\t%s\t%d\t%d\t%d\t%d\t%d\n", total++, tmp->proc, ipc->fid, \
 						ipc->uid, ipc->act_allow, ipc->binprm, ipc->ipc_uid, ipc->ipc_gid, \
 						ipc->ipc_cuid, ipc->ipc_cgid, ipc->flag);
+				tmp->dirty = true;
 				break;
 			default:
 				break;
 		}
 	}
-	return 0;
-}
-
-
-int read_notify_record(struct seq_file *m, void *v)
-{
-	hb_notify_ll *tmp = NULL;
-	struct list_head *pos = NULL;
-	struct list_head *q = NULL;
-       	hb_binprm_ll *binprm = NULL;
-       	hb_file_ll *files = NULL;
-       	hb_task_ll *tasks = NULL;
-       	hb_socket_ll *sockets = NULL;
-       	hb_path_ll *paths = NULL;
-       	hb_inode_ll *inodes = NULL;
-       	hb_sb_ll *sbs = NULL;
-       	hb_kmod_ll *kmods = NULL;
-       	hb_ipc_ll *ipc = NULL;
-       	hb_ptrace_ll *ptrace = NULL;
-
-	seq_printf(m, "ID\tFILE\tFUNC\tUID\tDATA\n");
-	list_for_each_safe(pos, q, &hb_notify_list_head.list) {
-		tmp = list_entry(pos, hb_notify_ll, list);
-		switch (tmp->fid) {
-			case HB_BPRM_SET_CREDS:
-				binprm = (hb_binprm_ll *)tmp->data;
-				printk(KERN_ERR "%lu\t%s\t%u\t%s\t%c\t%s\t%s\n", total++, tmp->proc, binprm->fid, binprm->uid, binprm->act_allow, binprm->digest, binprm->pathname);
-				free_cred_record(binprm);
-				break;
-			case HB_PTRACE_ACCESS_CHECK:
-				ptrace = (hb_ptrace_ll *)tmp->data;
-				printk(KERN_ERR "%lu\t%s\t%u\t%s\t%c\t%s\t%s\t%u\n", total++, tmp->proc, ptrace->fid, ptrace->uid, ptrace->act_allow, ptrace->parent, ptrace->child, ptrace->mode);
-				free_ptrace_record(ptrace);
-				break;
-			case HB_FILE_OPEN:
-			case HB_FILE_RECEIVE:
-			case HB_FILE_IOCTL:
-				files = (hb_file_ll *)tmp->data;
-				printk(KERN_ERR "%lu\t%s\t%u\t%s\t%c\t%s\t%s\t%u\n", total++, tmp->proc, files->fid, files->uid, files->act_allow, files->filename, files->binprm, files->cmd);
-				free_file_record(files);
-				break;
-			case HB_TASK_SIGNAL:
-				tasks = (hb_task_ll *)tmp->data;
-				printk(KERN_ERR "%lu\t%s\t%u\t%s\t%c\t%d\t%u\n", total++, tmp->proc, tasks->fid, tasks->uid, tasks->act_allow, tasks->sig, tasks->secid);
-				free_task_record(tasks);
-				break;
-			case HB_SOCKET_CREATE:
-			case HB_SOCKET_CONNECT:
-			case HB_SOCKET_BIND:
-			case HB_SOCKET_SETSOCKOPT:
-				sockets = (hb_socket_ll *)tmp->data;
-				printk(KERN_ERR "%lu\t%s\t%u\t%s\t%c\t%d\t%d\t%d\t%d\t%d\t%d\t%s\n", total++, tmp->proc, sockets->fid, sockets->uid, sockets->act_allow, sockets->family, sockets->type, sockets->protocol, sockets->port, sockets->level, sockets->optname, sockets->binprm);
-				free_socket_record(sockets);
-				break;
-			case HB_PATH_RENAME:
-			case HB_PATH_SYMLINK:
-			case HB_PATH_RMDIR:
-			case HB_PATH_TRUNCATE:
-			case HB_PATH_LINK:
-			case HB_PATH_UNLINK:
-			case HB_PATH_CHOWN:
-			case HB_PATH_MKNOD:
-			case HB_PATH_MKDIR:
-			case HB_PATH_CHMOD:
-				paths = (hb_path_ll *)tmp->data;
-				printk(KERN_ERR "%lu\t%s\t%u\t%s\t%c\t%u\t%u\t%u\t%u\t%s\t\t%s\t\t%s\n", total++, tmp->proc, paths->fid , paths->uid, paths->act_allow, paths->mode, paths->suid, paths->sgid, paths->dev, paths->s_path, paths->t_path, paths->binprm);
-				free_path_record(paths);
-				break;
-			case HB_INODE_REMOVEXATTR:
-			case HB_INODE_GETXATTR:
-			case HB_INODE_SETXATTR:
-				inodes = (hb_inode_ll *)tmp->data;
-				printk(KERN_ERR "%lu\t%s\t%u\t%s\t%c\t%s\t%s\n", total++, tmp->proc, inodes->fid , inodes->uid, inodes->act_allow, inodes->name, inodes->binprm);
-				free_inode_record(inodes);
-				break;
-			case HB_SB_COPY_DATA:
-			case HB_SB_STATFS:
-			case HB_SB_REMOUNT:
-			case HB_SB_UMOUNT:
-			case HB_SB_MOUNT:
-				sbs = (hb_sb_ll *)tmp->data;
-				printk(KERN_ERR "%lu\t%s\t%u\t%s\t%c\t%s\t%s\t%s\t%s\t%d\n", total++, tmp->proc, sbs->fid , sbs->uid, sbs->act_allow, sbs->s_id, sbs->name, sbs->dev_name, sbs->type, sbs->flags);
-				free_sb_record(sbs);
-				break;
-			case HB_KMOD_LOAD_FROM_FILE:
-			case HB_KMOD_REQ:
-				kmods = (hb_kmod_ll *)tmp->data;
-				printk(KERN_ERR "%lu\t%s\t%u\t%s\t%c\t%s\t%s\t%s\n", total++, tmp->proc, kmods->fid , kmods->uid, kmods->act_allow, kmods->name, kmods->filename, kmods->digest);
-				free_kmod_record(kmods);
-				break;
-			case HB_IPC_PERM:
-				ipc = (hb_ipc_ll *)tmp->data;
-				printk(KERN_ERR "%lu\t%s\t%u\t%s\t%c\t%s\t%d\t%d\t%d\t%d\t%d\n", total++, tmp->proc, ipc->fid, \
-						ipc->uid, ipc->act_allow, ipc->binprm, ipc->ipc_uid, ipc->ipc_gid, \
-						ipc->ipc_cuid, ipc->ipc_cgid, ipc->flag);
-				free_ipc_record(tmp->data);
-				break;
-			default:
-				printk(KERN_ERR "Unknown fid show up, weird!!\n");
-				break;
-		}
-
-		list_del(pos);
-		kfree(tmp->data);
-		kfree(tmp);
-	}
-	total = 0;
-
 	return 0;
 }
 

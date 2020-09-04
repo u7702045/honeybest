@@ -217,7 +217,7 @@ int add_kmod_record(unsigned int fid, char *uid, char act_allow, char *name, cha
 			if (!search_notify_kmod_record(fid, uid, name, filename, digest) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
-				printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+				//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
 				free_kmod_record(tmp);
 				kfree(tmp);
 			}

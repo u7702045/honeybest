@@ -264,7 +264,7 @@ int add_path_record(unsigned int fid, char *uid, char act_allow, umode_t mode, c
 			if (!search_notify_path_record(fid, uid, mode, s_path, t_path, suid, sgid, dev, binprm) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
-				printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+				//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
 				free_path_record(tmp);
 				kfree(tmp);
 			}

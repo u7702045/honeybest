@@ -245,7 +245,7 @@ int add_sb_record(unsigned int fid, char *uid, char act_allow, char *s_id, char 
 
 		tmp->flags = flags;
 
-		printk(KERN_DEBUG "%s, %s, %s, %s, %s, %d\n", __FUNCTION__, tmp->s_id, tmp->name, tmp->dev_name, tmp->type, tmp->flags);
+		//printk(KERN_DEBUG "%s, %s, %s, %s, %s, %d\n", __FUNCTION__, tmp->s_id, tmp->name, tmp->dev_name, tmp->type, tmp->flags);
 		if ((err == 0) && (interact == 0))
 		       	list_add_tail(&(tmp->list), &(hb_sb_list_head.list));
 
@@ -253,7 +253,7 @@ int add_sb_record(unsigned int fid, char *uid, char act_allow, char *s_id, char 
 			if (!search_notify_sb_record(fid, uid, s_id, name, dev_name, type, flags) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
-				printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+				//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
 				free_sb_record(tmp);
 				kfree(tmp);
 			}

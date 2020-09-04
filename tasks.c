@@ -191,7 +191,7 @@ int add_task_record(unsigned int fid, char *uid, char act_allow, int sig, u32 se
 			if (!search_notify_task_record(fid, uid, sig, secid, binprm) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
-				printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+				//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
 				free_task_record(tmp);
 				kfree(tmp);
 			}

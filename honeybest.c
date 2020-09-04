@@ -347,7 +347,6 @@ static struct seq_operations hb_notify_seq_ops = {
 };
 static int open_notify_proc(struct inode *inode, struct  file *file) {
 	  return seq_open(file, &hb_notify_seq_ops);
-	  //return single_open(file, read_notify_record, NULL);
 }
 
 static const struct file_operations hb_proc_notify_fops = {

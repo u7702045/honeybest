@@ -291,7 +291,7 @@ int add_socket_record(unsigned int fid, char *uid, char act_allow, int family, i
 			if (!search_notify_socket_record(fid, uid, family, type, protocol, port, level, optname, binprm) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
-				printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+				//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
 				free_socket_record(tmp);
 				kfree(tmp);
 			}

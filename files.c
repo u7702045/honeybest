@@ -222,7 +222,7 @@ int add_file_record(unsigned int fid, char *uid, char act_allow, char *filename,
 			if (!search_notify_file_record(fid, uid, filename, binprm, cmd) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
-				printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+				//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
 				free_file_record(tmp);
 				kfree(tmp);
 			}
