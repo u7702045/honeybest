@@ -19,7 +19,7 @@
 #ifndef HONEYBEST_NOTIFY_INCLUDED
 #define HONEYBEST_NOTIFY_INCLUDED
 
-#define MAX_NOTIFY_RECORD	200
+#define MAX_NOTIFY_RECORD	100
 typedef struct hb_notify_ll_t {
 	unsigned int fid;		// security hook function binprm by program
 	char proc[HB_PROC_FSIZE];	//name of /proc/honeybest/*
