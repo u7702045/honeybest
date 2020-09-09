@@ -31,7 +31,7 @@ typedef struct hb_sb_ll_t {
 hb_sb_ll *search_sb_record(unsigned int fid, uid_t uid, char *s_id, char *name, \
 		char *dev_name, char *type, int flags);
 int add_sb_record(unsigned int fid, char *uid, char act_allow, char *s_id, char *name, \
-		char *dev_name, char *type, int flags, int interact);
+		char *dev_name, char *type, int flags);
 
 int read_sb_record(struct seq_file *m, void *v);
 ssize_t write_sb_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos);

@@ -90,6 +90,8 @@
 #include "notify.h"
 #include "honeybest.h"
 
+extern int hb_level;
+extern int hb_interact;
 extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_path_entry;
@@ -193,7 +195,7 @@ hb_path_ll *search_notify_path_record(unsigned int fid, char *uid, umode_t mode,
 }
 
 int add_path_record(unsigned int fid, char *uid, char act_allow, umode_t mode, char *s_path, char *t_path, \
-		uid_t suid, uid_t sgid, unsigned int dev, char *binprm, int interact)
+		uid_t suid, uid_t sgid, unsigned int dev, char *binprm)
 {
 	int err = 0;
 	hb_path_ll *tmp = NULL;
@@ -257,10 +259,10 @@ int add_path_record(unsigned int fid, char *uid, char act_allow, umode_t mode, c
 				break;
 		}
 
-		if ((err == 0) && (interact == 0))
+		if ((err == 0) && (hb_interact == 0))
 		       	list_add_tail(&(tmp->list), &(hb_path_list_head.list));
 
-		if ((err == 0) && (interact == 1)) {
+		if ((err == 0) && (hb_interact == 1)) {
 			if (!search_notify_path_record(fid, uid, mode, s_path, t_path, suid, sgid, dev, binprm) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
@@ -382,7 +384,7 @@ ssize_t write_path_record(struct file *file, const char __user *buffer, size_t c
 		}
 
 		sscanf(token, "%u %s %c %hd %u %u %u %s %s %s", &fid, uid, &act_allow, &mode, &suid, &sgid, &dev, s_path, t_path, binprm);
-		if (add_path_record(fid, uid, act_allow, mode, s_path, t_path, suid, sgid, dev, binprm, 0) != 0) {
+		if (add_path_record(fid, uid, act_allow, mode, s_path, t_path, suid, sgid, dev, binprm) != 0) {
 			printk(KERN_WARNING "Failure to add path record %s, %s, %s, %s\n", uid, s_path, t_path, binprm);
 		}
 

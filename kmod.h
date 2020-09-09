@@ -27,7 +27,7 @@ typedef struct hb_kmod_ll_t {
 } hb_kmod_ll;
 
 hb_kmod_ll *search_kmod_record(unsigned int fid, uid_t uid, char *name, char *filename, char *digest);
-int add_kmod_record(unsigned int fid, char *uid, char act_allow, char *name, char *filename, char *digest, int interact);
+int add_kmod_record(unsigned int fid, char *uid, char act_allow, char *name, char *filename, char *digest);
 
 int read_kmod_record(struct seq_file *m, void *v);
 ssize_t write_kmod_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos);

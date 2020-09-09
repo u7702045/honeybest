@@ -90,6 +90,8 @@
 #include "regex.h"
 #include "honeybest.h"
 
+extern int hb_level;
+extern int hb_interact;
 extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_task_entry;
@@ -159,7 +161,7 @@ hb_task_ll *search_notify_task_record(unsigned int fid, char *uid, int sig, u32 
 	return NULL;
 }
 
-int add_task_record(unsigned int fid, char *uid, char act_allow, int sig, u32 secid, char *binprm, int interact)
+int add_task_record(unsigned int fid, char *uid, char act_allow, int sig, u32 secid, char *binprm)
 {
 	int err = 0;
 	hb_task_ll *tmp = NULL;
@@ -184,10 +186,10 @@ int add_task_record(unsigned int fid, char *uid, char act_allow, int sig, u32 se
 			default:
 				break;
 		}
-		if ((err == 0) && (interact == 0))
+		if ((err == 0) && (hb_interact == 0))
 		       	list_add_tail(&(tmp->list), &(hb_task_list_head.list));
 
-		if ((err == 0) && (interact == 1)) {
+		if ((err == 0) && (hb_interact == 1)) {
 			if (!search_notify_task_record(fid, uid, sig, secid, binprm) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
@@ -280,7 +282,7 @@ ssize_t write_task_record(struct file *file, const char __user *buffer, size_t c
 		}
 
 		sscanf(token, "%u %s %c %d %u %s", &fid, uid, &act_allow, &sig, &secid, binprm);
-		if (add_task_record(HB_TASK_SIGNAL, uid, act_allow, sig, secid, binprm, 0) != 0) {
+		if (add_task_record(HB_TASK_SIGNAL, uid, act_allow, sig, secid, binprm) != 0) {
 			printk(KERN_WARNING "Failure to add task record %s, %d, %s\n", uid, sig, binprm);
 		}
 	}

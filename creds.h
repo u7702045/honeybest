@@ -27,7 +27,7 @@ typedef struct hb_binprm_ll_t {
 } hb_binprm_ll;
 
 hb_binprm_ll *search_binprm_record(unsigned int fid, uid_t uid, char *pathname, char *digest);
-int add_binprm_record(unsigned int fid, char *uid, char act_allow, char *pathname, char *digest, int interact);
+int add_binprm_record(unsigned int fid, char *uid, char act_allow, char *pathname, char *digest);
 int lookup_binprm_digest(struct file *file, char *digest);
 
 int read_binprm_record(struct seq_file *m, void *v);

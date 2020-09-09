@@ -90,13 +90,14 @@
 #include "notify.h"
 #include "honeybest.h"
 
-extern int hblevel;
+extern int hb_level;
+extern int hb_interact;
 extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_file_entry;
 hb_file_ll hb_file_list_head;
 
-int match_file_record(hb_file_ll *data, unsigned int fid, uid_t uid, char *filename, char *binprm, unsigned int cmd)
+int match_file_record(hb_file_ll *data, unsigned int fid, uid_t uid, char *filename, char *binprm, unsigned int cmd, unsigned long arg)
 {
 	int match = 0;
 	bool do_compare_uid = false;
@@ -111,19 +112,19 @@ int match_file_record(hb_file_ll *data, unsigned int fid, uid_t uid, char *filen
 
 	switch (fid) {
 		case HB_FILE_IOCTL:
-			if (hblevel == 1)
+			if (hb_level == 1)
 				if ((data->fid == fid) && do_compare_uid && !compare_regex(data->filename, strlen(data->filename), filename, strlen(filename)) && (data->cmd == cmd))
 					match = 1;
-			if (hblevel == 2)
-				if ((data->fid == fid) && do_compare_uid && !compare_regex(data->filename, strlen(data->filename), filename, strlen(filename)) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm)) && (data->cmd == cmd))
+			if (hb_level == 2)
+				if ((data->fid == fid) && do_compare_uid && !compare_regex(data->filename, strlen(data->filename), filename, strlen(filename)) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm)) && (data->cmd == cmd) && (data->arg == arg))
 					match = 1;
 			break;
 		case HB_FILE_OPEN:
 		case HB_FILE_RECEIVE:
-			if (hblevel == 1)
+			if (hb_level == 1)
 				if ((data->fid == fid) && do_compare_uid && !compare_regex(data->filename, strlen(data->filename), filename, strlen(filename))) 
 					match = 1;
-			if (hblevel == 2)
+			if (hb_level == 2)
 				if ((data->fid == fid) && do_compare_uid && !compare_regex(data->filename, strlen(data->filename), filename, strlen(filename)) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm)))
 					match = 1;
 			break;
@@ -134,7 +135,7 @@ int match_file_record(hb_file_ll *data, unsigned int fid, uid_t uid, char *filen
 	return match;
 }
 
-hb_file_ll *search_file_record(unsigned int fid, uid_t uid, char *filename, char *binprm, unsigned int cmd)
+hb_file_ll *search_file_record(unsigned int fid, uid_t uid, char *filename, char *binprm, unsigned int cmd, unsigned long arg)
 {
 	hb_file_ll *tmp = NULL;
 	struct list_head *pos = NULL;
@@ -143,14 +144,14 @@ hb_file_ll *search_file_record(unsigned int fid, uid_t uid, char *filename, char
 
 		tmp = list_entry(pos, hb_file_ll, list);
 
-		if(match_file_record(tmp, fid, uid, filename, binprm, cmd))
+		if(match_file_record(tmp, fid, uid, filename, binprm, cmd, arg))
 			return tmp;
 	} // file linked list
 
 	return NULL;
 }
 
-hb_file_ll *search_notify_file_record(unsigned int fid, char *uid, char *filename, char *binprm, unsigned int cmd)
+hb_file_ll *search_notify_file_record(unsigned int fid, char *uid, char *filename, char *binprm, unsigned int cmd, unsigned long arg)
 {
 	hb_notify_ll *tmp = NULL;
 	struct list_head *pos = NULL;
@@ -166,7 +167,7 @@ hb_file_ll *search_notify_file_record(unsigned int fid, char *uid, char *filenam
 			if(kstrtoul(uid, 10, &list_uid) != 0)
 				printk(KERN_ERR "UID convert error\n");
 
-			if(match_file_record(data, fid, list_uid, filename, binprm, cmd)) {
+			if(match_file_record(data, fid, list_uid, filename, binprm, cmd, arg)) {
 				return data;
 			}
 		}
@@ -175,7 +176,7 @@ hb_file_ll *search_notify_file_record(unsigned int fid, char *uid, char *filenam
 	return NULL;
 }
 
-int add_file_record(unsigned int fid, char *uid, char act_allow, char *filename, char *binprm, unsigned int cmd, int interact)
+int add_file_record(unsigned int fid, char *uid, char act_allow, char *filename, char *binprm, unsigned int cmd, unsigned long arg)
 {
 	int err = 0;
 	hb_file_ll *tmp = NULL;
@@ -209,6 +210,7 @@ int add_file_record(unsigned int fid, char *uid, char act_allow, char *filename,
 		switch (fid) {
 			case HB_FILE_IOCTL:
 				tmp->cmd = cmd;
+				tmp->arg = arg;
 			case HB_FILE_RECEIVE:
 			case HB_FILE_OPEN:
 				strcpy(tmp->filename, filename);
@@ -218,11 +220,11 @@ int add_file_record(unsigned int fid, char *uid, char act_allow, char *filename,
 			       	break;
 		}
 
-		if ((err == 0) && (interact == 0))
+		if ((err == 0) && (hb_interact == 0))
 		       	list_add_tail(&(tmp->list), &(hb_file_list_head.list));
 
-		if ((err == 0) && (interact == 1)) {
-			if (!search_notify_file_record(fid, uid, filename, binprm, cmd) && (total_notify_record < MAX_NOTIFY_RECORD))
+		if ((err == 0) && (hb_interact == 1)) {
+			if (!search_notify_file_record(fid, uid, filename, binprm, cmd, arg) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
 				//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
@@ -308,6 +310,7 @@ ssize_t write_file_record(struct file *file, const char __user *buffer, size_t c
 		char act_allow = 'R';
 		char *binprm = NULL;
 		unsigned int cmd = 0;
+		unsigned long arg = 0;
 
 		filename = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
 		if (filename == NULL) {
@@ -320,8 +323,8 @@ ssize_t write_file_record(struct file *file, const char __user *buffer, size_t c
 			continue;
 		}
 
-		sscanf(token, "%u %s %c %s %s %u", &fid, uid, &act_allow, filename, binprm, &cmd);
-		if (add_file_record(fid, uid, act_allow, filename, binprm, cmd, 0) != 0) {
+		sscanf(token, "%u %s %c %s %s %u %lu", &fid, uid, &act_allow, filename, binprm, &cmd, &arg);
+		if (add_file_record(fid, uid, act_allow, filename, binprm, cmd, arg) != 0) {
 			printk(KERN_WARNING "Failure to add file record %s, %s, %s\n", uid, filename, binprm);
 		}
 

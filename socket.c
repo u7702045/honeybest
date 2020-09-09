@@ -91,6 +91,8 @@
 #include "regex.h"
 #include "honeybest.h"
 
+extern int hb_level;
+extern int hb_interact;
 extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_socket_entry;
@@ -248,7 +250,7 @@ int read_socket_record(struct seq_file *m, void *v)
 }
 
 int add_socket_record(unsigned int fid, char *uid, char act_allow, int family, int type, int protocol, 
-		int port, int level, int optname, char *binprm, int interact)
+		int port, int level, int optname, char *binprm)
 {
 	int err = 0;
 	hb_socket_ll *tmp = NULL;
@@ -284,10 +286,10 @@ int add_socket_record(unsigned int fid, char *uid, char act_allow, int family, i
 			default:
 				break;
 		}
-		if ((err == 0) && (interact == 0))
+		if ((err == 0) && (hb_interact == 0))
 			list_add(&(tmp->list), &(hb_socket_list_head.list));
 
-		if ((err == 0) && (interact == 1)) {
+		if ((err == 0) && (hb_interact == 1)) {
 			if (!search_notify_socket_record(fid, uid, family, type, protocol, port, level, optname, binprm) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
@@ -369,7 +371,7 @@ ssize_t write_socket_record(struct file *file, const char __user *buffer, size_t
 		sscanf(token, "%u %s %c %d %d %d %d %d %d %s", &fid, uid, &act_allow, &family, &type, &protocol,
 				&port, &level, &optname, binprm);
 		if (add_socket_record(fid, uid, act_allow, family, type, protocol,
-					port, level, optname, binprm, 0) != 0) {
+					port, level, optname, binprm) != 0) {
 			printk(KERN_WARNING "Failure to add socket record %s, %d, %d, %d\n", uid, family, type, protocol);
 		}
 	} //while

@@ -37,7 +37,7 @@ hb_socket_ll *search_socket_record(unsigned int fid, uid_t uid, int family, int 
 		int level, int optname, char *binprm);
 
 int add_socket_record(unsigned int fid, char *uid, char act_allow, int family, int type, int protocol,
-	       	int port, int level, int optname, char *binprm, int interact);
+	       	int port, int level, int optname, char *binprm);
 
 void free_socket_record(hb_socket_ll *data);
 int read_socket_record(struct seq_file *m, void *v);

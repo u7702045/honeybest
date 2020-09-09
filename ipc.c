@@ -90,6 +90,8 @@
 #include "notify.h"
 #include "honeybest.h"
 
+extern int hb_level;
+extern int hb_interact;
 extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_ipc_entry;
@@ -125,7 +127,7 @@ int match_ipc_record(hb_ipc_ll *data, unsigned int fid, uid_t uid, char *binprm,
 }
 
 hb_ipc_ll *search_ipc_record(unsigned int fid, uid_t uid, char *binprm, \
-		uid_t ipc_uid, uid_t ipc_gid, uid_t ipc_cuid, uid_t ipc_cgid, short flag)
+		uid_t ipc_uid, uid_t ipc_gid, uid_t ipc_cuid, uid_t ipc_cgid, short flag, umode_t mode)
 {
 	hb_ipc_ll *tmp = NULL;
 	struct list_head *pos = NULL;
@@ -167,7 +169,7 @@ hb_ipc_ll *search_notify_ipc_record(unsigned int fid, char *uid, char *binprm, u
 }
 
 int add_ipc_record(unsigned int fid, char *uid, char act_allow, char *binprm, \
-		uid_t ipc_uid, uid_t ipc_gid, uid_t ipc_cuid, uid_t ipc_cgid, short flag, int interact)
+		uid_t ipc_uid, uid_t ipc_gid, uid_t ipc_cuid, uid_t ipc_cgid, short flag, umode_t mode)
 {
 	int err = 0;
 	hb_ipc_ll *tmp = NULL;
@@ -201,10 +203,10 @@ int add_ipc_record(unsigned int fid, char *uid, char act_allow, char *binprm, \
 			       	break;
 		}
 
-		if ((err == 0) && (interact == 0))
+		if ((err == 0) && (hb_interact == 0))
 		       	list_add_tail(&(tmp->list), &(hb_ipc_list_head.list));
 
-		if ((err == 0) && (interact == 1)) {
+		if ((err == 0) && (hb_interact == 1)) {
 			if (!search_notify_ipc_record(fid, uid, binprm, ipc_uid, ipc_gid, ipc_cuid, ipc_cgid, flag) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
@@ -292,6 +294,7 @@ ssize_t write_ipc_record(struct file *file, const char __user *buffer, size_t co
 		uid_t ipc_gid = 0;
 		uid_t ipc_cuid = 0;
 		uid_t ipc_cgid = 0;
+		umode_t mode = 0;
 		short flag = 0;
 
 		binprm = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
@@ -299,9 +302,9 @@ ssize_t write_ipc_record(struct file *file, const char __user *buffer, size_t co
 			continue;
 		}
 
-		sscanf(token, "%u %s %c %s %d %d %d %d %hu", &fid, uid, &act_allow, binprm, \
-				&ipc_uid, &ipc_gid, &ipc_cuid, &ipc_cgid, &flag);
-		if (add_ipc_record(fid, uid, act_allow, binprm, ipc_uid, ipc_gid, ipc_cuid, ipc_cgid, flag, 0) != 0) {
+		sscanf(token, "%u %s %c %s %d %d %d %d %hu %hu", &fid, uid, &act_allow, binprm, \
+				&ipc_uid, &ipc_gid, &ipc_cuid, &ipc_cgid, &flag, &mode);
+		if (add_ipc_record(fid, uid, act_allow, binprm, ipc_uid, ipc_gid, ipc_cuid, ipc_cgid, flag, mode) != 0) {
 			printk(KERN_WARNING "Failure to add ipc perm record %s, %s\n", uid, binprm);
 		}
 

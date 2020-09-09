@@ -30,9 +30,9 @@ typedef struct hb_ipc_ll_t {
 } hb_ipc_ll;
 
 hb_ipc_ll *search_ipc_record(unsigned int fid, uid_t uid, char *binprm, uid_t ipc_uid, \
-		uid_t ipc_gid, uid_t ipc_cuid, uid_t ipc_cgid, short flag);
+		uid_t ipc_gid, uid_t ipc_cuid, uid_t ipc_cgid, short flag, umode_t mode);
 int add_ipc_record(unsigned int fid, char *uid, char act_allow, char *binprm, \
-		uid_t ipc_uid, uid_t ipc_gid, uid_t ipc_cuid, uid_t ipc_cgid, short flag, int interact);
+		uid_t ipc_uid, uid_t ipc_gid, uid_t ipc_cuid, uid_t ipc_cgid, short flag, umode_t mode);
 
 int read_ipc_record(struct seq_file *m, void *v);
 ssize_t write_ipc_record(struct file *file, const char __user *buffer, size_t count, loff_t *pos);

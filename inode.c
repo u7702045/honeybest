@@ -90,6 +90,8 @@
 #include "notify.h"
 #include "honeybest.h"
 
+extern int hb_level;
+extern int hb_interact;
 extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_inode_entry;
@@ -169,7 +171,7 @@ hb_inode_ll *search_notify_inode_record(unsigned int fid, char *uid, char *name,
 	return NULL;
 }
 
-int add_inode_record(unsigned int fid, char *uid, char act_allow, char *name, char *binprm, int interact)
+int add_inode_record(unsigned int fid, char *uid, char act_allow, char *name, char *binprm)
 {
 	int err = 0;
 	hb_inode_ll *tmp = NULL;
@@ -206,10 +208,10 @@ int add_inode_record(unsigned int fid, char *uid, char act_allow, char *name, ch
 				break;
 		}
 
-		if ((err == 0) && (interact == 0))
+		if ((err == 0) && (hb_interact == 0))
 		       	list_add(&(tmp->list), &(hb_inode_list_head.list));
 
-		if ((err == 0) && (interact == 1)) {
+		if ((err == 0) && (hb_interact == 1)) {
 			if (!search_notify_inode_record(fid, uid, name, binprm) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
@@ -314,7 +316,7 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 		}
 
 		sscanf(token, "%u %s %c %s %s", &fid, uid, &act_allow, name, binprm);
-		if (add_inode_record(fid, uid, act_allow, name, binprm, 0) != 0) {
+		if (add_inode_record(fid, uid, act_allow, name, binprm) != 0) {
 			//printk(KERN_WARNING "Failure to add inode record %s, %s, %s\n", uid, name, binprm);
 		}
 		kfree(name);

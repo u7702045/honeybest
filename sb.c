@@ -90,6 +90,8 @@
 #include "regex.h"
 #include "honeybest.h"
 
+extern int hb_level;
+extern int hb_interact;
 extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_sb_entry;
@@ -191,7 +193,7 @@ hb_sb_ll *search_notify_sb_record(unsigned int fid, char *uid, char *s_id, char 
 }
 
 int add_sb_record(unsigned int fid, char *uid, char act_allow, char *s_id, char *name, \
-		char *dev_name, char *type, int flags, int interact)
+		char *dev_name, char *type, int flags)
 {
 	int err = 0;
 	hb_sb_ll *tmp = NULL;
@@ -246,10 +248,10 @@ int add_sb_record(unsigned int fid, char *uid, char act_allow, char *s_id, char 
 		tmp->flags = flags;
 
 		//printk(KERN_DEBUG "%s, %s, %s, %s, %s, %d\n", __FUNCTION__, tmp->s_id, tmp->name, tmp->dev_name, tmp->type, tmp->flags);
-		if ((err == 0) && (interact == 0))
+		if ((err == 0) && (hb_interact == 0))
 		       	list_add_tail(&(tmp->list), &(hb_sb_list_head.list));
 
-		if ((err == 0) && (interact == 1)) {
+		if ((err == 0) && (hb_interact == 1)) {
 			if (!search_notify_sb_record(fid, uid, s_id, name, dev_name, type, flags) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
@@ -376,7 +378,7 @@ ssize_t write_sb_record(struct file *file, const char __user *buffer, size_t cou
 		}
 
 		sscanf(token, "%u %s %c %s %s %s %s %d", &fid, uid, &act_allow, s_id, name, dev_name, type, &flags);
-		if (add_sb_record(fid, uid, act_allow, s_id, name, dev_name, type, flags, 0) != 0) {
+		if (add_sb_record(fid, uid, act_allow, s_id, name, dev_name, type, flags) != 0) {
 			printk(KERN_WARNING "Failure to add sb record %s, %s %s %s\n", s_id, name, dev_name, type);
 		}
 

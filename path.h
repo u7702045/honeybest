@@ -31,7 +31,7 @@ typedef struct hb_path_ll_t {
 } hb_path_ll;
 
 hb_path_ll *search_path_record(unsigned int fid, uid_t uid, umode_t mode, char *s_path, char *t_path, uid_t suid, uid_t sgid, unsigned int dev, char *binprm);
-int add_path_record(unsigned int fid, char *uid, char act_allow, umode_t mode, char *s_path, char *t_path, uid_t suid, uid_t sgid, unsigned int dev, char *binprm, int interact);
+int add_path_record(unsigned int fid, char *uid, char act_allow, umode_t mode, char *s_path, char *t_path, uid_t suid, uid_t sgid, unsigned int dev, char *binprm);
 
 int read_path_record(struct seq_file *m, void *v);
 ssize_t write_path_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos);

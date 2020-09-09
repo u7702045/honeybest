@@ -91,6 +91,8 @@
 #include "notify.h"
 #include "honeybest.h"
 
+extern int hb_level;
+extern int hb_interact;
 extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_ptrace_entry;
@@ -160,7 +162,7 @@ hb_ptrace_ll *search_notify_ptrace_record(unsigned int fid, char *uid, char *par
 	return NULL;
 }
 
-int add_ptrace_record(unsigned int fid, char *uid, char act_allow, char *parent, char *child, unsigned int mode, int interact)
+int add_ptrace_record(unsigned int fid, char *uid, char act_allow, char *parent, char *child, unsigned int mode)
 {
 	int err = 0;
 	hb_ptrace_ll *tmp = NULL;
@@ -195,10 +197,10 @@ int add_ptrace_record(unsigned int fid, char *uid, char act_allow, char *parent,
 			default:
 				break;
 		}
-		if ((err == 0) && (interact == 0))
+		if ((err == 0) && (hb_interact == 0))
 		       	list_add_tail(&(tmp->list), &(hb_ptrace_list_head.list));
 
-		if ((err == 0) && (interact == 1)) {
+		if ((err == 0) && (hb_interact == 1)) {
 			if (!search_notify_ptrace_record(fid, uid, parent, child, mode) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
@@ -299,7 +301,7 @@ ssize_t write_ptrace_record(struct file *file, const char __user *buffer, size_t
 		}
 
 		sscanf(token, "%u %s %c %s %s %u", &fid, uid, &act_allow, parent, child, &mode);
-		if (add_ptrace_record(HB_BPRM_SET_CREDS, uid, act_allow, parent, child, mode, 0) != 0) {
+		if (add_ptrace_record(HB_BPRM_SET_CREDS, uid, act_allow, parent, child, mode) != 0) {
 			printk(KERN_WARNING "Failure to add ptrace record %s, %s, %s\n", uid, parent, child);
 		}
 

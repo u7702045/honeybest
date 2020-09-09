@@ -23,11 +23,12 @@ typedef struct hb_file_ll_t {
 	char *filename;		/**< open file path */
 	char *binprm;		/**< binary open filename */
 	unsigned int cmd;	/**< ioctl cmd */
+	unsigned long arg;	/**< arg */
 	struct list_head list;
 } hb_file_ll;
 
-hb_file_ll *search_file_record(unsigned int fid, uid_t uid, char *filename, char *binprm, unsigned int cmd);
-int add_file_record(unsigned int fid, char *uid, char act_allow, char *filename, char *binprm, unsigned int cmd, int interact);
+hb_file_ll *search_file_record(unsigned int fid, uid_t uid, char *filename, char *binprm, unsigned int cmd, unsigned long arg);
+int add_file_record(unsigned int fid, char *uid, char act_allow, char *filename, char *binprm, unsigned int cmd, unsigned long arg);
 
 int read_file_record(struct seq_file *m, void *v);
 ssize_t write_file_record(struct file *file, const char __user *buffer, size_t count, loff_t *pos);

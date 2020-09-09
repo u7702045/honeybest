@@ -91,6 +91,8 @@
 #include "notify.h"
 #include "honeybest.h"
 
+extern int hb_interact;
+extern int hb_level;
 extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_binprm_entry;
@@ -160,7 +162,7 @@ hb_binprm_ll *search_notify_binprm_record(unsigned int fid, char *uid, char *pat
 	return NULL;
 }
 
-int add_binprm_record(unsigned int fid, char *uid, char act_allow, char *pathname, char *digest, int interact)
+int add_binprm_record(unsigned int fid, char *uid, char act_allow, char *pathname, char *digest)
 {
 	int err = 0;
 	hb_binprm_ll *tmp = NULL;
@@ -186,10 +188,10 @@ int add_binprm_record(unsigned int fid, char *uid, char act_allow, char *pathnam
 			default:
 				break;
 		}
-		if ((err == 0) && (interact == 0))
+		if ((err == 0) && (hb_interact == 0))
 		       	list_add_tail(&(tmp->list), &(hb_binprm_list_head.list));
 
-		if ((err == 0) && (interact == 1)) {
+		if ((err == 0) && (hb_interact == 1)) {
 			if (!search_notify_binprm_record(fid, uid, pathname, digest) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
@@ -376,7 +378,7 @@ ssize_t write_binprm_record(struct file *file, const char __user *buffer, size_t
 		}
 
 		sscanf(token, "%u %s %c %s %s", &fid, uid, &act_allow, digest, pathname);
-		if (add_binprm_record(HB_BPRM_SET_CREDS, uid, act_allow, pathname, digest, 0) != 0) {
+		if (add_binprm_record(HB_BPRM_SET_CREDS, uid, act_allow, pathname, digest) != 0) {
 			printk(KERN_WARNING "Failure to add binprm record %s, %s, %s\n", uid, pathname, digest);
 		}
 

@@ -90,6 +90,8 @@
 #include "regex.h"
 #include "honeybest.h"
 
+extern int hb_level;
+extern int hb_interact;
 extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_kmod_entry;
@@ -171,7 +173,7 @@ hb_kmod_ll *search_notify_kmod_record(unsigned int fid, char *uid, char *name, c
 	return NULL;
 }
 
-int add_kmod_record(unsigned int fid, char *uid, char act_allow, char *name, char *filename, char *digest, int interact)
+int add_kmod_record(unsigned int fid, char *uid, char act_allow, char *name, char *filename, char *digest)
 {
 	int err = 0;
 	hb_kmod_ll *tmp = NULL;
@@ -210,10 +212,10 @@ int add_kmod_record(unsigned int fid, char *uid, char act_allow, char *name, cha
 				break;
 		}
 
-		if ((err == 0) && (interact == 0))
+		if ((err == 0) && (hb_interact == 0))
 		       	list_add_tail(&(tmp->list), &(hb_kmod_list_head.list));
 
-		if ((err == 0) && (interact == 1)) {
+		if ((err == 0) && (hb_interact == 1)) {
 			if (!search_notify_kmod_record(fid, uid, name, filename, digest) && (total_notify_record < MAX_NOTIFY_RECORD))
 			       	add_notify_record(fid, tmp);
 			else {
@@ -315,7 +317,7 @@ ssize_t write_kmod_record(struct file *file, const char __user *buffer, size_t c
 		}
 
 		sscanf(token, "%u %s %c %s %s %s", &fid, uid, &act_allow, name, filename, digest);
-		if (add_kmod_record(fid, uid, act_allow, name, filename, digest, 0) != 0) {
+		if (add_kmod_record(fid, uid, act_allow, name, filename, digest) != 0) {
 			printk(KERN_WARNING "Failure to add kmod record %s\n", name);
 		}
 

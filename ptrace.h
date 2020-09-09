@@ -27,7 +27,7 @@ typedef struct hb_ptrace_ll_t {
 } hb_ptrace_ll;
 
 hb_ptrace_ll *search_ptrace_record(unsigned int fid, uid_t uid, char *parent, char *child, unsigned int mode);
-int add_ptrace_record(unsigned int fid, char *uid, char act_allow, char *parent, char *child, unsigned int mode, int interact);
+int add_ptrace_record(unsigned int fid, char *uid, char act_allow, char *parent, char *child, unsigned int mode);
 int lookup_ptrace_digest(struct file *file, char *digest);
 
 int read_ptrace_record(struct seq_file *m, void *v);
