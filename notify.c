@@ -98,6 +98,7 @@
 #include "ipc.h"
 #include "honeybest.h"
 
+extern int hblevel;
 unsigned long total_notify_record = 0;
 struct proc_dir_entry *hb_proc_notify_entry;
 hb_notify_ll hb_notify_list_head;

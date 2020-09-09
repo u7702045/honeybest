@@ -90,6 +90,7 @@
 #include "notify.h"
 #include "honeybest.h"
 
+extern int hblevel;
 extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_file_entry;
@@ -110,19 +111,21 @@ int match_file_record(hb_file_ll *data, unsigned int fid, uid_t uid, char *filen
 
 	switch (fid) {
 		case HB_FILE_IOCTL:
-			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->filename, strlen(data->filename), filename, strlen(filename)) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm)) && (data->cmd == cmd)) {
-				/* we find the record */
-				//printk(KERN_INFO "Found file ioctl record %s, %s!!!!\n", filename, data->filename);
-				match = 1;
-			}
+			if (hblevel == 1)
+				if ((data->fid == fid) && do_compare_uid && !compare_regex(data->filename, strlen(data->filename), filename, strlen(filename)) && (data->cmd == cmd))
+					match = 1;
+			if (hblevel == 2)
+				if ((data->fid == fid) && do_compare_uid && !compare_regex(data->filename, strlen(data->filename), filename, strlen(filename)) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm)) && (data->cmd == cmd))
+					match = 1;
 			break;
 		case HB_FILE_OPEN:
 		case HB_FILE_RECEIVE:
-			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->filename, strlen(data->filename), filename, strlen(filename)) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
-				/* we find the record */
-				//printk(KERN_INFO "Found file set record %s, %s!!!!\n", filename, data->filename);
-				match = 1;
-			}
+			if (hblevel == 1)
+				if ((data->fid == fid) && do_compare_uid && !compare_regex(data->filename, strlen(data->filename), filename, strlen(filename))) 
+					match = 1;
+			if (hblevel == 2)
+				if ((data->fid == fid) && do_compare_uid && !compare_regex(data->filename, strlen(data->filename), filename, strlen(filename)) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm)))
+					match = 1;
 			break;
 		default:
 			break;

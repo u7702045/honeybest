@@ -123,8 +123,8 @@
 static int enabled = IS_ENABLED(CONFIG_SECURITY_HONEYBEST_ENABLED);
 static int locking = 0;		// detect mode
 static int bl = 0;		// white list vs black list
-static int interact = 0;	// interaction mode
-static int level = 1;		// fine grain granularity
+int interact = 0;	// interaction mode
+int hblevel = 1;		// fine grain granularity
 static unsigned long task_seq = 0;
 
 extern hb_binprm_ll hb_binprm_list_head;
@@ -200,7 +200,7 @@ static struct ctl_table honeybest_sysctl_table[] = {
 	},
 	{
 		.procname       = "level",	/**< currently support 0 & 1 honeybest LSM granularity level */
-		.data           = &level,
+		.data           = &hblevel,
 		.maxlen         = sizeof(int),
 		.mode           = 0644,
 		.proc_handler   = proc_dointvec_minmax,
