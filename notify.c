@@ -186,7 +186,6 @@ int add_notify_record(unsigned int fid, void *data)
 
 	if (tmp->data == NULL) {
 		printk(KERN_ERR "Don't add null data\n");
-		kfree(tmp);
 		err = -EOPNOTSUPP;
 	}
 
@@ -196,6 +195,8 @@ int add_notify_record(unsigned int fid, void *data)
 		total_notify_record++;
 	}
 out:
+	if (err != 0)
+		kfree(tmp);
 	return err;
 }
 
@@ -297,7 +298,6 @@ void hb_notify_seq_stop(struct seq_file *s, void *v)
 		}
 
 		list_del(pos);
-		kfree(tmp->data);
 		kfree(tmp);
 		total_notify_record--;
 	}
