@@ -187,58 +187,64 @@ int add_file_record(unsigned int fid, char *uid, char act_allow, char *filename,
 		return -EOPNOTSUPP;
 
 	tmp = (hb_file_ll *)kmalloc(sizeof(hb_file_ll), GFP_KERNEL);
-	if (tmp) {
-		memset(tmp, 0, sizeof(hb_file_ll));
-		tmp->fid = fid;
-		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
-		tmp->act_allow = act_allow;
-		tmp->filename = kmalloc(file_len+1, GFP_KERNEL);
-		if (tmp->filename == NULL) {
-			err = -EOPNOTSUPP;
-			goto out;
-		}
-		memset(tmp->filename, '\0', file_len);
+	if (!tmp) {
+		err = -EOPNOTSUPP;
+		return err;
+	}
 
-		tmp->binprm = kmalloc(binprm_len+1, GFP_KERNEL);
-		if (tmp->binprm == NULL) {
-			kfree(tmp->filename);
-			err = -EOPNOTSUPP;
-			goto out;
-		}
-		memset(tmp->binprm, '\0', binprm_len);
+	memset(tmp, 0, sizeof(hb_file_ll));
+	tmp->fid = fid;
+	strncpy(tmp->uid, uid, UID_STR_SIZE-1);
+	tmp->act_allow = act_allow;
+	tmp->filename = kmalloc(file_len+1, GFP_KERNEL);
+	if (tmp->filename == NULL) {
+		err = -EOPNOTSUPP;
+		goto out;
+	}
+	memset(tmp->filename, '\0', file_len);
 
-		switch (fid) {
-			case HB_FILE_IOCTL:
-				tmp->cmd = cmd;
-				tmp->arg = arg;
-			case HB_FILE_RECEIVE:
-			case HB_FILE_OPEN:
-				strcpy(tmp->filename, filename);
-				strcpy(tmp->binprm, binprm);
-			       	break;
-			default:
-			       	break;
-		}
+	tmp->binprm = kmalloc(binprm_len+1, GFP_KERNEL);
+	if (tmp->binprm == NULL) {
+		kfree(tmp->filename);
+		err = -EOPNOTSUPP;
+		goto out;
+	}
+	memset(tmp->binprm, '\0', binprm_len);
 
-		if ((err == 0) && (hb_interact == 0))
-		       	list_add_tail(&(tmp->list), &(hb_file_list_head.list));
+	switch (fid) {
+		case HB_FILE_IOCTL:
+			tmp->cmd = cmd;
+			tmp->arg = arg;
+		case HB_FILE_RECEIVE:
+		case HB_FILE_OPEN:
+			strcpy(tmp->filename, filename);
+			strcpy(tmp->binprm, binprm);
+			break;
+		default:
+			break;
+	}
 
-		if ((err == 0) && (hb_interact == 1)) {
-			if (!search_notify_file_record(fid, uid, filename, binprm, cmd, arg) && (total_notify_record < MAX_NOTIFY_RECORD))
-			       	add_notify_record(fid, tmp);
-			else {
-				//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
-				free_file_record(tmp);
-				kfree(tmp);
+	if ((err == 0) && (hb_interact == 0))
+		list_add_tail(&(tmp->list), &(hb_file_list_head.list));
+
+	if ((err == 0) && (hb_interact == 1)) {
+		if (!search_notify_file_record(fid, uid, filename, binprm, cmd, arg) && (total_notify_record < MAX_NOTIFY_RECORD)) {
+			if(add_notify_record(fid, tmp) != 0) {
+				err = -EOPNOTSUPP;
+				goto out;
 			}
 		}
+		else {
+			//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+			err = -EOPNOTSUPP;
+			goto out;
+		}
 	}
-	else
-		err = -EOPNOTSUPP;
-
 out:
-	if(err != 0)
+	if(err != 0) {
+		free_file_record(tmp);
 		kfree(tmp);
+	}
 	return err;
 }
 

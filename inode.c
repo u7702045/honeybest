@@ -180,53 +180,60 @@ int add_inode_record(unsigned int fid, char *uid, char act_allow, char *name, ch
 		return err;
 
 	tmp = (hb_inode_ll *)kmalloc(sizeof(hb_inode_ll), GFP_KERNEL);
-	if (tmp) {
-		tmp->fid = fid;
-		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
-		tmp->act_allow = act_allow;
-		tmp->name = kmalloc(strlen(name)+1, GFP_KERNEL);
-		if (tmp->name == NULL) {
-			err = -EOPNOTSUPP;
-			goto out;
-		}
-	       	tmp->binprm = kmalloc(strlen(binprm)+1, GFP_KERNEL);
-		if (tmp->binprm == NULL) {
-			kfree(tmp->name);
-			err = -EOPNOTSUPP;
-			goto out;
-		}
+	if (!tmp) {
+		err = -EOPNOTSUPP;
+		return err;
+	}
 
-		switch (fid) {
-			case HB_INODE_REMOVEXATTR:
-			case HB_INODE_LISTXATTR:
-			case HB_INODE_GETXATTR:
-			case HB_INODE_SETXATTR:
-				strcpy(tmp->name, name);
-				strcpy(tmp->binprm, binprm);
-				break;
-			default:
-				break;
-		}
+	tmp->fid = fid;
+	strncpy(tmp->uid, uid, UID_STR_SIZE-1);
+	tmp->act_allow = act_allow;
+	tmp->name = kmalloc(strlen(name)+1, GFP_KERNEL);
+	if (tmp->name == NULL) {
+		err = -EOPNOTSUPP;
+		goto out;
+	}
+	tmp->binprm = kmalloc(strlen(binprm)+1, GFP_KERNEL);
+	if (tmp->binprm == NULL) {
+		kfree(tmp->name);
+		err = -EOPNOTSUPP;
+		goto out;
+	}
 
-		if ((err == 0) && (hb_interact == 0))
-		       	list_add(&(tmp->list), &(hb_inode_list_head.list));
+	switch (fid) {
+		case HB_INODE_REMOVEXATTR:
+		case HB_INODE_LISTXATTR:
+		case HB_INODE_GETXATTR:
+		case HB_INODE_SETXATTR:
+			strcpy(tmp->name, name);
+			strcpy(tmp->binprm, binprm);
+			break;
+		default:
+			break;
+	}
 
-		if ((err == 0) && (hb_interact == 1)) {
-			if (!search_notify_inode_record(fid, uid, name, binprm) && (total_notify_record < MAX_NOTIFY_RECORD))
-			       	add_notify_record(fid, tmp);
-			else {
-				//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
-				free_inode_record(tmp);
-				kfree(tmp);
+	if ((err == 0) && (hb_interact == 0))
+		list_add(&(tmp->list), &(hb_inode_list_head.list));
+
+	if ((err == 0) && (hb_interact == 1)) {
+		if (!search_notify_inode_record(fid, uid, name, binprm) && (total_notify_record < MAX_NOTIFY_RECORD)) {
+			if(add_notify_record(fid, tmp) != 0) {
+				err = -EOPNOTSUPP;
+				goto out;
 			}
 		}
+		else {
+			//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+			err = -EOPNOTSUPP;
+			goto out;
+		}
 	}
-	else
-		err = -EOPNOTSUPP;
 
 out:
-	if(err != 0)
+	if(err != 0) {
+		free_inode_record(tmp);
 		kfree(tmp);
+	}
 	return err;
 }
 

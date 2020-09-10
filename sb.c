@@ -202,82 +202,83 @@ int add_sb_record(unsigned int fid, char *uid, char act_allow, char *s_id, char 
 		return err;
 
 	tmp = (hb_sb_ll *)kmalloc(sizeof(hb_sb_ll), GFP_KERNEL);
-	if (tmp) {
-		memset(tmp, 0, sizeof(hb_sb_ll));
-		tmp->fid = fid;
-		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
-		tmp->act_allow = act_allow;
+	if (!tmp) {
+		err = -EOPNOTSUPP;
+		return err;
+	}
 
-		tmp->s_id = kmalloc(strlen(s_id)+1, GFP_KERNEL);
-		if (tmp->s_id == NULL) {
+	memset(tmp, 0, sizeof(hb_sb_ll));
+	tmp->fid = fid;
+	strncpy(tmp->uid, uid, UID_STR_SIZE-1);
+	tmp->act_allow = act_allow;
+
+	tmp->s_id = kmalloc(strlen(s_id)+1, GFP_KERNEL);
+	if (tmp->s_id == NULL) {
+		err = -EOPNOTSUPP;
+		goto out;
+	}
+	memset(tmp->s_id, '\0', strlen(s_id)+1);
+
+	tmp->name = kmalloc(strlen(name)+1, GFP_KERNEL);
+	if (tmp->name == NULL) {
+		kfree(s_id);
+		err = -EOPNOTSUPP;
+		goto out;
+	}
+	memset(tmp->name, '\0', strlen(name)+1);
+
+	tmp->dev_name = kmalloc(strlen(dev_name)+1, GFP_KERNEL);
+	if (tmp->dev_name == NULL) {
+		kfree(s_id);
+		kfree(name);
+		err = -EOPNOTSUPP;
+		goto out;
+	}
+	memset(tmp->dev_name, '\0', strlen(dev_name)+1);
+
+	tmp->type = kmalloc(strlen(type)+1, GFP_KERNEL);
+	if (tmp->type == NULL) {
+		kfree(s_id);
+		kfree(name);
+		kfree(dev_name);
+		err = -EOPNOTSUPP;
+		goto out;
+	}
+	memset(tmp->type, '\0', strlen(type)+1);
+
+	if(s_id != NULL)
+		strncpy(tmp->s_id, s_id, strlen(s_id));
+	if(name != NULL)
+		strncpy(tmp->name, name, strlen(name));
+	if(dev_name != NULL)
+		strncpy(tmp->dev_name, dev_name, strlen(dev_name));
+	if(type != NULL)
+		strncpy(tmp->type, type, strlen(type));
+
+	tmp->flags = flags;
+
+	//printk(KERN_DEBUG "%s, %s, %s, %s, %s, %d\n", __FUNCTION__, tmp->s_id, tmp->name, tmp->dev_name, tmp->type, tmp->flags);
+	if ((err == 0) && (hb_interact == 0))
+		list_add_tail(&(tmp->list), &(hb_sb_list_head.list));
+
+	if ((err == 0) && (hb_interact == 1)) {
+		if (!search_notify_sb_record(fid, uid, s_id, name, dev_name, type, flags) && (total_notify_record < MAX_NOTIFY_RECORD)) {
+			if(add_notify_record(fid, tmp) != 0) {
+				err = -EOPNOTSUPP;
+				goto out;
+			}
+		}
+		else {
+			//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
 			err = -EOPNOTSUPP;
 			goto out;
 		}
-		memset(tmp->s_id, '\0', strlen(s_id)+1);
-
-		tmp->name = kmalloc(strlen(name)+1, GFP_KERNEL);
-		if (tmp->name == NULL) {
-			err = -EOPNOTSUPP;
-			goto out1;
-		}
-		memset(tmp->name, '\0', strlen(name)+1);
-
-		tmp->dev_name = kmalloc(strlen(dev_name)+1, GFP_KERNEL);
-		if (tmp->dev_name == NULL) {
-			err = -EOPNOTSUPP;
-			goto out2;
-		}
-		memset(tmp->dev_name, '\0', strlen(dev_name)+1);
-
-		tmp->type = kmalloc(strlen(type)+1, GFP_KERNEL);
-		if (tmp->type == NULL) {
-			err = -EOPNOTSUPP;
-			goto out3;
-		}
-		memset(tmp->type, '\0', strlen(type)+1);
-
-		if(s_id != NULL)
-		       	strncpy(tmp->s_id, s_id, strlen(s_id));
-		if(name != NULL)
-			strncpy(tmp->name, name, strlen(name));
-		if(dev_name != NULL)
-			strncpy(tmp->dev_name, dev_name, strlen(dev_name));
-		if(type != NULL)
-			strncpy(tmp->type, type, strlen(type));
-
-		tmp->flags = flags;
-
-		//printk(KERN_DEBUG "%s, %s, %s, %s, %s, %d\n", __FUNCTION__, tmp->s_id, tmp->name, tmp->dev_name, tmp->type, tmp->flags);
-		if ((err == 0) && (hb_interact == 0))
-		       	list_add_tail(&(tmp->list), &(hb_sb_list_head.list));
-
-		if ((err == 0) && (hb_interact == 1)) {
-			if (!search_notify_sb_record(fid, uid, s_id, name, dev_name, type, flags) && (total_notify_record < MAX_NOTIFY_RECORD))
-			       	add_notify_record(fid, tmp);
-			else {
-				//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
-				free_sb_record(tmp);
-				kfree(tmp);
-			}
-		}
 	}
-	else
-		err = -EOPNOTSUPP;
-
-	if(err != 0)
-		kfree(tmp->type);
-out3:
-	if(err != 0)
-		kfree(tmp->dev_name);
-out2:
-	if(err != 0)
-		kfree(tmp->name);
-out1:
-	if(err != 0)
-		kfree(tmp->s_id);
 out:
-	if(err != 0)
+	if(err != 0) {
+		free_sb_record(tmp);
 		kfree(tmp);
+	}
 	return err;
 }
 

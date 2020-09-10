@@ -169,44 +169,51 @@ int add_binprm_record(unsigned int fid, char *uid, char act_allow, char *pathnam
        	int len = strlen(pathname);
 
 	tmp = (hb_binprm_ll *)kmalloc(sizeof(hb_binprm_ll), GFP_KERNEL);
-	if (tmp) {
-		memset(tmp, 0, sizeof(hb_binprm_ll));
-		tmp->fid = fid;
-		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
-		tmp->act_allow = act_allow;
-		strcpy(tmp->digest, digest);
-		tmp->pathname = kmalloc(len+1, GFP_KERNEL);
-		if (tmp->pathname == NULL) {
+	if (!tmp) {
+		err = -EOPNOTSUPP;
+		return err;
+	}
+
+	memset(tmp, 0, sizeof(hb_binprm_ll));
+	tmp->fid = fid;
+	strncpy(tmp->uid, uid, UID_STR_SIZE-1);
+	tmp->act_allow = act_allow;
+	strcpy(tmp->digest, digest);
+	tmp->pathname = kmalloc(len+1, GFP_KERNEL);
+	if (tmp->pathname == NULL) {
+		err = -EOPNOTSUPP;
+		goto out;
+	}
+
+	switch (fid) {
+		case HB_BPRM_SET_CREDS:
+			strcpy(tmp->pathname, pathname);
+			break;
+		default:
+			break;
+	}
+	if ((err == 0) && (hb_interact == 0))
+		list_add_tail(&(tmp->list), &(hb_binprm_list_head.list));
+
+	if ((err == 0) && (hb_interact == 1)) {
+		if (!search_notify_binprm_record(fid, uid, pathname, digest) && (total_notify_record < MAX_NOTIFY_RECORD)) {
+			if(add_notify_record(fid, tmp) != 0) {
+				err = -EOPNOTSUPP;
+				goto out;
+			}
+		}
+		else {
+			//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
 			err = -EOPNOTSUPP;
 			goto out;
 		}
-
-		switch (fid) {
-			case HB_BPRM_SET_CREDS:
-				strcpy(tmp->pathname, pathname);
-			       	break;
-			default:
-				break;
-		}
-		if ((err == 0) && (hb_interact == 0))
-		       	list_add_tail(&(tmp->list), &(hb_binprm_list_head.list));
-
-		if ((err == 0) && (hb_interact == 1)) {
-			if (!search_notify_binprm_record(fid, uid, pathname, digest) && (total_notify_record < MAX_NOTIFY_RECORD))
-			       	add_notify_record(fid, tmp);
-			else {
-				//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
-				free_cred_record(tmp);
-				kfree(tmp);
-			}
-		}
 	}
-	else
-		err = -EOPNOTSUPP;
 
 out:
-	if(err != 0)
+	if(err != 0) {
+		free_cred_record(tmp);
 		kfree(tmp);
+	}
 
 	return err;
 }

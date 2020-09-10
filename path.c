@@ -201,83 +201,90 @@ int add_path_record(unsigned int fid, char *uid, char act_allow, umode_t mode, c
 	hb_path_ll *tmp = NULL;
 
 	tmp = (hb_path_ll *)kmalloc(sizeof(hb_path_ll), GFP_KERNEL);
-	if (tmp) {
-		memset(tmp, 0, sizeof(hb_path_ll));
-		tmp->fid = fid;
-		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
-		tmp->suid = 0;
-		tmp->sgid = 0;
-		tmp->dev = 0;
-		tmp->mode = 0;
-		tmp->act_allow = act_allow;
-		tmp->s_path = kmalloc(strlen(s_path)+1, GFP_KERNEL);
-		if (tmp->s_path == NULL) {
-			err = -EOPNOTSUPP;
-			goto out;
-		}
-		strcpy(tmp->s_path, s_path);
+	if (!tmp) {
+		err = -EOPNOTSUPP;
+		return err;
+	}
 
-	       	tmp->t_path = kmalloc(strlen(t_path)+1, GFP_KERNEL);
-		if (tmp->t_path == NULL) {
-			kfree(tmp->s_path);
-			err = -EOPNOTSUPP;
-			goto out;
-		}
-		strcpy(tmp->t_path, t_path);
+	memset(tmp, 0, sizeof(hb_path_ll));
+	tmp->fid = fid;
+	strncpy(tmp->uid, uid, UID_STR_SIZE-1);
+	tmp->suid = 0;
+	tmp->sgid = 0;
+	tmp->dev = 0;
+	tmp->mode = 0;
+	tmp->act_allow = act_allow;
+	tmp->s_path = kmalloc(strlen(s_path)+1, GFP_KERNEL);
+	if (tmp->s_path == NULL) {
+		err = -EOPNOTSUPP;
+		goto out;
+	}
+	strcpy(tmp->s_path, s_path);
 
-	       	tmp->binprm = kmalloc(strlen(binprm)+1, GFP_KERNEL);
-		if (tmp->binprm == NULL) {
-			kfree(tmp->s_path);
-			kfree(tmp->t_path);
-			err = -EOPNOTSUPP;
-			goto out;
-		}
-		strcpy(tmp->binprm, binprm);
+	tmp->t_path = kmalloc(strlen(t_path)+1, GFP_KERNEL);
+	if (tmp->t_path == NULL) {
+		kfree(tmp->s_path);
+		err = -EOPNOTSUPP;
+		goto out;
+	}
+	strcpy(tmp->t_path, t_path);
 
-		switch (fid) {
-			case HB_PATH_RENAME:
-			case HB_PATH_SYMLINK:
-			case HB_PATH_RMDIR:
-			case HB_PATH_TRUNCATE:
-			case HB_PATH_LINK:
-			case HB_PATH_UNLINK:
-				break;
-			case HB_PATH_CHOWN:
-				tmp->suid = suid;
-				tmp->sgid = sgid;
-				break;
-			case HB_PATH_MKNOD:
-				tmp->dev = dev;
-				if (mode >= 0) //mknod from userspace look weird, bug?
-				       	tmp->mode = mode;
-				break;
-			case HB_PATH_MKDIR:
-			case HB_PATH_CHMOD:
+	tmp->binprm = kmalloc(strlen(binprm)+1, GFP_KERNEL);
+	if (tmp->binprm == NULL) {
+		kfree(tmp->s_path);
+		kfree(tmp->t_path);
+		err = -EOPNOTSUPP;
+		goto out;
+	}
+	strcpy(tmp->binprm, binprm);
+
+	switch (fid) {
+		case HB_PATH_RENAME:
+		case HB_PATH_SYMLINK:
+		case HB_PATH_RMDIR:
+		case HB_PATH_TRUNCATE:
+		case HB_PATH_LINK:
+		case HB_PATH_UNLINK:
+			break;
+		case HB_PATH_CHOWN:
+			tmp->suid = suid;
+			tmp->sgid = sgid;
+			break;
+		case HB_PATH_MKNOD:
+			tmp->dev = dev;
+			if (mode >= 0) //mknod from userspace look weird, bug?
 				tmp->mode = mode;
-				break;
-			default:
-				break;
-		}
+			break;
+		case HB_PATH_MKDIR:
+		case HB_PATH_CHMOD:
+			tmp->mode = mode;
+			break;
+		default:
+			break;
+	}
 
-		if ((err == 0) && (hb_interact == 0))
-		       	list_add_tail(&(tmp->list), &(hb_path_list_head.list));
+	if ((err == 0) && (hb_interact == 0))
+		list_add_tail(&(tmp->list), &(hb_path_list_head.list));
 
-		if ((err == 0) && (hb_interact == 1)) {
-			if (!search_notify_path_record(fid, uid, mode, s_path, t_path, suid, sgid, dev, binprm) && (total_notify_record < MAX_NOTIFY_RECORD))
-			       	add_notify_record(fid, tmp);
-			else {
-				//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
-				free_path_record(tmp);
-				kfree(tmp);
+	if ((err == 0) && (hb_interact == 1)) {
+		if (!search_notify_path_record(fid, uid, mode, s_path, t_path, suid, sgid, dev, binprm) && (total_notify_record < MAX_NOTIFY_RECORD)) {
+			if(add_notify_record(fid, tmp) != 0) {
+				err = -EOPNOTSUPP;
+				goto out;
 			}
 		}
+		else {
+			//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+			err = -EOPNOTSUPP;
+			goto out;
+		}
 	}
-	else
-		err = -EOPNOTSUPP;
 
 out:
-	if(err != 0)
+	if(err != 0) {
+		free_path_record(tmp);
 		kfree(tmp);
+	}
 	return err;
 }
 

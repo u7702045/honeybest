@@ -170,52 +170,59 @@ int add_ptrace_record(unsigned int fid, char *uid, char act_allow, char *parent,
        	int child_len = strlen(child);
 
 	tmp = (hb_ptrace_ll *)kmalloc(sizeof(hb_ptrace_ll), GFP_KERNEL);
-	if (tmp) {
-		memset(tmp, 0, sizeof(hb_ptrace_ll));
-		tmp->fid = fid;
-		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
-		tmp->act_allow = act_allow;
-		tmp->parent = kmalloc(parent_len+1, GFP_KERNEL);
-		if (tmp->parent == NULL) {
-			err = -EOPNOTSUPP;
-			goto out;
-		}
+	if (!tmp) {
+		err = -EOPNOTSUPP;
+		return err;
+	}
 
-		tmp->child = kmalloc(child_len+1, GFP_KERNEL);
-		if (tmp->child == NULL) {
-			err = -EOPNOTSUPP;
-			kfree(tmp->parent);
-			goto out;
-		}
+	memset(tmp, 0, sizeof(hb_ptrace_ll));
+	tmp->fid = fid;
+	strncpy(tmp->uid, uid, UID_STR_SIZE-1);
+	tmp->act_allow = act_allow;
+	tmp->parent = kmalloc(parent_len+1, GFP_KERNEL);
+	if (tmp->parent == NULL) {
+		err = -EOPNOTSUPP;
+		goto out;
+	}
 
-		switch (fid) {
-			case HB_PTRACE_ACCESS_CHECK:
-				tmp->mode = mode;
-				strcpy(tmp->parent, parent);
-				strcpy(tmp->child, child);
-			       	break;
-			default:
-				break;
-		}
-		if ((err == 0) && (hb_interact == 0))
-		       	list_add_tail(&(tmp->list), &(hb_ptrace_list_head.list));
+	tmp->child = kmalloc(child_len+1, GFP_KERNEL);
+	if (tmp->child == NULL) {
+		err = -EOPNOTSUPP;
+		kfree(tmp->parent);
+		goto out;
+	}
 
-		if ((err == 0) && (hb_interact == 1)) {
-			if (!search_notify_ptrace_record(fid, uid, parent, child, mode) && (total_notify_record < MAX_NOTIFY_RECORD))
-			       	add_notify_record(fid, tmp);
-			else {
-				//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
-				free_ptrace_record(tmp);
-				kfree(tmp);
+	switch (fid) {
+		case HB_PTRACE_ACCESS_CHECK:
+			tmp->mode = mode;
+			strcpy(tmp->parent, parent);
+			strcpy(tmp->child, child);
+			break;
+		default:
+			break;
+	}
+	if ((err == 0) && (hb_interact == 0))
+		list_add_tail(&(tmp->list), &(hb_ptrace_list_head.list));
+
+	if ((err == 0) && (hb_interact == 1)) {
+		if (!search_notify_ptrace_record(fid, uid, parent, child, mode) && (total_notify_record < MAX_NOTIFY_RECORD)) {
+			if(add_notify_record(fid, tmp) != 0) {
+				err = -EOPNOTSUPP;
+				goto out;
 			}
 		}
+		else {
+			//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+			err = -EOPNOTSUPP;
+			goto out;
+		}
 	}
-	else
-		err = -EOPNOTSUPP;
 
 out:
-	if(err != 0)
+	if(err != 0) {
+		free_ptrace_record(tmp);
 		kfree(tmp);
+	}
 
 	return err;
 }

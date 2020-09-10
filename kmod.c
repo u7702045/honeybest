@@ -179,59 +179,65 @@ int add_kmod_record(unsigned int fid, char *uid, char act_allow, char *name, cha
 	hb_kmod_ll *tmp = NULL;
 
 	tmp = (hb_kmod_ll *)kmalloc(sizeof(hb_kmod_ll), GFP_KERNEL);
-	if (tmp) {
-		memset(tmp, 0, sizeof(hb_kmod_ll));
-		tmp->fid = fid;
-		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
-		tmp->act_allow = act_allow;
-		tmp->name = kmalloc(strlen(name)+1, GFP_KERNEL);
-		if (tmp->name == NULL) {
-			err = -EOPNOTSUPP;
-			goto out;
-		}
-		memset(tmp->name, '\0', strlen(name)+1);
+	if (!tmp) {
+		err = -EOPNOTSUPP;
+		return err;
+	}
 
-		tmp->filename = kmalloc(strlen(filename)+1, GFP_KERNEL);
-		if (tmp->filename == NULL) {
-			err = -EOPNOTSUPP;
-			kfree(tmp->name);
-			goto out;
-		}
-		memset(tmp->filename, '\0', strlen(filename)+1);
+	memset(tmp, 0, sizeof(hb_kmod_ll));
+	tmp->fid = fid;
+	strncpy(tmp->uid, uid, UID_STR_SIZE-1);
+	tmp->act_allow = act_allow;
+	tmp->name = kmalloc(strlen(name)+1, GFP_KERNEL);
+	if (tmp->name == NULL) {
+		err = -EOPNOTSUPP;
+		goto out;
+	}
+	memset(tmp->name, '\0', strlen(name)+1);
+
+	tmp->filename = kmalloc(strlen(filename)+1, GFP_KERNEL);
+	if (tmp->filename == NULL) {
+		err = -EOPNOTSUPP;
+		kfree(tmp->name);
+		goto out;
+	}
+	memset(tmp->filename, '\0', strlen(filename)+1);
 
 
-		switch (fid) {
-			case HB_KMOD_REQ:
-			case HB_KMOD_LOAD_FROM_FILE:
-				strncpy(tmp->name, name, strlen(name));
-				strncpy(tmp->filename, filename, strlen(filename));
+	switch (fid) {
+		case HB_KMOD_REQ:
+		case HB_KMOD_LOAD_FROM_FILE:
+			strncpy(tmp->name, name, strlen(name));
+			strncpy(tmp->filename, filename, strlen(filename));
 
-				strncpy(tmp->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE);
-				break;
-			default:
-				break;
-		}
+			strncpy(tmp->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE);
+			break;
+		default:
+			break;
+	}
 
-		if ((err == 0) && (hb_interact == 0))
-		       	list_add_tail(&(tmp->list), &(hb_kmod_list_head.list));
+	if ((err == 0) && (hb_interact == 0))
+		list_add_tail(&(tmp->list), &(hb_kmod_list_head.list));
 
-		if ((err == 0) && (hb_interact == 1)) {
-			if (!search_notify_kmod_record(fid, uid, name, filename, digest) && (total_notify_record < MAX_NOTIFY_RECORD))
-			       	add_notify_record(fid, tmp);
-			else {
-				//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
-				free_kmod_record(tmp);
-				kfree(tmp);
+	if ((err == 0) && (hb_interact == 1)) {
+		if (!search_notify_kmod_record(fid, uid, name, filename, digest) && (total_notify_record < MAX_NOTIFY_RECORD)) {
+			if(add_notify_record(fid, tmp) != 0) {
+				err = -EOPNOTSUPP;
+				goto out;
 			}
 		}
-
+		else {
+			//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+			err = -EOPNOTSUPP;
+			goto out;
+		}
 	}
-	else
-		err = -EOPNOTSUPP;
 
 out:
-	if(err != 0)
+	if(err != 0) {
+		free_kmod_record(tmp);
 		kfree(tmp);
+	}
 	return err;
 }
 

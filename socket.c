@@ -256,54 +256,60 @@ int add_socket_record(unsigned int fid, char *uid, char act_allow, int family, i
 	hb_socket_ll *tmp = NULL;
 
 	tmp = (hb_socket_ll *)kmalloc(sizeof(hb_socket_ll), GFP_KERNEL);
-	if (tmp) {
-		memset(tmp, 0, sizeof(hb_socket_ll));
-		tmp->fid = fid;
-		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
-		tmp->act_allow = act_allow;
-		tmp->binprm = kmalloc(strlen(binprm), GFP_KERNEL);
-		if (!tmp->binprm) {
-			err = -EOPNOTSUPP;
-			kfree(tmp);
-			goto out;
-		}
-		strcpy(tmp->binprm, binprm);
-		switch (fid) {
-			case HB_SOCKET_CREATE:
-			case HB_SOCKET_CONNECT:
-				tmp->family = family;
-				tmp->type = type;
-				tmp->protocol = protocol;
-			       	tmp->port = port;
-			       	break;
-			case HB_SOCKET_BIND:
-			       	tmp->port = port;
-				break;
-			case HB_SOCKET_SETSOCKOPT:
-				tmp->level = level;
-				tmp->optname = optname;
-				break;
-			default:
-				break;
-		}
-		if ((err == 0) && (hb_interact == 0))
-			list_add(&(tmp->list), &(hb_socket_list_head.list));
+	if (!tmp) {
+		err = -EOPNOTSUPP;
+		return err;
+	}
 
-		if ((err == 0) && (hb_interact == 1)) {
-			if (!search_notify_socket_record(fid, uid, family, type, protocol, port, level, optname, binprm) && (total_notify_record < MAX_NOTIFY_RECORD))
-			       	add_notify_record(fid, tmp);
-			else {
-				//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
-				free_socket_record(tmp);
-				kfree(tmp);
+	memset(tmp, 0, sizeof(hb_socket_ll));
+	tmp->fid = fid;
+	strncpy(tmp->uid, uid, UID_STR_SIZE-1);
+	tmp->act_allow = act_allow;
+	tmp->binprm = kmalloc(strlen(binprm), GFP_KERNEL);
+	if (!tmp->binprm) {
+		err = -EOPNOTSUPP;
+		goto out;
+	}
+	strcpy(tmp->binprm, binprm);
+	switch (fid) {
+		case HB_SOCKET_CREATE:
+		case HB_SOCKET_CONNECT:
+			tmp->family = family;
+			tmp->type = type;
+			tmp->protocol = protocol;
+			tmp->port = port;
+			break;
+		case HB_SOCKET_BIND:
+			tmp->port = port;
+			break;
+		case HB_SOCKET_SETSOCKOPT:
+			tmp->level = level;
+			tmp->optname = optname;
+			break;
+		default:
+			break;
+	}
+	if ((err == 0) && (hb_interact == 0))
+		list_add(&(tmp->list), &(hb_socket_list_head.list));
+
+	if ((err == 0) && (hb_interact == 1)) {
+		if (!search_notify_socket_record(fid, uid, family, type, protocol, port, level, optname, binprm) && (total_notify_record < MAX_NOTIFY_RECORD)) {
+			if(add_notify_record(fid, tmp) != 0) {
+				err = -EOPNOTSUPP;
+				goto out;
 			}
 		}
+		else {
+			//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+			err = -EOPNOTSUPP;
+			goto out;
+		}
 	}
-	else
-		err = -EOPNOTSUPP;
 out:
-	if(err != 0)
+	if(err != 0) {
+		free_socket_record(tmp);
 		kfree(tmp);
+	}
 	return err;
 }
 

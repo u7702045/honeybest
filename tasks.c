@@ -167,43 +167,50 @@ int add_task_record(unsigned int fid, char *uid, char act_allow, int sig, u32 se
 	hb_task_ll *tmp = NULL;
 
 	tmp = (hb_task_ll *)kmalloc(sizeof(hb_task_ll), GFP_KERNEL);
-	if (tmp) {
-		memset(tmp, 0, sizeof(hb_task_ll));
-		tmp->fid = fid;
-		strncpy(tmp->uid, uid, UID_STR_SIZE-1);
-		tmp->act_allow = act_allow;
-	       	tmp->binprm = kmalloc(strlen(binprm)+1, GFP_KERNEL);
-		if (tmp->binprm == NULL) {
+	if (!tmp) {
+		err = -EOPNOTSUPP;
+		return err;
+	}
+
+	memset(tmp, 0, sizeof(hb_task_ll));
+	tmp->fid = fid;
+	strncpy(tmp->uid, uid, UID_STR_SIZE-1);
+	tmp->act_allow = act_allow;
+	tmp->binprm = kmalloc(strlen(binprm)+1, GFP_KERNEL);
+	if (tmp->binprm == NULL) {
+		err = -EOPNOTSUPP;
+		goto out;
+	}
+	strcpy(tmp->binprm, binprm);
+	switch (fid) {
+		case HB_TASK_SIGNAL:
+			tmp->sig = sig;
+			tmp->secid = secid;
+			break;
+		default:
+			break;
+	}
+	if ((err == 0) && (hb_interact == 0))
+		list_add_tail(&(tmp->list), &(hb_task_list_head.list));
+
+	if ((err == 0) && (hb_interact == 1)) {
+		if (!search_notify_task_record(fid, uid, sig, secid, binprm) && (total_notify_record < MAX_NOTIFY_RECORD)) {
+			if(add_notify_record(fid, tmp) != 0) {
+				err = -EOPNOTSUPP;
+				goto out;
+			}
+		}
+		else {
+			//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
 			err = -EOPNOTSUPP;
 			goto out;
 		}
-		strcpy(tmp->binprm, binprm);
-		switch (fid) {
-			case HB_TASK_SIGNAL:
-				tmp->sig = sig;
-				tmp->secid = secid;
-				break;
-			default:
-				break;
-		}
-		if ((err == 0) && (hb_interact == 0))
-		       	list_add_tail(&(tmp->list), &(hb_task_list_head.list));
-
-		if ((err == 0) && (hb_interact == 1)) {
-			if (!search_notify_task_record(fid, uid, sig, secid, binprm) && (total_notify_record < MAX_NOTIFY_RECORD))
-			       	add_notify_record(fid, tmp);
-			else {
-				//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
-				free_task_record(tmp);
-				kfree(tmp);
-			}
-		}
 	}
-	else
-		err = -EOPNOTSUPP;
 out:
-	if(err != 0)
+	if(err != 0) {
+		free_task_record(tmp);
 		kfree(tmp);
+	}
 	return err;
 }
 
