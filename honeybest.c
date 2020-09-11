@@ -3006,10 +3006,9 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 	filename = kmalloc(PATH_MAX, GFP_KERNEL);
 	if (!filename)
 		goto out;
-	else {
-		strcpy(filename, tmp);
-		kfree(tmp);
-	}
+
+	strcpy(filename, tmp);
+	kfree(tmp);
 
 	if (allow_file_whitelist(filename)) {
 		goto out1;
@@ -3052,9 +3051,9 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 		}
 	}
 out2:
-	kfree(filename);
-out1:
 	kfree(taskname);
+out1:
+	kfree(filename);
 out:
 	rcu_read_unlock();
         return err;
