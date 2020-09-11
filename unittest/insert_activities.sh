@@ -1,5 +1,6 @@
 #!/bin/bash
 ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
+LOCK_PROC=/proc/sys/kernel/honeybest/locking
 FILE_PROC=/proc/honeybest/files
 HB_TEMPLATE=./template/
 HB_FILE=${HB_TEMPLATE}/files
@@ -9,6 +10,14 @@ activate(){
 		echo 1 > ${ENABLE_PROC}
 	else
 		echo 0 > ${ENABLE_PROC}
+       	fi
+}
+
+locking(){
+	if [ $1 == 'start' ]; then
+		echo 1 > ${LOCK_PROC}
+	else
+		echo 0 > ${LOCK_PROC}
        	fi
 }
 
@@ -51,7 +60,43 @@ test_file_context() {
 	insert_file_proc
 	actual=`cat ${TMP_FILE}|grep cgroup|awk '{print $5}'|cut -d '/' -f 4`
 	expected='cgroup'
-	assertEquals "test file file" "$expected" "$actual"
+
+	assertEquals "test file context" "$expected" "$actual"
+}
+
+test_file_enable() {
+	activate "stop"
+	activate "start"
+
+	tmp=$(clean_file_proc)
+	cat /proc/cpuinfo > /dev/null
+	sleep 2
+	cat ${FILE_PROC}|grep cpuinfo > /dev/null
+	actual=$?
+	expected=0
+
+	assertEquals "test file enable" "$expected" "$actual"
+
+	activate "stop"
+	tmp=$(clean_file_proc)
+}
+
+test_file_lock() {
+	activate "stop"
+
+	tmp=$(clean_file_proc)
+	locking "start"
+	activate "start"
+
+	cat /etc/issue > /dev/null
+	actual=$?
+	expected=1
+
+	assertEquals "test file lock" "$expected" "$actual"
+
+	activate "stop"
+	locking "stop"
+	tmp=$(clean_file_proc)
 }
 
 
