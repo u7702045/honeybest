@@ -88,7 +88,7 @@ test_file_lock() {
 	locking "start"
 	activate "start"
 
-	cat /etc/issue > /dev/null
+	cat /etc/issue 2> /dev/null
 	actual=$?
 	expected=1
 
