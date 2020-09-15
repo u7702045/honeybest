@@ -81,17 +81,18 @@ test_path_enable() {
 
 	activate "stop"
 	tmp=$(clean_path_proc)
-	rm -rf /tmp/aaaa
+	rm -rf /tmp/aaa
 }
 
 test_path_lock() {
+	rm -rf /tmp/aaa
 	activate "stop"
 
 	tmp=$(clean_path_proc)
 	locking "start"
 	activate "start"
 
-	mkdir /tmp/aaaa
+	mkdir /tmp/aaa
 	actual=$?
 	expected=0
 
@@ -100,6 +101,7 @@ test_path_lock() {
 	activate "stop"
 	locking "stop"
 	tmp=$(clean_path_proc)
+	rm -rf /tmp/aaa
 }
 
 source "/usr/bin/shunit2"
