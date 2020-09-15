@@ -49,7 +49,7 @@ test_insert_kmod() {
 
 	insert_kmod_proc
 	actual=`cat ${TMP_FILE}|wc -l`
-	expected=2
+	expected=3
 	assertEquals "test insert kmod" "$expected" "$actual"
 }
 
@@ -58,7 +58,7 @@ test_kmod_context() {
 
 	tmp=$(clean_kmod_proc)
 	insert_kmod_proc
-	cat ${TMP_FILE}|grep net-pf-0 > /dev/null
+	cat ${TMP_FILE}|grep iptable > /dev/null
 	actual=$?
 	expected=0
 
@@ -66,56 +66,43 @@ test_kmod_context() {
 }
 
 test_kmod_enable() {
-	kversion=`uname -a|awk '{print $3}'|cut -d '-' -f 1`
-	if [ ${kversion} == '4.4.0' ]; then
-		# 4.4.0 do not support kmod LSM
-		actual=0
-		expected=0
-		assertEquals "test kmod enable" "$expected" "$actual"
-	else
-		activate "stop"
-		activate "start"
+	tmp=$(clean_kmod_proc)
+	rmmod iptable_filter 2> /dev/null
+       	rmmod ip_tables 2> /dev/null
+	activate "stop"
+	activate "start"
 
-		tmp=$(clean_kmod_proc)
-		rmmod ip_tables
-		modprobe ip_tables
-		sleep 2
-		cat ${KMOD_PROC}|grep ip_tables > /dev/null
-		actual=$?
-		expected=0
+	iptables -L > /dev/null 2>&1
+	sleep 3
+	cat ${KMOD_PROC}|grep table > /dev/null
+	actual=$?
+	expected=0
 
-		assertEquals "test kmod enable" "$expected" "$actual"
+	assertEquals "test kmod enable" "$expected" "$actual"
 
-		activate "stop"
-		tmp=$(clean_kmod_proc)
+	activate "stop"
+	tmp=$(clean_kmod_proc)
 
-	fi
 }
 
 test_kmod_lock() {
-	kversion=`uname -a|awk '{print $3}'|cut -d '-' -f 1`
-	if [ ${kversion} == '4.4.0' ]; then
-		# 4.4.0 do not support kmod LSM
-		actual=0
-		expected=0
-		assertEquals "test kmod enable" "$expected" "$actual"
-	else
-		activate "stop"
+	activate "stop"
 
-		tmp=$(clean_kmod_proc)
-		locking "start"
-		activate "start"
+	rmmod iptable_filter 2> /dev/null
+       	rmmod ip_tables 2> /dev/null
+	tmp=$(clean_kmod_proc)
+	locking "start"
+	activate "start"
 
-		modprobe ip_tables
-		actual=$?
-		expected=0
+	iptables -L > /dev/null 2>&1
+	actual=$?
+	expected=0
 
-		assertNotEquals "test kmod lock" "$expected" "$actual"
+	assertNotEquals "test kmod lock" "$expected" "$actual"
 
-		activate "stop"
-		locking "stop"
-		tmp=$(clean_kmod_proc)
-	fi
+	activate "stop"
+	locking "stop"
+	tmp=$(clean_kmod_proc)
 }
 
 source "/usr/bin/shunit2"
