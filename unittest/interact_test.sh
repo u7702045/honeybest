@@ -45,7 +45,7 @@ test_notify_redirect() {
 	activate 'stop'
 
 	assertEquals "notify file test" "$expected" "$actual"
-	echo 1 > ${INTERACT_PROC}
+	echo 0 > ${INTERACT_PROC}
 }
 
 source "/usr/bin/shunit2"
