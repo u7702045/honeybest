@@ -1,0 +1,5 @@
+6000	0	A	/bin/systemctl				/lib/systemd/systemd				9
+6000	0	A	/lib/systemd/systemd-journald				/lib/systemd/systemd				9
+6000	0	A	/lib/systemd/systemd-cgroups-agent				/lib/systemd/systemd				9
+6000	0	A	/sbin/start-stop-daemon				/usr/sbin/ntpd				9
+6000	0	A	/lib/systemd/systemd-journald				/usr/sbin/ntpd				9

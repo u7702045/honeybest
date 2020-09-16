@@ -1,0 +1,6 @@
+5000	*	A	/proc/*/cmdline	/bin/ps	0 0
+5000	*	A	/proc/*/status	/bin/ps	0 0
+5000	*	A	/proc/*/stat	/bin/ps	0 0
+5000	*	A	/proc/*/cgroup	/lib/systemd/systemd	0 0
+5000	*	A	/proc/*/comm	/lib/systemd/systemd	0 0
+5000	*	A	/proc/*/environ	/bin/systemd-tmpfiles	0 0
