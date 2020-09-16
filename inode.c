@@ -245,11 +245,6 @@ int read_inode_record(struct seq_file *m, void *v)
 
 	seq_printf(m, "NO\tFUNC\tUID\tACTION\tXATTR\t\t\tBINPRM\n");
 
-	if (list_empty(&hb_inode_list_head.list)) {
-		printk(KERN_WARNING "List is empty!!\n");
-		return 0;
-	}
-
 	list_for_each(pos, &hb_inode_list_head.list) {
 		tmp = list_entry(pos, hb_inode_ll, list);
 		seq_printf(m, "%lu\t%u\t%s\t%c\t%s\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->name, tmp->binprm);

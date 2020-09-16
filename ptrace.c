@@ -308,7 +308,7 @@ ssize_t write_ptrace_record(struct file *file, const char __user *buffer, size_t
 		}
 
 		sscanf(token, "%u %s %c %s %s %u", &fid, uid, &act_allow, parent, child, &mode);
-		if (add_ptrace_record(HB_BPRM_SET_CREDS, uid, act_allow, parent, child, mode) != 0) {
+		if (add_ptrace_record(HB_PTRACE_ACCESS_CHECK, uid, act_allow, parent, child, mode) != 0) {
 			printk(KERN_WARNING "Failure to add ptrace record %s, %s, %s\n", uid, parent, child);
 		}
 

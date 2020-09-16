@@ -105,6 +105,7 @@
  * 1. Initializing all external linked list use by
  * 	creds
  * 	files
+ * 	ipc
  * 	tasks
  * 	sockets
  * 	inodes

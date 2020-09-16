@@ -296,11 +296,6 @@ int read_path_record(struct seq_file *m, void *v)
 
 	seq_printf(m, "NO\tFUNC\tUID\tACTION\tMODE\tSUID\tGUID\tDEV NODE\tSOURCE PATH\t\t\tTARGET PATH\t\t\tBINPRM\n");
 
-	if (list_empty(&hb_path_list_head.list)) {
-		printk(KERN_WARNING "List is empty!!\n");
-		return 0;
-	}
-
 	list_for_each(pos, &hb_path_list_head.list) {
 		tmp = list_entry(pos, hb_path_ll, list);
 		seq_printf(m, "%lu\t%u\t%s\t%c\t%u\t%u\t%u\t%u\t%s\t\t%s\t\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->mode, tmp->suid, tmp->sgid, tmp->dev, tmp->s_path, tmp->t_path, tmp->binprm);
