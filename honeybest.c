@@ -4438,7 +4438,7 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(dentry_init_security, honeybest_dentry_init_security),
 #endif
 
-//#ifdef CONFIG_SECURITY_PATH
+#ifdef CONFIG_SECURITY_PATH
 	LSM_HOOK_INIT(path_truncate, honeybest_path_truncate),
 	LSM_HOOK_INIT(path_link, honeybest_path_link),
 	LSM_HOOK_INIT(path_unlink, honeybest_path_unlink),
@@ -4449,6 +4449,7 @@ static struct security_hook_list honeybest_hooks[] = {
 	LSM_HOOK_INIT(path_rename, honeybest_path_rename),
 	LSM_HOOK_INIT(path_chmod, honeybest_path_chmod),
 	LSM_HOOK_INIT(path_chown, honeybest_path_chown),
+#endif
 
         LSM_HOOK_INIT(inode_alloc_security, honeybest_inode_alloc_security),
         LSM_HOOK_INIT(inode_free_security, honeybest_inode_free_security),
