@@ -2,8 +2,8 @@
 HoneyBest is the new implementation of Linux Security Module project.<br/> 
 *Read this in other languages: [English](README.md), [正體中文](README.zh-tw.md).*
 ## __Background__
-Over the years few security modules have been developed on Linux distribution, such as SELinux / Apparmor / Smack / Tomoyo project, but there is still huge space to make improvement nevertheless. Until now, most of the Linux user keep apart from existing security modules mainly because it make a high entry barrier for those who have little understanding of system behavior & security module rules. In order to build the more user friendly module, our target is to hide the complexity of rules, but also allow advanced user to be able to refine the granularity.<br/> 
-For most of the user case, security module begin to involve in post software development. Take an embedded devices, NAS appliance for the example. Security developer have to write a bunch of rules to protect applications, configuration files from other unauthorized process & restriction to certain resources. In order to do so, they had to go deep understanding through every single process to prevent from threats. We start to ask ourselves few question, is there any possible we can build an auto generation secure module policy base on real time scenario? How if the secure module policy support interaction with developer whether or not to add new rules or requesting permission under safe condition? Is there an alternative approach to replace rules concept? HoneyBest secure module might be for those answer. <br/>
+Over the years few security modules have been developed on Linux distribution, such as SELinux / Apparmor / Smack / Tomoyo project, but there is still huge space to make improvement nevertheless. Until now, the high entry barrier keep apart from most of the Linux user. For those who have little understanding of system behavior & security thread model are frustracte to apply the software. In order to build the more user friendly module, our target is to hide the complexity of rules, but also allow advanced user to be able to refine the granularity.<br/> 
+Most of the case, security module begin to involve in post software development stage. Take an embedded devices, NAS appliance for the example. Security developer have to write a bunch of rules to protect applications, configuration files from other unauthorized process & restriction to certain resources. In order to do so, they had to go deep understanding through every single process to prevent from threats. We ask ourselves few question, is there any possible we can build an auto generation secure module policy base on real time scenario? How if the secure module policy support interaction with developer whether or not to add new rules or requesting permission under safe condition? Is there an alternative approach to replace rules concept? HoneyBest secure module might be for those answer. <br/>
 ## __Concept__
 Let us imaging few conditions here.
 #### Condition A – Environment complexity is hard to apply rules
@@ -38,7 +38,7 @@ Similar to SELinux/Apparmor design, HoneyBest security module is hooked on Linux
 7.	Compiling kernel under [KERNEL SOURCE] (`make modules bzImage`)
 8.	Install new kernel & modules (`make install`)
 ### __Usage__
-#### Enablement option – on mode or off mode
+##### Enablement option – on mode or off mode
 HoneyBest security module stay in deactivate mode / non-interactive mode as default. It provides 2 activation options, below: 
 1.	Add string hashlock.enabled=1 into GRUB parameter.
 2.	Enable at initrd-ramfs stage (`echo 1 > /proc/sys/kernel/honeybest/enabled`)
@@ -53,6 +53,9 @@ Interactive & auto mode only take effectively when enablement mode turn into tru
 
 ##### Black list option - whitelist mode vs blacklist mode
 The default mode is whitelist mode, all activities pass through the list will be allow as default. The easy way to think of this mode is iptables default policy, REJECT or ACCEPT. The toggle can be set via command (`echo 1 > /proc/sys/kernel/honeybest/bl` or `echo 0 > /proc/sys/kernel/honeybest/bl`).
+
+##### Granularity option - level 0,1,2
+The default granularity of match/track activities is 0, which is we think of suitable to most of the user case. The higher the level number, the more time to consumpt during comparison stage. High granularity of activities tracking caused the OS environment turn to low flexibility. The toggle can be set via command (`echo [0,1,2] > /proc/sys/kernel/honeybest/level`).
 
 ### __Configure activities__
 Every single files in directory /proc/honeybest tracking different behavior. We will explain each single file corresponding on next section. In general, every file share the common column, e.g NO/FUNCTION/USER ID.
