@@ -28,7 +28,7 @@
 #define HOOK_FUNC_STR_SIZE		5	/**< 4 digits with null terminal */
 #define UID_STR_SIZE			6	/**< unsigned int in string with null terminal */
 
-#define TOTAL_ACT_SIZE			10240
+#define TOTAL_ACT_SIZE			204800
 
 #define HB_INITIALIZE			1000
 
