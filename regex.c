@@ -149,7 +149,8 @@ int compare_regex(char *str1, int len1, char *str2, int len2)
 	}
 	else if (match == End) {
 	       	;//printk(KERN_ERR  "str1 %s, compare %d bytes\n", str1, asterik_offset);
-	       	return strncmp(str1, str2, asterik_offset) && 1;
+		if (strlen(str1) <= strlen(str2))
+	       		return strncmp(str1, str2, asterik_offset) && 1;
 	}
 	else
 	       	printk(KERN_ERR  "Unknown regular expression.\n");
