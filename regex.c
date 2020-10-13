@@ -89,13 +89,15 @@
 #include "honeybest.h"
 
 // support only 1 * at the last,middle & full match, example /home/files.* or /proc/*maps
-int compare_regex(char *str1, int len1, char *str2, int len2)
+int compare_regex(char *str1, char *str2)
 {
 	int i = 0;
 	int asterik_offset = 0;
 	int have_asterik = 0;
 	int str1_leftover = 0;
 	enum regex_match match = End;
+	int len1 = strlen(str1);
+	int len2 = strlen(str2);
 
 	if ((len1 <= 0) || (len2 <= 0))
 		return 1;

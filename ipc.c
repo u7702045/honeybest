@@ -113,7 +113,7 @@ int match_ipc_record(hb_ipc_ll *data, unsigned int fid, uid_t uid, char *binprm,
 
 	switch (fid) {
 		case HB_IPC_PERM:
-			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm)) && (data->ipc_uid == ipc_uid) && (data->ipc_gid == ipc_gid) && (data->ipc_cuid == ipc_cuid) && (data->ipc_cgid == ipc_cgid) && (data->flag == flag)) {
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->binprm, binprm) && (data->ipc_uid == ipc_uid) && (data->ipc_gid == ipc_gid) && (data->ipc_cuid == ipc_cuid) && (data->ipc_cgid == ipc_cgid) && (data->flag == flag)) {
 				/* we find the record */
 				//printk(KERN_INFO "Found ipc perm record %s, %s!!!!\n", filename, data->filename);
 				match = 1;

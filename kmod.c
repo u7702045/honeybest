@@ -112,14 +112,14 @@ int match_kmod_record(hb_kmod_ll *data, unsigned int fid, uid_t uid, char *name,
 
 	switch (fid) {
 		case HB_KMOD_REQ:
-			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->name, strlen(data->name), name, strlen(name))) {
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->name, name)) {
 				/* we find the record */
 				//printk(KERN_INFO "Found kernel module record !!!!\n");
 				match = 1;
 			}
 			break;
 		case HB_KMOD_LOAD_FROM_FILE:
-			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->filename, strlen(data->filename), filename, strlen(filename)) && !strncmp(data->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE)) {
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->filename, filename) && !strncmp(data->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE)) {
 				/* we find the record */
 				//printk(KERN_INFO "Found kernel load module record !!!!\n");
 				match = 1;

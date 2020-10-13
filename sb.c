@@ -121,21 +121,21 @@ int match_sb_record(hb_sb_ll *data, unsigned int fid, uid_t uid, char *s_id, cha
 			break;
 		case HB_SB_STATFS:
 		case HB_SB_REMOUNT:
-			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_id, strlen(data->s_id), s_id, strlen(s_id)) && !compare_regex(data->name, strlen(data->name), name, strlen(name))) {
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_id, s_id) && !compare_regex(data->name, name)) {
 				/* we find the record */
 				//printk(KERN_INFO "Found sb remount/statfs data record !!!!\n");
 				match = 1;
 			}
 			break;
 		case HB_SB_UMOUNT:
-			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_id, strlen(data->s_id), s_id, strlen(s_id)) && !compare_regex(data->name, strlen(data->name), name, strlen(name)) && (data->flags == flags)) {
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_id, s_id) && !compare_regex(data->name, name) && (data->flags == flags)) {
 				/* we find the record */
 				//printk(KERN_INFO "Found sb umount data record !!!!\n");
 				match = 1;
 			}
 			break;
 		case HB_SB_MOUNT:
-			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->dev_name, strlen(data->dev_name), dev_name, strlen(dev_name)) && !strncmp(data->type, type, strlen(data->type)) && (data->flags == flags)) {
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->dev_name, dev_name) && !strncmp(data->type, type, strlen(data->type)) && (data->flags == flags)) {
 				/* we find the record */
 				//printk(KERN_INFO "Found sb mount data record !!!!\n");
 				match = 1;

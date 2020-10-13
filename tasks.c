@@ -110,7 +110,7 @@ int match_task_record(hb_task_ll *data, unsigned int fid, uid_t uid, int sig, u3
 			do_compare_uid = (uid == list_uid) ;
 	}
 
-	if ((data->fid == HB_TASK_SIGNAL) && do_compare_uid && (data->sig == sig) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+	if ((data->fid == HB_TASK_SIGNAL) && do_compare_uid && (data->sig == sig) && !compare_regex(data->binprm, binprm)) {
 		/* we find the record */
 		//printk(KERN_INFO "Found task open record !!!!\n");
 		match = 1;

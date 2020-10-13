@@ -111,7 +111,7 @@ int match_binprm_record(hb_binprm_ll *data, unsigned int fid, uid_t uid, char *p
 			do_compare_uid = (uid == list_uid) ;
 	}
 
-	if ((data->fid == HB_BPRM_SET_CREDS) && !memcmp(data->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE-1) && do_compare_uid && !compare_regex(data->pathname, strlen(data->pathname), pathname, strlen(pathname))) {
+	if ((data->fid == HB_BPRM_SET_CREDS) && !memcmp(data->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE-1) && do_compare_uid && !compare_regex(data->pathname, pathname)) {
 		/* we find the record */
 		//printk(KERN_INFO "Found binprm set record !!!!\n");
 		match = 1;

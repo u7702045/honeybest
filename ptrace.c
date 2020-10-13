@@ -111,7 +111,7 @@ int match_ptrace_record(hb_ptrace_ll *data, unsigned int fid, uid_t uid, char *p
 			do_compare_uid = (uid == list_uid) ;
 	}
 
-	if ((data->fid == HB_PTRACE_ACCESS_CHECK) && do_compare_uid && !compare_regex(data->parent, strlen(data->parent), parent, strlen(parent)) && !compare_regex(data->child, strlen(data->child), child, strlen(child)) && (data->mode == mode)) {
+	if ((data->fid == HB_PTRACE_ACCESS_CHECK) && do_compare_uid && !compare_regex(data->parent, parent) && !compare_regex(data->child, child) && (data->mode == mode)) {
 		/* we find the record */
 		//printk(KERN_INFO "Found ptrace access record !!!!\n");
 		match = 1;

@@ -22,5 +22,5 @@ enum regex_match {
 	Middle,
 	Full
 };
-int compare_regex(char *str1, int len1, char *str2, int len2);
+int compare_regex(char *str1, char *str2);
 #endif

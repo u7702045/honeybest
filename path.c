@@ -117,7 +117,7 @@ int match_path_record(hb_path_ll *data, unsigned int fid, uid_t uid, umode_t mod
 		case HB_PATH_SYMLINK:
 		case HB_PATH_LINK:
 		case HB_PATH_UNLINK:
-			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_path, strlen(data->s_path), s_path, strlen(s_path)) && !compare_regex(data->t_path, strlen(data->t_path), t_path, strlen(t_path)) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_path, s_path) && !compare_regex(data->t_path, t_path) && !compare_regex(data->binprm, binprm)) {
 				/* we find the record */
 				//printk(KERN_INFO "Found link/rename/rmdir/symlink/unlink path record !!!!\n");
 				match = 1;
@@ -125,21 +125,21 @@ int match_path_record(hb_path_ll *data, unsigned int fid, uid_t uid, umode_t mod
 			break;
 		case HB_PATH_MKDIR:
 		case HB_PATH_CHMOD:
-			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_path, strlen(data->s_path), s_path, strlen(s_path)) && (data->mode == mode) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_path, s_path) && (data->mode == mode) && !compare_regex(data->binprm, binprm)) {
 				/* we find the record */
 				//printk(KERN_INFO "Found chmod path record !!!!\n");
 				match = 1;
 			}
 			break;
 		case HB_PATH_CHOWN:
-			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_path, strlen(data->s_path), s_path, strlen(s_path)) && (data->suid == suid) && (data->sgid == sgid) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_path, s_path) && (data->suid == suid) && (data->sgid == sgid) && !compare_regex(data->binprm, binprm)) {
 				/* we find the record */
 				//printk(KERN_INFO "Found chown path record !!!!\n");
 				match = 1;
 			}
 			break;
 		case HB_PATH_MKNOD:
-			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_path, strlen(data->s_path), s_path, strlen(s_path)) && (data->dev == dev) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_path, s_path) && (data->dev == dev) && !compare_regex(data->binprm, binprm)) {
 				/* we find the record */
 				//printk(KERN_INFO "Found mknod path record !!!!\n");
 				match = 1;

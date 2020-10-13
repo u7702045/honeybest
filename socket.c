@@ -161,24 +161,24 @@ int match_socket_record(hb_socket_ll *data, unsigned int fid, uid_t uid, int fam
 
 	switch (fid) {
 		case HB_SOCKET_CONNECT:
-			if ((data->fid == fid) && do_compare_uid && (data->family == family) && (data->type == type) && (data->protocol == protocol) && (data->port == port) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+			if ((data->fid == fid) && do_compare_uid && (data->family == family) && (data->type == type) && (data->protocol == protocol) && (data->port == port) && !compare_regex(data->binprm, binprm)) {
 				match = 1;
 			}
 			break;
 		case HB_SOCKET_CREATE:
-			if ((data->fid == fid) && do_compare_uid && (data->family == family) && (data->type == type) && (data->protocol == protocol) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+			if ((data->fid == fid) && do_compare_uid && (data->family == family) && (data->type == type) && (data->protocol == protocol) && !compare_regex(data->binprm, binprm)) {
 				//printk(KERN_INFO "Found socket create record !!!!\n");
 				match = 1;
 			}
 			break;
 		case HB_SOCKET_BIND:
-			if ((data->fid == fid) && do_compare_uid && (data->port == port) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+			if ((data->fid == fid) && do_compare_uid && (data->port == port) && !compare_regex(data->binprm, binprm)) {
 				//printk(KERN_INFO "Found socket bind record !!!!\n");
 				match = 1;
 			}
 			break;
 		case HB_SOCKET_SETSOCKOPT:
-			if ((data->fid == fid) && do_compare_uid && (data->level == level) && (data->optname == optname) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+			if ((data->fid == fid) && do_compare_uid && (data->level == level) && (data->optname == optname) && !compare_regex(data->binprm, binprm)) {
 				//printk(KERN_INFO "Found socket setsockopt record !!!!\n");
 				match = 1;
 			}

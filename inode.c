@@ -115,7 +115,7 @@ int match_inode_record(hb_inode_ll *data, unsigned int fid, uid_t uid, char *nam
 		case HB_INODE_LISTXATTR:
 		case HB_INODE_REMOVEXATTR:
 		case HB_INODE_SETXATTR:
-			if ((fid == data->fid) && do_compare_uid && !compare_regex(data->name, strlen(data->name), name, strlen(name)) && !compare_regex(data->binprm, strlen(data->binprm), binprm, strlen(binprm))) {
+			if ((fid == data->fid) && do_compare_uid && !compare_regex(data->name, name) && !compare_regex(data->binprm, binprm)) {
 				/* we find the record */
 				//printk(KERN_INFO "Found inode open record !!!!\n");
 				match = 1;
