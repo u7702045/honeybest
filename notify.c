@@ -120,6 +120,7 @@ int add_notify_record(unsigned int fid, void *data)
 	tmp->data = NULL;
 	switch (fid) {
 		case HB_BPRM_SET_CREDS:
+		case HB_FILE_MMAP:
 			strncpy(tmp->proc, HB_CREDS_PROC, strlen(HB_CREDS_PROC));
 			tmp->data = (hb_binprm_ll *)data;
 			break;
@@ -233,6 +234,7 @@ void hb_notify_seq_stop(struct seq_file *s, void *v)
 			continue;
 		switch (tmp->fid) {
 			case HB_BPRM_SET_CREDS:
+			case HB_FILE_MMAP:
 				binprm = (hb_binprm_ll *)tmp->data;
 				free_cred_record(binprm);
 				break;
@@ -326,6 +328,7 @@ int hb_notify_seq_show(struct seq_file *s, void *v)
 			continue;
 		switch (tmp->fid) {
 			case HB_BPRM_SET_CREDS:
+			case HB_FILE_MMAP:
 				binprm = (hb_binprm_ll *)tmp->data;
 				seq_printf(s, "%lu\t%s\t%u\t%s\t%c\t%s\t%s\n", total++, tmp->proc, binprm->fid, binprm->uid, binprm->act_allow, binprm->digest, binprm->pathname);
 				tmp->dirty = true;

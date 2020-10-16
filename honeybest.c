@@ -2726,7 +2726,12 @@ static void honeybest_inode_getsecid(struct inode *inode, u32 *secid)
 
 static int honeybest_file_permission(struct file *file, int mask)
 {
-	return 0;
+	int err = 0;
+
+	if (!enabled) {
+		return err;
+	}
+        return err;
 }
 
 static int honeybest_file_alloc_security(struct file *file)
@@ -2847,7 +2852,74 @@ static int honeybest_mmap_addr(unsigned long addr)
 static int honeybest_mmap_file(struct file *file, unsigned long reqprot,
                              unsigned long prot, unsigned long flags)
 {
-	return 0;
+	int err = 0;
+	struct cred *cred = NULL;
+	char *tmp = NULL;
+	hb_binprm_ll *record = NULL;
+	char *filename;
+	char digest[SHA1_HONEYBEST_DIGEST_SIZE];
+	char uid[UID_STR_SIZE];
+
+	if (!enabled) {
+		return err;
+	}
+
+	if (file == NULL)
+		return err;
+
+	rcu_read_lock();
+
+	if (!mediated_filesystem(file->f_path.dentry))
+		return err;
+
+	cred = (struct cred *) current->real_cred;
+
+	if (inject_honeybest_tracker(cred, HB_FILE_MMAP))
+	       	err = -ENOMEM;
+
+	tmp = kstrdup_quotable_file(file, GFP_KERNEL);
+
+	if (!tmp || (strlen(tmp)<=0)) {
+		err = -EOPNOTSUPP;
+		goto out;
+	}
+
+	filename = kmalloc(PATH_MAX, GFP_KERNEL);
+	strcpy(filename, tmp);
+	kfree(tmp);
+
+	if(allow_file_whitelist(filename)) {
+		goto out1;
+	}
+
+	memset(digest, '\0', SHA1_HONEYBEST_DIGEST_SIZE);
+	lookup_binprm_digest(file, digest);
+
+	record = search_binprm_record(HB_FILE_MMAP, current->cred->uid.val, filename, digest);
+	if (record) {
+	       	;//printk(KERN_INFO "Found set creds record func=%u, hash=[%s]\n", record->fid, record->digest);
+		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+			err = -EOPNOTSUPP;
+	}
+	else {
+		sprintf(uid, "%u", current->cred->uid.val);
+
+		if ((locking == 0) && (bl == 0)) 
+			add_binprm_record(HB_FILE_MMAP, uid, 'A', filename, digest);
+
+		if ((locking == 0) && (bl == 1)) 
+			add_binprm_record(HB_FILE_MMAP, uid, 'R', filename, digest);
+
+		if ((locking == 1) && (bl == 0)) {
+			/* detect mode */
+			err = -EOPNOTSUPP;
+		}
+	}
+out1:
+	kfree(filename);
+out:
+	rcu_read_unlock();
+        return err;
 }
 
 static int honeybest_file_mprotect(struct vm_area_struct *vma,
@@ -3007,9 +3079,10 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 	filename = kmalloc(PATH_MAX, GFP_KERNEL);
 	if (!filename)
 		goto out;
-
-	strcpy(filename, tmp);
-	kfree(tmp);
+	else {
+		strcpy(filename, tmp);
+		kfree(tmp);
+	}
 
 	if (allow_file_whitelist(filename)) {
 		goto out1;

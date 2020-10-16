@@ -111,11 +111,18 @@ int match_binprm_record(hb_binprm_ll *data, unsigned int fid, uid_t uid, char *p
 			do_compare_uid = (uid == list_uid) ;
 	}
 
-	if ((data->fid == HB_BPRM_SET_CREDS) && !memcmp(data->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE-1) && do_compare_uid && !compare_regex(data->pathname, pathname)) {
-		/* we find the record */
-		//printk(KERN_INFO "Found binprm set record !!!!\n");
-		match = 1;
-	}
+	switch (fid) {
+		case HB_FILE_MMAP:
+		case HB_BPRM_SET_CREDS:
+			if (((data->fid == HB_BPRM_SET_CREDS) || (data->fid == HB_FILE_MMAP)) && !memcmp(data->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE-1) && do_compare_uid && !compare_regex(data->pathname, pathname)) {
+				/* we find the record */
+				//printk(KERN_INFO "Found binprm set record !!!!\n");
+				match = 1;
+			}
+		       	break;
+		default:
+			break;
+       	}
 
 	return match;
 
@@ -186,6 +193,7 @@ int add_binprm_record(unsigned int fid, char *uid, char act_allow, char *pathnam
 	}
 
 	switch (fid) {
+		case HB_FILE_MMAP:
 		case HB_BPRM_SET_CREDS:
 			strcpy(tmp->pathname, pathname);
 			break;
@@ -240,13 +248,13 @@ int lookup_binprm_digest(struct file *file, char *digest)
 
 	if (IS_ERR(tfm)) {
 		err = PTR_ERR(tfm);
-		//printk(KERN_WARNING "failed to setup sha1 hasher\n");
+		printk(KERN_WARNING "failed to setup sha1 hasher\n");
 		goto out;
 	}
        	desc = kmalloc(sizeof(*desc) + crypto_shash_descsize(tfm), GFP_KERNEL);
 
 	if (!desc) {
-		//printk(KERN_WARNING "Failed to kmalloc desc\n");
+		printk(KERN_WARNING "Failed to kmalloc desc\n");
 		goto out1;
 	}
 
@@ -255,13 +263,13 @@ int lookup_binprm_digest(struct file *file, char *digest)
        	err = crypto_shash_init(desc);
 
 	if (err) {
-		//printk(KERN_WARNING "failed to crypto_shash_init\n");
+		printk(KERN_WARNING "failed to crypto_shash_init\n");
 		goto out2;
 	}
 
 	rbuf = kzalloc(PAGE_SIZE, GFP_KERNEL);
 	if (!rbuf) {
-		//printk(KERN_WARNING "failed to kzalloc\n");
+		printk(KERN_ERR "failed to kzalloc\n");
 		err = -ENOMEM;
 		goto out2;
 	}
@@ -271,7 +279,7 @@ int lookup_binprm_digest(struct file *file, char *digest)
 	while (offset < size) {
 		int rbuf_len;
 		rbuf_len = kernel_read(file, offset, rbuf, PAGE_SIZE);
-		//printk(KERN_DEBUG "rbuf_len is %d, offset is %d\n", rbuf_len, offset);
+		//printk(KERN_ERR "rbuf_len is %d, offset is %d\n", rbuf_len, offset);
 
 		if (rbuf_len < 0) {
 			rc = rbuf_len;
@@ -296,7 +304,7 @@ int lookup_binprm_digest(struct file *file, char *digest)
 	for (i = 0; i < SHA1_DIGEST_SIZE; i++) {
 		snprintf(digest + (i * 2), 4, "%02x", hash[i]);
 	}
-	//printk(KERN_DEBUG "digest is %s\n", digest);
+	//printk(KERN_ERR "digest is %s\n", digest);
 
 out2:
        	kfree(desc);
@@ -385,7 +393,7 @@ ssize_t write_binprm_record(struct file *file, const char __user *buffer, size_t
 		}
 
 		sscanf(token, "%u %s %c %s %s", &fid, uid, &act_allow, digest, pathname);
-		if (add_binprm_record(HB_BPRM_SET_CREDS, uid, act_allow, pathname, digest) != 0) {
+		if (add_binprm_record(fid, uid, act_allow, pathname, digest) != 0) {
 			printk(KERN_WARNING "Failure to add binprm record %s, %s, %s\n", uid, pathname, digest);
 		}
 
