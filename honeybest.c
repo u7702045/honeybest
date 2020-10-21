@@ -87,6 +87,7 @@
 #include <crypto/sha.h>
 #include <crypto/algapi.h>
 #include <linux/version.h>
+#include <linux/module.h>
 #include "honeybest.h"
 #include "creds.h"
 #include "files.h"
@@ -187,7 +188,11 @@ static struct ctl_table honeybest_sysctl_table[] = {
 		.maxlen         = sizeof(int),
 		.mode           = 0644,
 		.proc_handler   = proc_dointvec_minmax,
+#ifdef SECURITY_HONEYBEST_PROD
+		.extra1         = &one,
+#else
 		.extra1         = &zero,
+#endif
 		.extra2         = &one,
 	},
 	{
@@ -3554,6 +3559,7 @@ out:
 	return;
 }
 
+#ifdef CONFIG_SECURITY_NETWORK
 /**
  * This function use to tracking socket activity.
  * Trigger during bind/listen/create/connect
@@ -3959,6 +3965,7 @@ static void honeybest_sk_getsecid(struct sock *sk, u32 *secid)
 static void honeybest_sock_graft(struct sock *sk, struct socket *parent)
 {
 }
+#endif
 
 static int honeybest_inet_conn_request(struct sock *sk, struct sk_buff *skb,
                                      struct request_sock *req)
@@ -3993,6 +4000,7 @@ static void honeybest_req_classify_flow(const struct request_sock *req,
 {
 }
 
+#ifdef CONFIG_SECURITY_NETWORK
 static int honeybest_tun_dev_alloc_security(void **security)
 {
 	int err = 0;
@@ -4028,6 +4036,7 @@ static int honeybest_tun_dev_open(void *security)
 {
 	return 0;
 }
+#endif
 
 #ifdef CONFIG_SECURITY_NETWORK_XFRM
 static void honeybest_xfrm_free(struct xfrm_sec_ctx *ctx)
@@ -4637,6 +4646,7 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(inode_getsecctx, honeybest_inode_getsecctx),
 #endif
 
+#ifdef CONFIG_SECURITY_NETWORK
         LSM_HOOK_INIT(unix_stream_connect, honeybest_socket_unix_stream_connect),
         LSM_HOOK_INIT(unix_may_send, honeybest_socket_unix_may_send),
         LSM_HOOK_INIT(socket_create, honeybest_socket_create),
@@ -4673,6 +4683,7 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(tun_dev_attach_queue, honeybest_tun_dev_attach_queue),
         LSM_HOOK_INIT(tun_dev_attach, honeybest_tun_dev_attach),
         LSM_HOOK_INIT(tun_dev_open, honeybest_tun_dev_open),
+#endif
 
 #ifdef CONFIG_SECURITY_NETWORK_XFRM
         LSM_HOOK_INIT(xfrm_policy_alloc_security, honeybest_xfrm_policy_alloc),
