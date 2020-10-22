@@ -188,7 +188,7 @@ static struct ctl_table honeybest_sysctl_table[] = {
 		.maxlen         = sizeof(int),
 		.mode           = 0644,
 		.proc_handler   = proc_dointvec_minmax,
-#ifdef SECURITY_HONEYBEST_PROD
+#ifdef CONFIG_SECURITY_HONEYBEST_PROD
 		.extra1         = &one,
 #else
 		.extra1         = &zero,
