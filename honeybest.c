@@ -127,6 +127,16 @@ static int locking = 0;		// detect mode
 static int bl = 0;		// white list vs black list
 int hb_interact = 0;		// interaction mode
 int hb_level = 1;		// fine grain granularity
+static int enabled_files = 0;	// files on/off
+static int enabled_creds = 0;	// binprm on/off
+static int enabled_socket = 0;	// socket on/off
+static int enabled_sb = 0;	// sb on/off
+static int enabled_ptrace = 0;	// ptrace on/off
+static int enabled_tasks = 0;	// tasks on/off
+static int enabled_inode = 0;	// inode on/off
+static int enabled_path = 0;	// path on/off
+static int enabled_ipc = 0;	// ipc on/off
+static int enabled_kmod = 0;	// kmod on/off
 static unsigned long task_seq = 0;
 
 extern hb_binprm_ll hb_binprm_list_head;
@@ -179,7 +189,11 @@ static struct ctl_table honeybest_sysctl_table[] = {
 		.maxlen         = sizeof(int),
 		.mode           = 0644,
 		.proc_handler   = proc_dointvec_minmax,
+#ifdef CONFIG_SECURITY_HONEYBEST_PROD
+		.extra1         = &one,
+#else
 		.extra1         = &zero,
+#endif
 		.extra2         = &one,
 	},
 	{
@@ -220,6 +234,136 @@ static struct ctl_table honeybest_sysctl_table[] = {
 		.mode           = 0644,
 		.proc_handler   = proc_dointvec_minmax,
 		.extra1         = &zero,
+		.extra2         = &one,
+	},
+	{
+		.procname       = "binprm",	/**< binprm = 0, turn on creds; binprm = 0, turn off creds */
+		.data           = &enabled_creds,
+		.maxlen         = sizeof(int),
+		.mode           = 0644,
+		.proc_handler   = proc_dointvec_minmax,
+#ifdef CONFIG_SECURITY_HONEYBEST_PROD
+		.extra1         = &one,
+#else
+		.extra1         = &zero,
+#endif
+		.extra2         = &one,
+	},
+	{
+		.procname       = "files",	/**< files = 0, turn on files; files = 0, turn off files */
+		.data           = &enabled_files,
+		.maxlen         = sizeof(int),
+		.mode           = 0644,
+		.proc_handler   = proc_dointvec_minmax,
+#ifdef CONFIG_SECURITY_HONEYBEST_PROD
+		.extra1         = &one,
+#else
+		.extra1         = &zero,
+#endif
+		.extra2         = &one,
+	},
+	{
+		.procname       = "path",	/**< path = 0, turn on path; path = 0, turn off path */
+		.data           = &enabled_path,
+		.maxlen         = sizeof(int),
+		.mode           = 0644,
+		.proc_handler   = proc_dointvec_minmax,
+#ifdef CONFIG_SECURITY_HONEYBEST_PROD
+		.extra1         = &one,
+#else
+		.extra1         = &zero,
+#endif
+		.extra2         = &one,
+	},
+	{
+		.procname       = "inode",	/**< inode = 0, turn on inode; inode = 0, turn off inode */
+		.data           = &enabled_inode,
+		.maxlen         = sizeof(int),
+		.mode           = 0644,
+		.proc_handler   = proc_dointvec_minmax,
+#ifdef CONFIG_SECURITY_HONEYBEST_PROD
+		.extra1         = &one,
+#else
+		.extra1         = &zero,
+#endif
+		.extra2         = &one,
+	},
+	{
+		.procname       = "ipc",	/**< ipc = 0, turn on ipc; ipc = 0, turn off ipc */
+		.data           = &enabled_ipc,
+		.maxlen         = sizeof(int),
+		.mode           = 0644,
+		.proc_handler   = proc_dointvec_minmax,
+#ifdef CONFIG_SECURITY_HONEYBEST_PROD
+		.extra1         = &one,
+#else
+		.extra1         = &zero,
+#endif
+		.extra2         = &one,
+	},
+	{
+		.procname       = "kmod",	/**< kmod = 0, turn on kmod; kmod = 0, turn off kmod */
+		.data           = &enabled_kmod,
+		.maxlen         = sizeof(int),
+		.mode           = 0644,
+		.proc_handler   = proc_dointvec_minmax,
+#ifdef CONFIG_SECURITY_HONEYBEST_PROD
+		.extra1         = &one,
+#else
+		.extra1         = &zero,
+#endif
+		.extra2         = &one,
+	},
+	{
+		.procname       = "tasks",	/**< tasks = 0, turn on tasks; tasks = 0, turn off tasks */
+		.data           = &enabled_tasks,
+		.maxlen         = sizeof(int),
+		.mode           = 0644,
+		.proc_handler   = proc_dointvec_minmax,
+#ifdef CONFIG_SECURITY_HONEYBEST_PROD
+		.extra1         = &one,
+#else
+		.extra1         = &zero,
+#endif
+		.extra2         = &one,
+	},
+	{
+		.procname       = "ptrace",	/**< ptrace = 0, turn on ptrace; ptrace = 0, turn off ptrace */
+		.data           = &enabled_ptrace,
+		.maxlen         = sizeof(int),
+		.mode           = 0644,
+		.proc_handler   = proc_dointvec_minmax,
+#ifdef CONFIG_SECURITY_HONEYBEST_PROD
+		.extra1         = &one,
+#else
+		.extra1         = &zero,
+#endif
+		.extra2         = &one,
+	},
+	{
+		.procname       = "sb",	/**< sb = 0, turn on sb; sb = 0, turn off sb */
+		.data           = &enabled_sb,
+		.maxlen         = sizeof(int),
+		.mode           = 0644,
+		.proc_handler   = proc_dointvec_minmax,
+#ifdef CONFIG_SECURITY_HONEYBEST_PROD
+		.extra1         = &one,
+#else
+		.extra1         = &zero,
+#endif
+		.extra2         = &one,
+	},
+	{
+		.procname       = "socket",	/**< socket = 0, turn on socket; socket = 0, turn off socket */
+		.data           = &enabled_socket,
+		.maxlen         = sizeof(int),
+		.mode           = 0644,
+		.proc_handler   = proc_dointvec_minmax,
+#ifdef CONFIG_SECURITY_HONEYBEST_PROD
+		.extra1         = &one,
+#else
+		.extra1         = &zero,
+#endif
 		.extra2         = &one,
 	},
 	{ }
@@ -672,7 +816,7 @@ static int honeybest_ptrace_access_check(struct task_struct *child,
 	hb_ptrace_ll *record = NULL;
 	char uid[UID_STR_SIZE];
 
-	if (!enabled)
+	if (!enabled || !enabled_ptrace)
 		return err;
 
 	rcu_read_lock();
@@ -753,7 +897,7 @@ static int honeybest_ptrace_traceme(struct task_struct *parent)
 {
 	int err = 0;
        	
-	if (!enabled)
+	if (!enabled || !enabled_ptrace)
 		return err;
 
 	return err;
@@ -880,7 +1024,7 @@ static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 	char *filename = NULL;
 	char uid[UID_STR_SIZE];
 
-	if (!enabled)
+	if (!enabled || !enabled_creds)
 		return err;
 
 	rcu_read_lock();
@@ -942,7 +1086,7 @@ static int honeybest_bprm_secureexec(struct linux_binprm *bprm)
 {
 	int err = 0;
 
-	if (!enabled)
+	if (!enabled || !enabled_creds)
 		return err;
 
 	return err;
@@ -1008,7 +1152,7 @@ static int honeybest_sb_remount(struct super_block *sb, void *data)
 	hb_sb_ll *record = NULL;
 	struct cred *cred = NULL;
 
-	if (!enabled)
+	if (!enabled || !enabled_sb)
 		return err;
 
 	rcu_read_lock();
@@ -1075,7 +1219,7 @@ static int honeybest_sb_statfs(struct dentry *dentry)
 	char uid[UID_STR_SIZE];
 	hb_sb_ll *record = NULL;
 
-	if (!enabled)
+	if (!enabled || !enabled_sb)
 		return err;
 
 	if (!sb)
@@ -1123,7 +1267,7 @@ int honeybest_sb_pivotroot(struct path *old_path, struct path *new_path)
 	char *old_buff = NULL;
 	char *new_buff = NULL;
 
-	if (!enabled)
+	if (!enabled || !enabled_sb)
 		return err;
 
 	old_buff = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
@@ -1163,7 +1307,7 @@ static int honeybest_mount(const char *dev_name, struct path *path,
 	char uid[UID_STR_SIZE];
 	hb_sb_ll *record = NULL;
 
-	if (!enabled)
+	if (!enabled || !enabled_sb)
 		return err;
 
 	rcu_read_lock();
@@ -1215,7 +1359,7 @@ static int honeybest_umount(struct vfsmount *mnt, int flags)
 	char uid[UID_STR_SIZE];
 	hb_sb_ll *record = NULL;
 
-	if (!enabled)
+	if (!enabled || !enabled_sb)
 		return err;
 
 	rcu_read_lock();
@@ -1308,7 +1452,7 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 	struct cred *cred = NULL;
 	struct mm_struct *mm = NULL;
 
-	if (!enabled)
+	if (!enabled || !enabled_path)
 		return err;
 
 	rcu_read_lock();
@@ -1410,7 +1554,7 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 	struct mm_struct *mm = NULL;
 	hb_path_ll *record = NULL;
 
-	if (!enabled)
+	if (!enabled || !enabled_path)
 		return err;
 
 	rcu_read_lock();
@@ -1510,7 +1654,7 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
-	if (!enabled)
+	if (!enabled || !enabled_path)
 		return err;
 
 	rcu_read_lock();
@@ -1608,7 +1752,7 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
-	if (!enabled)
+	if (!enabled || !enabled_path)
 		return err;
 
 	rcu_read_lock();
@@ -1711,7 +1855,7 @@ static int honeybest_path_truncate(struct path *path)
 	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
-	if (!enabled)
+	if (!enabled || !enabled_path)
 		return err;
 
 	if (!mediated_filesystem(path->dentry))
@@ -1816,7 +1960,7 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
-	if (!enabled)
+	if (!enabled || !enabled_path)
 		return err;
 
 	rcu_read_lock();
@@ -1916,7 +2060,7 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
-	if (!enabled)
+	if (!enabled || !enabled_path)
 		return err;
 
 	rcu_read_lock();
@@ -2034,7 +2178,7 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
-	if (!enabled)
+	if (!enabled || !enabled_path)
 		return err;
 
 	rcu_read_lock();
@@ -2143,7 +2287,7 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
-	if (!enabled)
+	if (!enabled || !enabled_path)
 		return err;
 
 	rcu_read_lock();
@@ -2237,7 +2381,7 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 	char tuid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
-	if (!enabled)
+	if (!enabled || !enabled_path)
 		return err;
 
 	rcu_read_lock();
@@ -2468,7 +2612,7 @@ static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
 	struct cred *cred = NULL;
 	hb_inode_ll *record;
 
-	if (!enabled)
+	if (!enabled || !enabled_inode)
 		return err;
 
 	rcu_read_lock();
@@ -2537,7 +2681,7 @@ static int honeybest_inode_getxattr(struct dentry *dentry, const char *name)
 	struct cred *cred = NULL;
 	hb_inode_ll *record;
 
-	if (!enabled)
+	if (!enabled || !enabled_inode)
 		return err;
 
 	rcu_read_lock();
@@ -2595,7 +2739,7 @@ static int honeybest_inode_listxattr(struct dentry *dentry)
 	struct cred *cred = NULL;
 	char uid[UID_STR_SIZE];
 
-	if (!enabled)
+	if (!enabled || !enabled_inode)
 		return err;
 
 	rcu_read_lock();
@@ -2657,7 +2801,7 @@ static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
 	struct cred *cred = NULL;
 	char uid[UID_STR_SIZE];
 
-	if (!enabled)
+	if (!enabled || !enabled_inode)
 		return err;
 
 	rcu_read_lock();
@@ -2772,9 +2916,8 @@ static int honeybest_file_ioctl(struct file *file, unsigned int cmd,
 	char uid[UID_STR_SIZE];
        	char *taskname = NULL;
 
-	if (!enabled) {
+	if (!enabled || !enabled_files)
 		return err;
-	}
 
 	rcu_read_lock();
 
@@ -2865,9 +3008,8 @@ static int honeybest_mmap_file(struct file *file, unsigned long reqprot,
 	char digest[SHA1_HONEYBEST_DIGEST_SIZE];
 	char uid[UID_STR_SIZE];
 
-	if (!enabled) {
+	if (!enabled || !enabled_files)
 		return err;
-	}
 
 	if (file == NULL)
 		return err;
@@ -2968,9 +3110,8 @@ static int honeybest_file_receive(struct file *file)
 	char uid[UID_STR_SIZE];
        	char *taskname = NULL;
 
-	if (!enabled) {
+	if (!enabled || !enabled_files)
 		return err;
-	}
 
 	rcu_read_lock();
 
@@ -3060,9 +3201,8 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
        	char *taskname = NULL;
 	char *tmp = NULL;
 
-	if (!enabled) {
+	if (!enabled || !enabled_files)
 		return err;
-	}
 
 	rcu_read_lock();
 	
@@ -3154,9 +3294,8 @@ static int honeybest_cred_alloc_blank(struct cred *cred, gfp_t gfp)
 {
 	int err = 0;
 
-	if (!enabled) {
+	if (!enabled)
 		return err;
-	}
 
 	rcu_read_lock();
 
@@ -3262,9 +3401,8 @@ static int honeybest_kernel_module_from_file(struct file *file)
 	char digest[SHA1_HONEYBEST_DIGEST_SIZE];
 	char *filename = NULL;
 
-	if (!enabled) {
+	if (!enabled || !enabled_kmod)
 		return err;
-	}
 
 	rcu_read_lock();
 
@@ -3332,9 +3470,8 @@ static int honeybest_kernel_module_request(char *kmod_name)
 	char *na = "N/A";
 	hb_kmod_ll *record = NULL;
 
-	if (!enabled) {
+	if (!enabled || !enabled_kmod)
 		return err;
-	}
 
 	rcu_read_lock();
 
@@ -3447,9 +3584,8 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 	char uid[UID_STR_SIZE];
 	hb_task_ll *record;
 
-	if (!enabled) {
+	if (!enabled || !enabled_tasks)
 		return err;
-	}
 
 	rcu_read_lock();
 
@@ -3577,7 +3713,7 @@ static int honeybest_socket_create(int family, int type,
 	char uid[UID_STR_SIZE];
 	hb_socket_ll *record;
 
-	if (!enabled)
+	if (!enabled || !enabled_socket)
 	       	return err;
 
 	rcu_read_lock();
@@ -3654,7 +3790,7 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 	int port = 0;
 	int err = 0;
 
-	if (!enabled)
+	if (!enabled || !enabled_socket)
 	       	return err;
 
 	rcu_read_lock();
@@ -3728,7 +3864,7 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 	int port = 0;
 	int err = 0;
 
-	if (!enabled)
+	if (!enabled || !enabled_socket)
 	       	return err;
 
 	rcu_read_lock();
@@ -3843,7 +3979,7 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 	hb_socket_ll *record;
 	int err = 0;
 
-	if (!enabled)
+	if (!enabled || !enabled_socket)
 	       	return err;
 
 	rcu_read_lock();
@@ -4271,7 +4407,7 @@ static int honeybest_ipc_permission(struct kern_ipc_perm *ipcp, short flag)
 	uid_t ipc_cgid = ipcp->cgid.val;
 	umode_t mode = ipcp->mode;
 
-	if (!enabled)
+	if (!enabled || !enabled_ipc)
 		return err;
 
 	rcu_read_lock();
