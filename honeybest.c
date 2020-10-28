@@ -3008,7 +3008,7 @@ static int honeybest_mmap_file(struct file *file, unsigned long reqprot,
 	char digest[SHA1_HONEYBEST_DIGEST_SIZE];
 	char uid[UID_STR_SIZE];
 
-	if (!enabled || !enabled_files)
+	if (!enabled || !enabled_creds)
 		return err;
 
 	if (file == NULL)
