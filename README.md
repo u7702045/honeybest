@@ -130,9 +130,11 @@ In our example here, we want to protect few shared libraries list below from scp
 You need to enabling/design secure boot process in order to prohibit kernel & initramfs from replacing. In addition, we suggesting use hardware security module(HSM) such as TPM/ArmTrustZone to involve into secure boot process. Reformat your partition with LUKs and bind LUKs's key to HSM. Here are the few steps:
 1. Recompiling kernel option with CONFIG_HONEYBEST_PROD=y.
 2. Add 'files' feature set configuration into initramfs, save it into directory /etc/honeybest/files:
-<img src="images/honeybest blacklist files shared libraries protection.JPG" width="300" height="150" />
-2. Add 'binprm' feature set configuration into initramfs, save it into directory /etc/honeybest/binprm:
-<img src="images/honeybest blacklist binprm shared libraries protection.JPG" width="300" height="150" />
+<img src="images/honeybest blacklist files shared libraries protection.JPG" width="1000" height="200" />
+3. Add 'binprm' feature set configuration into initramfs, save it into directory /etc/honeybest/binprm:
+<img src="images/honeybest blacklist binprm shared libraries protection.JPG" width="1000" height="200" />
+4. Add initramfs script (init-top) to run before chroot into LUKs filesystem:
+<img src="images/honeybest blacklist setup shared libraries protection.JPG" width="1000" height="200" />
 
 
 
