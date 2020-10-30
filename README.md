@@ -42,9 +42,10 @@ Similar to SELinux/Apparmor design, HoneyBest security module is hooked on Linux
 HoneyBest security module stay in deactivate mode / non-interactive mode as default. It provides 2 activation options, below: 
 1.	Add string hashlock.enabled=1 into GRUB parameter.
 2.	Enable at initrd-ramfs stage (`echo 1 > /proc/sys/kernel/honeybest/enabled`)
-**__There is no deactivate after activate for security reason, update GRUB/initrd image must design tightly with secure boot verification process.__**
+**__There is no deactivate after activate for security reason (compiling kernel with option CONFIG_HONEYBEST_PROD), update GRUB/initrd image must design tightly with secure boot verification process.__**
 Once you activate HoneyBest, kernel tracking activities start to record into different files under directory /proc/honeybest. User can monitor the tracking progress via read file application such as tail/cat/head. 
-
+##### selective features option – on mode or off mode
+HoneyBest offer rich feature set to tracking from different perspective, such as binary file, socket, ipc, inode and so on. Section "Files" expose more detail to each different perspective features. Enabling selective features with command (`echo 1 > /proc/sys/kernel/honeybest/[Files]`), e.g to turn on binary hash, command (`echo 1 > /proc/sys/kernel/honeybest/binprm`)
 ##### Locking option – on mode or off mode
 Locking option only take effective once enablement option mode turn on (default locking option mode is turn off). Once turn on, only expect activities is allow to operate on system. Locking mode toggle can be set via command (`echo 1 > /proc/sys/kernel/honeybest/locking` or `echo 0 > /proc/sys/kernel/honeybest/locking`). This option take effectived only when enablement option is in turn on mode.
 
@@ -54,8 +55,8 @@ Interactive & auto mode only take effectively when enablement mode turn into tru
 ##### Black list option - whitelist mode vs blacklist mode
 The default mode is whitelist mode, all activities pass through the list will be allow as default. The easy way to think of this mode is iptables default policy, REJECT or ACCEPT. The toggle can be set via command (`echo 1 > /proc/sys/kernel/honeybest/bl` or `echo 0 > /proc/sys/kernel/honeybest/bl`).
 
-##### Granularity option - level 0,1,2
-The default granularity of match/track activities is 0, which is we think of suitable to most of the user case. The higher the level number, the more time to consumpt during comparison stage. High granularity of activities tracking caused the OS environment turn to low flexibility. The toggle can be set via command (`echo [0,1,2] > /proc/sys/kernel/honeybest/level`).
+##### Granularity option - level 1,2
+The default granularity of match/track activities is 0, which is we think of suitable to most of the user case. The higher the level number, the more time to consumpt during comparison stage. High granularity of activities tracking caused the OS environment turn to low flexibility. The toggle can be set via command (`echo [1,2] > /proc/sys/kernel/honeybest/level`).
 
 ### __Configure activities__
 Every single files in directory /proc/honeybest tracking different behavior. We will explain each single file corresponding on next section. In general, every file share the common column, e.g NO/FUNCTION/USER ID.
@@ -111,6 +112,29 @@ Saving the HoneyBest LSM configuration are pretty simple. All you need is to dum
 * save – Dump current setting to file, command `cat /proc/honeybest/binprm > /etc/hb/binprm`.
 * restore – Restore current setting to system, command `cat /etc/hb/binprm > /proc/honeybest/binprm`.
 * lock down – After restore, lock down HoneyBest to prevent tracking, command `echo 1 > /proc/sys/kernel/honeybest/locking`.
-* enable– Enable HoneyBest to protect system, command `echo 1 > /proc/sys/kernel/honeybest/enabled`
+* enable – Enable HoneyBest, command `echo 1 > /proc/sys/kernel/honeybest/enabled`
+* select feature set - binary hash example, command `echo 1 > /proc/sys/kernel/honeybest/binprm`
+
+##### Examples
+#### Proprietary shared libraries protection from root & users
+In our example here, we want to protect few shared libraries list below from scp or copy out of box:
+* /usr/lib/arm-linux-gnueabihf/libtss2-sys.so.0.0.0
+* /usr/lib/arm-linux-gnueabihf/libtss2-mu.so.0.0.0
+* /usr/lib/arm-linux-gnueabihf/libcrypto.so.1.1
+* /usr/lib/arm-linux-gnueabihf/libtss2-tcti-device.so.0.0.0
+* /usr/lib/arm-linux-gnueabihf/libtss2-sys.so.0.0.0
+* /usr/lib/arm-linux-gnueabihf/libtss2-mu.so.0.0.0
+* /usr/lib/arm-linux-gnueabihf/libcrypto.so.1.1
+* /usr/lib/arm-linux-gnueabihf/libtss2-tcti-device.so.0.0.0
+
+You need to enabling/design secure boot process in order to prohibit kernel & initramfs from replacing. In addition, we suggesting use hardware security module(HSM) such as TPM/ArmTrustZone to involve into secure boot process. Reformat your partition with LUKs and bind LUKs's key to HSM. Here are the few steps:
+1. Recompiling kernel option with CONFIG_HONEYBEST_PROD=y.
+2. Add 'files' feature set configuration into initramfs, save it into directory /etc/honeybest/files:
+<img src="images/honeybest blacklist files shared libraries protection.png" width="300" height="150" />
+2. Add 'binprm' feature set configuration into initramfs, save it into directory /etc/honeybest/binprm:
+<img src="images/honeybest blacklist binprm shared libraries protection.png" width="300" height="150" />
+
+
+
 
 
