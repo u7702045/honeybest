@@ -115,8 +115,8 @@ Saving the HoneyBest LSM configuration are pretty simple. All you need is to dum
 * enable – Enable HoneyBest, command `echo 1 > /proc/sys/kernel/honeybest/enabled`
 * select feature set - binary hash example, command `echo 1 > /proc/sys/kernel/honeybest/binprm`
 
-##### Examples
-#### Proprietary shared libraries protection from root & users
+#### Examples
+##### Proprietary shared libraries protection from root & users
 In our example here, we want to protect few shared libraries list below from scp or copy out of box:
 * /usr/lib/arm-linux-gnueabihf/libtss2-sys.so.0.0.0
 * /usr/lib/arm-linux-gnueabihf/libtss2-mu.so.0.0.0
