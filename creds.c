@@ -114,7 +114,7 @@ int match_binprm_record(hb_binprm_ll *data, unsigned int fid, uid_t uid, char *p
 	switch (fid) {
 		case HB_FILE_MMAP:
 		case HB_BPRM_SET_CREDS:
-			if (((data->fid == HB_BPRM_SET_CREDS) || (data->fid == HB_FILE_MMAP)) && !memcmp(data->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE-1) && do_compare_uid && !compare_regex(data->pathname, pathname)) {
+			if (((data->fid == HB_BPRM_SET_CREDS) || (data->fid == HB_FILE_MMAP)) && !compare_regex(data->digest, digest) && do_compare_uid && !compare_regex(data->pathname, pathname)) {
 				/* we find the record */
 				//printk(KERN_INFO "Found binprm set record !!!!\n");
 				match = 1;
