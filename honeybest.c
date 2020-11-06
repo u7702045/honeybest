@@ -123,7 +123,7 @@
 
 #ifdef CONFIG_SECURITY_HONEYBEST
 static int enabled = IS_ENABLED(CONFIG_SECURITY_HONEYBEST_ENABLED);
-static int locking = 0;		// detect mode
+int locking = 0;		// detect mode
 static int bl = 0;		// white list vs black list
 int hb_interact = 0;		// interaction mode
 int hb_level = 1;		// fine grain granularity
@@ -1196,12 +1196,46 @@ static int honeybest_sb_remount(struct super_block *sb, void *data)
 static int honeybest_sb_kern_mount(struct super_block *sb, int flags, void *data)
 {
 	int err = 0;
+	struct cred *cred = NULL;
+	char *na = "N/A";
+	char uid[UID_STR_SIZE];
+	hb_sb_ll *record = NULL;
 
-	if (!enabled)
+	if (!enabled || !enabled_sb)
 		return err;
 
-	// less info compare to sb_mount
+	rcu_read_lock();
 
+	cred = (struct cred *) current->real_cred;
+
+	if (inject_honeybest_tracker(cred, HB_SB_KERN_MOUNT))
+	       	err = -ENOMEM;
+
+	if (!sb)
+		goto out;
+
+	record = search_sb_record(HB_SB_KERN_MOUNT, current->cred->uid.val, (char *)na, sb->s_id, (char *)na, (char *)na, flags);
+
+	if (record) {
+		;//printk(KERN_INFO "Found sb mount record func=%u, uid %u, dev_name=%s, type name=%s, flags=%d\n", record->fid, record->uid, record->dev_name, record->type, record->flags);
+		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+			err = -EOPNOTSUPP;
+	}
+	else {
+		sprintf(uid, "%u", current->cred->uid.val);
+
+		if ((locking == 0) && (bl == 0)) 
+			add_sb_record(HB_SB_KERN_MOUNT, uid, 'A', (char *)sb->s_id, (char *)na, (char *)na, (char *)na, flags);
+
+		if ((locking == 0) && (bl == 1)) 
+			add_sb_record(HB_SB_KERN_MOUNT, uid, 'R', (char *)sb->s_id, (char *)na, (char *)na, (char *)na, flags);
+
+		if ((locking == 1) && (bl == 0))
+			err = -EOPNOTSUPP;
+	}
+
+out:
+	rcu_read_unlock();
 	return err;
 }
 
@@ -1317,7 +1351,7 @@ static int honeybest_mount(const char *dev_name, struct path *path,
 	if (inject_honeybest_tracker(cred, HB_SB_MOUNT))
 	       	err = -ENOMEM;
 
-	if (!dev_name || !path || !type)
+	if (!dev_name || !path)
 		goto out;
 
 	record = search_sb_record(HB_SB_MOUNT, current->cred->uid.val, na, (char *)na, (char *)dev_name, (char *)type, flags);

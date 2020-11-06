@@ -90,6 +90,7 @@
 #include "regex.h"
 #include "honeybest.h"
 
+extern int locking;
 extern int hb_level;
 extern int hb_interact;
 extern unsigned long total_notify_record;
@@ -138,6 +139,13 @@ int match_sb_record(hb_sb_ll *data, unsigned int fid, uid_t uid, char *s_id, cha
 			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->dev_name, dev_name) && !strncmp(data->type, type, strlen(data->type)) && (data->flags == flags)) {
 				/* we find the record */
 				//printk(KERN_INFO "Found sb mount data record !!!!\n");
+				match = 1;
+			}
+			break;
+		case HB_SB_KERN_MOUNT:
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_id, s_id) && (data->flags == flags)) {
+				/* we find the record */
+				//printk(KERN_INFO "Found sb kern mount data record !!!!\n");
 				match = 1;
 			}
 			break;
@@ -315,6 +323,9 @@ ssize_t write_sb_record(struct file *file, const char __user *buffer, size_t cou
 	hb_sb_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	struct list_head *q = NULL;
+
+	if (locking == 1)
+		goto out;
 
 	if(*ppos > 0 || count > TOTAL_ACT_SIZE) {
 		printk(KERN_WARNING "Write size is too big!\n");

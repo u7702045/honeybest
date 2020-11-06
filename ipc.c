@@ -90,6 +90,7 @@
 #include "notify.h"
 #include "honeybest.h"
 
+extern int locking;
 extern int hb_level;
 extern int hb_interact;
 extern unsigned long total_notify_record;
@@ -260,6 +261,9 @@ ssize_t write_ipc_record(struct file *file, const char __user *buffer, size_t co
 	hb_ipc_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	struct list_head *q = NULL;
+
+	if (locking == 1)
+		goto out;
 
 	if(*ppos > 0 || count > TOTAL_ACT_SIZE) {
 		printk(KERN_WARNING "Write size is too big!\n");

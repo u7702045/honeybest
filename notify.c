@@ -168,6 +168,7 @@ int add_notify_record(unsigned int fid, void *data)
 		case HB_SB_STATFS:
 		case HB_SB_REMOUNT:
 		case HB_SB_UMOUNT:
+		case HB_SB_KERN_MOUNT:
 		case HB_SB_MOUNT:
 			strncpy(tmp->proc, HB_SB_PROC, strlen(HB_SB_PROC));
 			tmp->data = (hb_sb_ll *)data;
@@ -282,6 +283,7 @@ void hb_notify_seq_stop(struct seq_file *s, void *v)
 			case HB_SB_STATFS:
 			case HB_SB_REMOUNT:
 			case HB_SB_UMOUNT:
+			case HB_SB_KERN_MOUNT:
 			case HB_SB_MOUNT:
 				sbs = (hb_sb_ll *)tmp->data;
 				free_sb_record(sbs);
@@ -383,6 +385,7 @@ int hb_notify_seq_show(struct seq_file *s, void *v)
 			case HB_SB_STATFS:
 			case HB_SB_REMOUNT:
 			case HB_SB_UMOUNT:
+			case HB_SB_KERN_MOUNT:
 			case HB_SB_MOUNT:
 				sbs = (hb_sb_ll *)tmp->data;
 				seq_printf(s, "%lu\t%s\t%u\t%s\t%c\t%s\t%s\t%s\t%s\t%d\n", total++, tmp->proc, sbs->fid , sbs->uid, sbs->act_allow, sbs->s_id, sbs->name, sbs->dev_name, sbs->type, sbs->flags);
