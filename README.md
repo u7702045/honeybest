@@ -122,10 +122,6 @@ In our example here, we want to protect few shared libraries list below from scp
 * /usr/lib/arm-linux-gnueabihf/libtss2-mu.so.0.0.0
 * /usr/lib/arm-linux-gnueabihf/libcrypto.so.1.1
 * /usr/lib/arm-linux-gnueabihf/libtss2-tcti-device.so.0.0.0
-* /usr/lib/arm-linux-gnueabihf/libtss2-sys.so.0.0.0
-* /usr/lib/arm-linux-gnueabihf/libtss2-mu.so.0.0.0
-* /usr/lib/arm-linux-gnueabihf/libcrypto.so.1.1
-* /usr/lib/arm-linux-gnueabihf/libtss2-tcti-device.so.0.0.0
 
 You need to enabling/design secure boot process in order to prohibit kernel & initramfs from replacing. In addition, we suggesting use hardware security module(HSM) such as TPM/ArmTrustZone to involve into secure boot process. Reformat your partition with LUKs and bind LUKs's key to HSM. Here are the few steps:
 1. Recompiling kernel option with CONFIG_HONEYBEST_PROD=y.
