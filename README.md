@@ -129,7 +129,9 @@ You need to enabling/design secure boot process in order to prohibit kernel & in
 <img src="images/honeybest blacklist files shared libraries protection.JPG" width="1000" height="150" />
 3. Add 'binprm' feature set configuration into initramfs, save it into directory /etc/honeybest/binprm:
 <img src="images/honeybest blacklist binprm shared libraries protection.JPG" width="1000" height="150" />
-4. Add initramfs script (init-top) to run before chroot into LUKs filesystem:
+4. Add 'sb' feature set configuration into initramfs, save it into directory /etc/honeybest/sb:
+<img src="images/honeybest blacklist sb shared libraries protection.JPG" width="1000" height="150" />
+5. Add initramfs script (init-top) to run before chroot into LUKs filesystem:
 <img src="images/honeybest blacklist setup shared libraries protection.JPG" width="700" height="500" />
 
 
