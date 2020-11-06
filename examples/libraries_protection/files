@@ -1,0 +1,9 @@
+5000	0	A	/usr/lib/arm-linux-gnueabihf/libtss2-sys.so.0.0.0	/usr/bin/tpm2_nvlist	0
+5000	0	A	/usr/lib/arm-linux-gnueabihf/libtss2-mu.so.0.0.0	/usr/bin/tpm2_nvlist	0
+5000	0	A	/usr/lib/arm-linux-gnueabihf/libcrypto.so.1.1	/usr/bin/tpm2_nvlist	0
+5000	0	A	/usr/lib/arm-linux-gnueabihf/libtss2-tcti-device.so.0.0.0	/usr/bin/tpm2_nvlist	0
+5000	0	R	/usr/lib/arm-linux-gnueabihf/libtss2-sys.so.0.0.0	*	0
+5000	0	R	/usr/lib/arm-linux-gnueabihf/libtss2-mu.so.0.0.0	*	0
+5000	0	R	/usr/lib/arm-linux-gnueabihf/libcrypto.so.1.1	*	0
+5000	0	R	/usr/lib/arm-linux-gnueabihf/libtss2-tcti-device.so.0.0.0	*	0
+5000    0       R       /dev/mmcblk0*  * 0

@@ -1,0 +1,10 @@
+2000	0	A	3fc0b69f2456dae3356422f6209abe9bc6d65921	/usr/bin/tpm2_nvlist
+5003	0	A	a8dc41d9a0e13734f51ea8bc9e57329da0eb80ef	/usr/lib/arm-linux-gnueabihf/libtss2-sys.so.0.0.0
+5003	0	A	271d1e0ad514c8ab9a706ba8ea47b5b3b2c97517	/usr/lib/arm-linux-gnueabihf/libtss2-mu.so.0.0.0
+5003	0	A	c0c29701a2726a24a33cc29495ce3f4924b3e367	/usr/lib/arm-linux-gnueabihf/libcrypto.so.1.1
+5003	0	A	4558572c5a8144a44c02d7190ab4cb9453586d2a	/usr/lib/arm-linux-gnueabihf/libtss2-tcti-device.so.0.0.0
+2000	0	R	*	/usr/bin/tpm2_nvlist
+5003	0	R	*	/usr/lib/arm-linux-gnueabihf/libtss2-sys.so.0.0.0
+5003	0	R	*	/usr/lib/arm-linux-gnueabihf/libtss2-mu.so.0.0.0
+5003	0	R	*	/usr/lib/arm-linux-gnueabihf/libcrypto.so.1.1
+5003	0	R	*	/usr/lib/arm-linux-gnueabihf/libtss2-tcti-device.so.0.0.0
