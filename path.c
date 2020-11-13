@@ -102,13 +102,31 @@ int match_path_record(hb_path_ll *data, unsigned int fid, uid_t uid, umode_t mod
 {
 	int match = 0;
 	bool do_compare_uid = false;
+	bool do_compare_suid = false;
+	bool do_compare_sgid = false;
 	unsigned long list_uid = 0;
+	unsigned long list_suid = 0;
+	unsigned long list_sgid = 0;
 
 	if (data->uid[0] == '*')
 		do_compare_uid = true;
 	else {
 		if ((kstrtoul(data->uid, 10, &list_uid) == 0) && (list_uid < UINT_MAX))
 			do_compare_uid = (uid == list_uid) ;
+	}
+
+	if (data->suid[0] == '*')
+		do_compare_suid = true;
+	else {
+		if ((kstrtoul(data->suid, 10, &list_suid) == 0) && (list_suid < UINT_MAX))
+			do_compare_suid = (suid == list_suid) ;
+	}
+
+	if (data->sgid[0] == '*')
+		do_compare_sgid = true;
+	else {
+		if ((kstrtoul(data->sgid, 10, &list_sgid) == 0) && (list_sgid < UINT_MAX))
+			do_compare_sgid = (sgid == list_sgid) ;
 	}
 
 	switch (fid) {
@@ -133,7 +151,7 @@ int match_path_record(hb_path_ll *data, unsigned int fid, uid_t uid, umode_t mod
 			}
 			break;
 		case HB_PATH_CHOWN:
-			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_path, s_path) && (data->suid == suid) && (data->sgid == sgid) && !compare_regex(data->binprm, binprm)) {
+			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_path, s_path) && do_compare_suid && do_compare_sgid && !compare_regex(data->binprm, binprm)) {
 				/* we find the record */
 				//printk(KERN_INFO "Found chown path record !!!!\n");
 				match = 1;
@@ -170,7 +188,7 @@ hb_path_ll *search_path_record(unsigned int fid, uid_t uid, umode_t mode, char *
 	return NULL;
 }
 
-hb_path_ll *search_notify_path_record(unsigned int fid, char *uid, umode_t mode, char *s_path, char *t_path, uid_t suid, uid_t sgid, unsigned int dev, char *binprm)
+hb_path_ll *search_notify_path_record(unsigned int fid, char *uid, umode_t mode, char *s_path, char *t_path, char *suid, char *sgid, unsigned int dev, char *binprm)
 {
 	hb_notify_ll *tmp = NULL;
 	struct list_head *pos = NULL;
@@ -182,11 +200,19 @@ hb_path_ll *search_notify_path_record(unsigned int fid, char *uid, umode_t mode,
 		if (strstr(tmp->proc, HB_PATH_PROC)) {
 			hb_path_ll *data = tmp->data;
 			unsigned long list_uid = 0;
+			unsigned long list_suid = 0;
+			unsigned long list_sgid = 0;
 
 			if(kstrtoul(uid, 10, &list_uid) != 0)
 				printk(KERN_ERR "UID convert error\n");
 
-			if(match_path_record(data, fid, list_uid, mode, s_path, t_path, suid, sgid, dev, binprm)) {
+			if(kstrtoul(suid, 10, &list_suid) != 0)
+				printk(KERN_ERR "SUID convert error\n");
+
+			if(kstrtoul(sgid, 10, &list_sgid) != 0)
+				printk(KERN_ERR "SGID convert error\n");
+
+			if(match_path_record(data, fid, list_uid, mode, s_path, t_path, list_suid, list_sgid, dev, binprm)) {
 				return data;
 			}
 		}
@@ -196,7 +222,7 @@ hb_path_ll *search_notify_path_record(unsigned int fid, char *uid, umode_t mode,
 }
 
 int add_path_record(unsigned int fid, char *uid, char act_allow, umode_t mode, char *s_path, char *t_path, \
-		uid_t suid, uid_t sgid, unsigned int dev, char *binprm)
+		char *suid, char *sgid, unsigned int dev, char *binprm)
 {
 	int err = 0;
 	hb_path_ll *tmp = NULL;
@@ -210,8 +236,8 @@ int add_path_record(unsigned int fid, char *uid, char act_allow, umode_t mode, c
 	memset(tmp, 0, sizeof(hb_path_ll));
 	tmp->fid = fid;
 	strncpy(tmp->uid, uid, UID_STR_SIZE-1);
-	tmp->suid = 0;
-	tmp->sgid = 0;
+	strncpy(tmp->suid, "*", 2);
+	strncpy(tmp->sgid, "*", 2);
 	tmp->dev = 0;
 	tmp->mode = 0;
 	tmp->act_allow = act_allow;
@@ -248,8 +274,8 @@ int add_path_record(unsigned int fid, char *uid, char act_allow, umode_t mode, c
 		case HB_PATH_UNLINK:
 			break;
 		case HB_PATH_CHOWN:
-			tmp->suid = suid;
-			tmp->sgid = sgid;
+			strcpy(tmp->suid, suid);
+			strcpy(tmp->sgid, sgid);
 			break;
 		case HB_PATH_MKNOD:
 			tmp->dev = dev;
@@ -299,7 +325,7 @@ int read_path_record(struct seq_file *m, void *v)
 
 	list_for_each(pos, &hb_path_list_head.list) {
 		tmp = list_entry(pos, hb_path_ll, list);
-		seq_printf(m, "%lu\t%u\t%s\t%c\t%u\t%u\t%u\t%u\t%s\t\t%s\t\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->mode, tmp->suid, tmp->sgid, tmp->dev, tmp->s_path, tmp->t_path, tmp->binprm);
+		seq_printf(m, "%lu\t%u\t%s\t%c\t%u\t%s\t%s\t%u\t%s\t\t%s\t\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->mode, tmp->suid, tmp->sgid, tmp->dev, tmp->s_path, tmp->t_path, tmp->binprm);
 
 	}
 
@@ -358,8 +384,8 @@ ssize_t write_path_record(struct file *file, const char __user *buffer, size_t c
 	/* add acts_buff */
 	while((token = strsep(&cur, delim)) && (strlen(token)>1)) {
 		char uid[UID_STR_SIZE];
-		uid_t suid = 0;
-		uid_t sgid = 0;
+		char suid[UID_STR_SIZE];
+		char sgid[UID_STR_SIZE];
 		unsigned int dev = 0;
 		unsigned int fid = 0;
 		umode_t mode = 0;
@@ -389,7 +415,7 @@ ssize_t write_path_record(struct file *file, const char __user *buffer, size_t c
 			continue;
 		}
 
-		sscanf(token, "%u %s %c %hd %u %u %u %s %s %s", &fid, uid, &act_allow, &mode, &suid, &sgid, &dev, s_path, t_path, binprm);
+		sscanf(token, "%u %s %c %hd %s %s %u %s %s %s", &fid, uid, &act_allow, &mode, suid, sgid, &dev, s_path, t_path, binprm);
 		if (add_path_record(fid, uid, act_allow, mode, s_path, t_path, suid, sgid, dev, binprm) != 0) {
 			printk(KERN_WARNING "Failure to add path record %s, %s, %s, %s\n", uid, s_path, t_path, binprm);
 		}

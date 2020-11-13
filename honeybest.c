@@ -1544,10 +1544,10 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 		sprintf(tuid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
-			add_path_record(HB_PATH_UNLINK, tuid, 'A', 0, s_path, t_path, 0, 0, 0, binprm);
+			add_path_record(HB_PATH_UNLINK, tuid, 'A', 0, s_path, t_path, "*", "*", 0, binprm);
 
 		if ((locking == 0) && (bl == 1)) 
-			add_path_record(HB_PATH_UNLINK, tuid, 'R', 0, s_path, t_path, 0, 0, 0, binprm);
+			add_path_record(HB_PATH_UNLINK, tuid, 'R', 0, s_path, t_path, "*", "*", 0, binprm);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -1646,10 +1646,10 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 		sprintf(tuid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
-			add_path_record(HB_PATH_MKDIR, tuid, 'A', mode, s_path, t_path, 0, 0, 0, binprm);
+			add_path_record(HB_PATH_MKDIR, tuid, 'A', mode, s_path, t_path, "*", "*", 0, binprm);
 
 		if ((locking == 0) && (bl == 1)) 
-			add_path_record(HB_PATH_MKDIR, tuid, 'R', mode, s_path, t_path, 0, 0, 0, binprm);
+			add_path_record(HB_PATH_MKDIR, tuid, 'R', mode, s_path, t_path, "*", "*", 0, binprm);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -1742,10 +1742,10 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 		sprintf(tuid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
-			add_path_record(HB_PATH_RMDIR, tuid, 'A', 0, s_path, t_path, 0, 0, 0, binprm);
+			add_path_record(HB_PATH_RMDIR, tuid, 'A', 0, s_path, t_path, "*", "*", 0, binprm);
 
 		if ((locking == 0) && (bl == 1)) 
-			add_path_record(HB_PATH_RMDIR, tuid, 'R', 0, s_path, t_path, 0, 0, 0, binprm);
+			add_path_record(HB_PATH_RMDIR, tuid, 'R', 0, s_path, t_path, "*", "*", 0, binprm);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -1844,10 +1844,10 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 		sprintf(tuid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
-			add_path_record(HB_PATH_MKNOD, tuid, 'A', mode, s_path, t_path, 0, 0, dev, binprm);
+			add_path_record(HB_PATH_MKNOD, tuid, 'A', mode, s_path, t_path, "*", "*", dev, binprm);
 
 		if ((locking == 0) && (bl == 1)) 
-			add_path_record(HB_PATH_MKNOD, tuid, 'R', mode, s_path, t_path, 0, 0, dev, binprm);
+			add_path_record(HB_PATH_MKNOD, tuid, 'R', mode, s_path, t_path, "*", "*", dev, binprm);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -1950,10 +1950,10 @@ static int honeybest_path_truncate(struct path *path)
 		sprintf(tuid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
-			add_path_record(HB_PATH_TRUNCATE, tuid, 'A', 0, s_path, t_path, 0, 0, 0, binprm);
+			add_path_record(HB_PATH_TRUNCATE, tuid, 'A', 0, s_path, t_path, "*", "*", 0, binprm);
 
 		if ((locking == 0) && (bl == 1)) 
-			add_path_record(HB_PATH_TRUNCATE, tuid, 'R', 0, s_path, t_path, 0, 0, 0, binprm);
+			add_path_record(HB_PATH_TRUNCATE, tuid, 'R', 0, s_path, t_path, "*", "*", 0, binprm);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -2048,10 +2048,10 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 		sprintf(tuid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
-			add_path_record(HB_PATH_SYMLINK, tuid, 'A', 0, s_path, t_path, 0, 0, 0, binprm);
+			add_path_record(HB_PATH_SYMLINK, tuid, 'A', 0, s_path, t_path, "*", "*", 0, binprm);
 
 		if ((locking == 0) && (bl == 1)) 
-			add_path_record(HB_PATH_SYMLINK, tuid, 'R', 0, s_path, t_path, 0, 0, 0, binprm);
+			add_path_record(HB_PATH_SYMLINK, tuid, 'R', 0, s_path, t_path, "*", "*", 0, binprm);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -2165,10 +2165,10 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 		sprintf(tuid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
-			add_path_record(HB_PATH_LINK, tuid, 'A', 0, s_path, t_path, 0, 0, 0, binprm);
+			add_path_record(HB_PATH_LINK, tuid, 'A', 0, s_path, t_path, "*", "*", 0, binprm);
 
 		if ((locking == 0) && (bl == 1)) 
-			add_path_record(HB_PATH_LINK, tuid, 'R', 0, s_path, t_path, 0, 0, 0, binprm);
+			add_path_record(HB_PATH_LINK, tuid, 'R', 0, s_path, t_path, "*", "*", 0, binprm);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -2279,10 +2279,10 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 		sprintf(tuid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
-			add_path_record(HB_PATH_RENAME, tuid, 'A', 0, s_path, t_path, 0, 0, 0, binprm);
+			add_path_record(HB_PATH_RENAME, tuid, 'A', 0, s_path, t_path, "*", "*", 0, binprm);
 
 		if ((locking == 0) && (bl == 1)) 
-			add_path_record(HB_PATH_RENAME, tuid, 'R', 0, s_path, t_path, 0, 0, 0, binprm);
+			add_path_record(HB_PATH_RENAME, tuid, 'R', 0, s_path, t_path, "*", "*", 0, binprm);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -2375,10 +2375,10 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 		sprintf(tuid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
-			add_path_record(HB_PATH_CHMOD, tuid, 'A', mode, s_path, t_path, 0, 0, 0, binprm);
+			add_path_record(HB_PATH_CHMOD, tuid, 'A', mode, s_path, t_path, "*", "*", 0, binprm);
 
 		if ((locking == 0) && (bl == 1)) 
-			add_path_record(HB_PATH_CHMOD, tuid, 'R', mode, s_path, t_path, 0, 0, 0, binprm);
+			add_path_record(HB_PATH_CHMOD, tuid, 'R', mode, s_path, t_path, "*", "*", 0, binprm);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;
@@ -2413,6 +2413,8 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 	struct cred *cred = NULL;
 	struct mm_struct *mm = NULL;
 	char tuid[UID_STR_SIZE];
+	char tsuid[UID_STR_SIZE];
+	char tsgid[UID_STR_SIZE];
 	hb_path_ll *record = NULL;
 
 	if (!enabled || !enabled_path)
@@ -2467,12 +2469,14 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 	}
 	else {
 		sprintf(tuid, "%u", current->cred->uid.val);
+		sprintf(tsuid, "%u", uid.val);
+		sprintf(tsgid, "%u", gid.val);
 
 		if ((locking == 0) && (bl == 0)) 
-			add_path_record(HB_PATH_CHOWN, tuid, 'A', 0, s_path, t_path, uid.val, gid.val, 0, binprm);
+			add_path_record(HB_PATH_CHOWN, tuid, 'A', 0, s_path, t_path, tsuid, tsgid, 0, binprm);
 
 		if ((locking == 0) && (bl == 1)) 
-			add_path_record(HB_PATH_CHOWN, tuid, 'R', 0, s_path, t_path, uid.val, gid.val, 0, binprm);
+			add_path_record(HB_PATH_CHOWN, tuid, 'R', 0, s_path, t_path, tsuid, tsgid, 0, binprm);
 
 		if ((locking == 1) && (bl == 0))
 			err = -EOPNOTSUPP;

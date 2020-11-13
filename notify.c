@@ -371,7 +371,7 @@ int hb_notify_seq_show(struct seq_file *s, void *v)
 			case HB_PATH_MKDIR:
 			case HB_PATH_CHMOD:
 				paths = (hb_path_ll *)tmp->data;
-				seq_printf(s, "%lu\t%s\t%u\t%s\t%c\t%u\t%u\t%u\t%u\t%s\t\t%s\t\t%s\n", total++, tmp->proc, paths->fid , paths->uid, paths->act_allow, paths->mode, paths->suid, paths->sgid, paths->dev, paths->s_path, paths->t_path, paths->binprm);
+				seq_printf(s, "%lu\t%s\t%u\t%s\t%c\t%u\t%s\t%s\t%u\t%s\t\t%s\t\t%s\n", total++, tmp->proc, paths->fid , paths->uid, paths->act_allow, paths->mode, paths->suid, paths->sgid, paths->dev, paths->s_path, paths->t_path, paths->binprm);
 				tmp->dirty = true;
 				break;
 			case HB_INODE_REMOVEXATTR:
