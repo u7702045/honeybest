@@ -1,9 +1,10 @@
 #!/bin/bash
+EXEC_PWD=$(dirname $(realpath $0))
 ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
 ENABLE_BINPRM=/proc/sys/kernel/honeybest/binprm
 LOCK_PROC=/proc/sys/kernel/honeybest/locking
 BINPRM_PROC=/proc/honeybest/binprm
-HB_TEMPLATE=./template/
+HB_TEMPLATE=${EXEC_PWD}/template/
 HB_BINPRM=${HB_TEMPLATE}/binprm
 TMP_FILE=/dev/shm/xxxx
 activate(){

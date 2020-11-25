@@ -1,6 +1,7 @@
 #!/bin/bash
+EXEC_PWD=$(dirname $(realpath $0))
 ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
-HB_TEMPLATE=./template/
+HB_TEMPLATE=${EXEC_PWD}/template/
 activate(){
 	if [ $1 == 'start' ]; then
 		echo 1 > ${ENABLE_PROC}

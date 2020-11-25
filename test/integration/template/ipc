@@ -1,1 +1,1 @@
-8000	0	A	/home/moxa/honeybest/unittest/utilities/shmctl	0	0	0	0	292
+8000	0	A	${EXEC_PWD}/utilities/shmctl	0	0	0	0	292

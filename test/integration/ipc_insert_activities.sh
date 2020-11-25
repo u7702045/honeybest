@@ -1,9 +1,10 @@
 #!/bin/bash
+EXEC_PWD=$(dirname $(realpath $0))
 ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
 ENABLE_IPC=/proc/sys/kernel/honeybest/ipc
 LOCK_PROC=/proc/sys/kernel/honeybest/locking
 IPC_PROC=/proc/honeybest/ipc
-HB_TEMPLATE=./template/
+HB_TEMPLATE=${EXEC_PWD}/template/
 HB_IPC=${HB_TEMPLATE}/ipc
 TMP_FILE=/dev/shm/xxxx
 ID=0
@@ -35,7 +36,7 @@ clean_ipc_proc() {
 }
 
 insert_ipc_proc() {
-	cat ${HB_IPC} > ${IPC_PROC}
+        sed -e "s/\${EXEC_PWD}/${EXEC_PWD}/g" ${HB_IPC} > ${IPC_PROC}
 	cat ${IPC_PROC} > ${TMP_FILE}
 }
 
@@ -77,7 +78,7 @@ test_ipc_enable() {
 	ipcrm -a
 	ipcmk -M 1 > ${TMP_FILE}
 	ID=`cat ${TMP_FILE}|awk '{print $4}'`
-	./utilities/shmctl $ID
+	${EXEC_PWD}/utilities/shmctl $ID
 	sleep 2
 	cat ${IPC_PROC}|grep shmctl > /dev/null
 	actual=$?
@@ -98,7 +99,7 @@ test_ipc_lock() {
 	locking "start"
 	activate "start"
 
-	./utilities/shmctl ${ID}
+	${EXEC_PWD}/utilities/shmctl ${ID}
 	actual=$?
 	expected=1
 
