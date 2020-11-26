@@ -1,236 +1,210 @@
+/*
+ * Unittest for Security Hash Locking Module
+ *
+ * Copyright 2020 Moxa Inc.
+ *
+ * Author: Chuck Lee <chucksc.lee@moxa.com>
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "regex_test.h"
+#include "regex.h"
+#include "tests/common/unittest_common.h"
 
-int compare_regex(char *str1, char *str2)
+struct regex_test_case {
+    const char *condition;
+    const char *dest;
+    const char *src;
+    int expected;
+};
+
+static const int STR_BUF_SIZE = 2048;
+
+static struct regex_test_case regex_test_cases[] = {
+    {
+        .condition = "match full",
+        .dest = "/var/log/run/disk",
+        .src =  "/var/log/run/disk",
+        .expected = 0,
+    },
+    {
+        .condition = "match full, dest less",
+        .dest = "/var/log/run/di",
+        .src =  "/var/log/run/disk",
+        .expected = 1,
+    },
+    {
+        .condition = "match full, src less",
+        .dest = "/var/log/run/disk",
+        .src =  "/var/log/run/di",
+        .expected = 1,
+    },
+    {
+        .condition = "match end, dest less",
+        .dest = "/var/log/run/*",
+        .src =  "/var/log/run/disk",
+        .expected = 0,
+    },
+    {
+        .condition = "match end, dest more",
+        .dest = "/var/log/run/disk/1/*",
+        .src =  "/var/log/run/disk",
+        .expected = 1,
+    },
+    {
+        .condition = "match end, dest/src same",
+        .dest = "/var/log/run/dis*",
+        .src =  "/var/log/run/disk",
+        .expected = 0,
+    },
+    {
+        .condition = "match end, dest full",
+        .dest = "/*",
+        .src =  "/var/log/run/disk",
+        .expected = 0,
+    },
+    {
+        .condition = "match end, dest last char",
+        .dest = "/var/log/run/disk/*",
+        .src =  "/var/log/run/disk/",
+        .expected = 1,
+    },
+    {
+        .condition = "match middle, dest less",
+        .dest = "/var/log/run/*/disk",
+        .src =  "/var/log/run/12/disk",
+        .expected = 0,
+    },
+    {
+        .condition = "match middle, dest more",
+        .dest = "/var/log/run/*/disk/1",
+        .src =  "/var/log/run/12/disk",
+        .expected = 1,
+    },
+    {
+        .condition = "match middle, dest less",
+        .dest = "/var/log/run/*/disk",
+        .src =  "/var/log/run/12/disk/1",
+        .expected = 1,
+    },
+    {
+        .condition = "match middle, dest last char",
+        .dest = "/var/log/run/disk*/",
+        .src =  "/var/log/run/disk/",
+        .expected = 1,
+    },
+    {
+        .condition = "match middle, dest more",
+        .dest = "/var/log/run/disk*/1",
+        .src =  "/var/log/run/disk/",
+        .expected = 1,
+    },
+    {
+        .condition = "match end, dest last char diff",
+        .dest = "/var/log/run/diskk",
+        .src =  "/var/log/run/disk/",
+        .expected = 1,
+    },
+};
+static int regex_test_cases_size = \
+    sizeof(regex_test_cases) / sizeof(struct regex_test_case);
+
+static void _print_test_regex_result(struct regex_test_case *test_case,
+                                     const int pass, const char *detail)
 {
-	int i = 0;
-	int asterik_offset = 0;
-	int have_asterik = 0;
-	int str1_leftover = 0;
-	enum regex_match match = End;
-	int len1 = strlen(str1);
-	int len2 = strlen(str2);
-
-	if ((len1 <= 0) || (len2 <= 0))
-		return 1;
-
-	// check * offset
-	for(i=0; i<len1; i++) {
-		asterik_offset = i;
-		if(str1[i] == '*') {
-			have_asterik = 1;
-		       	break;
-		}
-	}
-
-	if (have_asterik == 0)
-		match = Full;
-	else {
-		// verify if * is in the middle of the str1
-		if (asterik_offset == len1-1)
-			match = End;
-		else {
-			match = Middle;
-			str1_leftover = asterik_offset+1;
-		}
-	}
-
-	;//printf("Match is [%d], len %d, ", match, len1);
-
-	if (match == Full) {
-	       	;//printf("str1 %s, compare %d bytes\n", str1, len1>len2?len1:len2);
-		if (len1 > len2)
-		       	return strncmp(str1, str2, len1) && 1;
-		else
-		       	return strncmp(str1, str2, len2) && 1;
-	}
-	else if (match == Middle) {
-			int ret = 0;
-			int ret1 = 1;
-			char *p = NULL;
-
-			ret = strncmp(str1, str2, asterik_offset) && 1;
-
-			p = strstr(str2, str1+str1_leftover);
-			if (p) {
-				/**< find the leftover only if match last char */
-				if (p[strlen(str1+str1_leftover)] == '\0') {
-					ret1 = 0;
-				}
-			}
-
-	       		return (ret || ret1);
-	}
-	else if (match == End) {
-	       	;//printf("str1 %s, compare %d bytes\n", str1, asterik_offset);
-		if (strlen(str1) <= strlen(str2))
-	       		return strncmp(str1, str2, asterik_offset) && 1;
-	}
-	else
-	       	printf("Unknown regular expression.\n");
-
-	return 1;
+    if (!test_case || !detail) {
+        return;
+    }
+    printf("Test %s: %s (%s)\n", pass ? "PASS" : "FAIL", test_case->condition,
+           detail);
 }
 
+static enum test_status _test_regex(struct regex_test_case *test_cases,
+                                    int test_cases_size,
+                                    struct test_result *result) {
+    if (!test_cases || !result) {
+        return TEST_INVALID_ARG_NULL_POINTER;
+    }
+
+    result->total = test_cases_size;
+    result->run = 0;
+    result->pass = 0;
+
+    char *dest = NULL;
+    char *src = NULL;
+    dest = malloc(sizeof(char) * STR_BUF_SIZE);
+    src = malloc(sizeof(char) * STR_BUF_SIZE);
+
+    if (!dest || !src) {
+        free(dest);
+        free(src);
+        return TEST_MALLOC_FAIL;
+    }
+
+    for (int i = 0; i < test_cases_size; i++) {
+        struct regex_test_case *test_case = &regex_test_cases[i];
+        int pass = 0;
+
+        result->run++;
+
+        int dest_size = strlen(test_case->dest);
+        if (dest_size >= STR_BUF_SIZE) {
+            _print_test_regex_result(test_case, pass,
+                                     "dest field of test case oversize");
+            continue;
+        }
+
+        int src_size = strlen(test_case->src);
+        if (src_size >= STR_BUF_SIZE) {
+            _print_test_regex_result(test_case, pass,
+                                     "src field of test case oversize");
+            continue;
+        }
+
+        memset(dest, 0, sizeof(char) * STR_BUF_SIZE);
+        memset(src, 0, sizeof(char) * STR_BUF_SIZE);
+
+        strncpy(dest, test_case->dest, dest_size);
+        strncpy(src, test_case->src, src_size);
+
+        int compare_result = compare_regex(dest, src);
+        pass = (compare_result == test_case->expected);
+
+        if (pass) {
+            result->pass++;
+        }
+        _print_test_regex_result(test_case, pass, pass ? "PASS" : "FAIL");
+    }
+
+    free(dest);
+    free(src);
+
+    return result->total == result->pass ? TEST_PASS : TEST_FAIL;
+}
 
 int main(void)
 {
-	char *dest;
-	char *src;
-	dest = malloc(sizeof(char) * 2048);
-	src = malloc(sizeof(char) * 2048);
-	int dest_size = 0;
-	int src_size = 0;
+    struct test_result result;
+    enum test_status status;
 
-	/*************/
-	printf("Testing match full\n");
-	memset(dest, '\0', 2048); memset(src, '\0', 2048);
-	dest_size = strlen("/var/log/run/disk");
-	strncpy(dest, "/var/log/run/disk", dest_size);
+    status = _test_regex(regex_test_cases, regex_test_cases_size, &result);
+    printf("%s (Total %d, Run %d, Pass %d)\n",
+           status == TEST_PASS ? "PASS" : "FAIL",
+           result.total,
+           result.run,
+           result.pass,
+           test_status_str(status));
 
-	src_size = strlen("/var/log/run/disk");
-	strncpy(src, "/var/log/run/disk", src_size);
-
-	printf("result: %d, expect 0\n", compare_regex(dest, src));
-	/*************/
-	printf("Testing match full, dest less\n");
-	memset(dest, '\0', 2048); memset(src, '\0', 2048);
-	dest_size = strlen("/var/log/run/di");
-	strncpy(dest, "/var/log/run/di", dest_size);
-
-	src_size = strlen("/var/log/run/disk");
-	strncpy(src, "/var/log/run/disk", src_size);
-
-	printf("result: %d, expect 1\n", compare_regex(dest, src));
-	/*************/
-	printf("Testing match full, src less\n");
-	memset(dest, '\0', 2048); memset(src, '\0', 2048);
-	dest_size = strlen("/var/log/run/disk");
-	strncpy(dest, "/var/log/run/disk", dest_size);
-
-	src_size = strlen("/var/log/run/di");
-	strncpy(src, "/var/log/run/di", src_size);
-
-	printf("result: %d, expect 1\n", compare_regex(dest, src));
-	/*************/
-	/* src will never have asterik */
-	printf("Testing match end, dest less\n");
-	memset(dest, '\0', 2048); memset(src, '\0', 2048);
-	dest_size = strlen("/var/log/run/*");
-	strncpy(dest, "/var/log/run/*", dest_size);
-
-	src_size = strlen("/var/log/run/disk");
-	strncpy(src, "/var/log/run/disk", src_size);
-
-	printf("result: %d, expect 0\n", compare_regex(dest, src));
-	/*************/
-	printf("Testing match end, dest more\n");
-	memset(dest, '\0', 2048); memset(src, '\0', 2048);
-	dest_size = strlen("/var/log/run/disk/1/*");
-	strncpy(dest, "/var/log/run/disk/1/*", dest_size);
-
-	src_size = strlen("/var/log/run/disk");
-	strncpy(src, "/var/log/run/disk", src_size);
-
-	printf("result: %d, expect 1\n", compare_regex(dest, src));
-	/*************/
-	printf("Testing match end, dest/src same\n");
-	memset(dest, '\0', 2048); memset(src, '\0', 2048);
-	dest_size = strlen("/var/log/run/dis*");
-	strncpy(dest, "/var/log/run/dis*", dest_size);
-
-	src_size = strlen("/var/log/run/disk");
-	strncpy(src, "/var/log/run/disk", src_size);
-
-	printf("result: %d, expect 0\n", compare_regex(dest, src));
-	/*************/
-	printf("Testing match end, dest full\n");
-	memset(dest, '\0', 2048); memset(src, '\0', 2048);
-	dest_size = strlen("/*");
-	strncpy(dest, "/*", dest_size);
-
-	src_size = strlen("/var/log/run/disk");
-	strncpy(src, "/var/log/run/disk", src_size);
-
-	printf("result: %d, expect 0\n", compare_regex(dest, src));
-	/*************/
-	printf("Testing match end, dest last char\n");
-	memset(dest, '\0', 2048); memset(src, '\0', 2048);
-	dest_size = strlen("/var/log/run/disk/*");
-	strncpy(dest, "/var/log/run/disk/*", dest_size);
-
-	src_size = strlen("/var/log/run/disk/");
-	strncpy(src, "/var/log/run/disk/", src_size);
-
-	printf("result: %d, expect 1\n", compare_regex(dest, src));
-	/*************/
-	printf("Testing match end, dest last char diff\n");
-	memset(dest, '\0', 2048); memset(src, '\0', 2048);
-	dest_size = strlen("/var/log/run/diskk");
-	strncpy(dest, "/var/log/run/diskk", dest_size);
-
-	src_size = strlen("/var/log/run/disk/");
-	strncpy(src, "/var/log/run/disk/", src_size);
-
-	printf("result: %d, expect 1\n", compare_regex(dest, src));
-	/*************/
-	/*************/
-	/* src will never have asterik */
-	printf("Testing match middle, dest less\n");
-	memset(dest, '\0', 2048); memset(src, '\0', 2048);
-	dest_size = strlen("/var/log/run/*/disk");
-	strncpy(dest, "/var/log/run/*/disk", dest_size);
-
-	src_size = strlen("/var/log/run/12/disk");
-	strncpy(src, "/var/log/run/12/disk", src_size);
-
-	printf("result: %d, expect 0\n", compare_regex(dest, src));
-	/*************/
-	printf("Testing match middle, dest more\n");
-	memset(dest, '\0', 2048); memset(src, '\0', 2048);
-	dest_size = strlen("/var/log/run/*/disk/1");
-	strncpy(dest, "/var/log/run/*/disk/1", dest_size);
-
-	src_size = strlen("/var/log/run/12/disk");
-	strncpy(src, "/var/log/run/12/disk", src_size);
-
-	printf("result: %d, expect 1\n", compare_regex(dest, src));
-	/*************/
-	printf("Testing match middle, dest less\n");
-	memset(dest, '\0', 2048); memset(src, '\0', 2048);
-	dest_size = strlen("/var/log/run/*/disk");
-	strncpy(dest, "/var/log/run/*/disk", dest_size);
-
-	src_size = strlen("/var/log/run/12/disk/1");
-	strncpy(src, "/var/log/run/12/disk/1", src_size);
-
-	printf("result: %d, expect 1\n", compare_regex(dest, src));
-	/*************/
-	printf("Testing match middle, dest last char\n");
-	memset(dest, '\0', 2048); memset(src, '\0', 2048);
-	dest_size = strlen("/var/log/run/disk*/");
-	strncpy(dest, "/var/log/run/disk*/", dest_size);
-
-	src_size = strlen("/var/log/run/disk/");
-	strncpy(src, "/var/log/run/disk/", src_size);
-
-	printf("result: %d, expect 1\n", compare_regex(dest, src));
-	/*************/
-	printf("Testing match middle, dest more\n");
-	memset(dest, '\0', 2048); memset(src, '\0', 2048);
-	dest_size = strlen("/var/log/run/disk*/1");
-	strncpy(dest, "/var/log/run/disk*/1", dest_size);
-
-	src_size = strlen("/var/log/run/disk/");
-	strncpy(src, "/var/log/run/disk/", src_size);
-
-	printf("result: %d, expect 1\n", compare_regex(dest, src));
-	/*************/
-
-	free(src);
-	free(dest);
-	return 0;
+    return 0;
 }
