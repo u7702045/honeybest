@@ -127,6 +127,7 @@ int locking = 0;		// detect mode
 static int bl = 0;		// white list vs black list
 int hb_interact = 0;		// interaction mode
 int hb_level = 1;		// fine grain granularity
+int enabled_audit = 0;	// audit mode flags
 static int enabled_files = 0;	// files on/off
 static int enabled_creds = 0;	// binprm on/off
 static int enabled_socket = 0;	// socket on/off
@@ -226,6 +227,19 @@ static struct ctl_table honeybest_sysctl_table[] = {
 		.proc_handler   = proc_dointvec_minmax,
 		.extra1         = &one,
 		.extra2         = &two,
+	},
+	{
+		.procname       = "audit",	/**< currently support 0 & 1 honeybest audit enabling */
+		.data           = &enabled_audit,
+		.maxlen         = sizeof(int),
+		.mode           = 0644,
+		.proc_handler   = proc_dointvec_minmax,
+#ifdef CONFIG_SECURITY_HONEYBEST_PROD
+		.extra1         = &one,
+#else
+		.extra1         = &zero,
+#endif
+		.extra2         = &one,
 	},
 	{
 		.procname       = "bl",	/**< bl = 0, item in record is allow; bl = 1, item in record is not allow */
@@ -945,15 +959,17 @@ static int honeybest_capset(struct cred *new, const struct cred *old,
                           const kernel_cap_t *permitted)
 {
 	int err = 0;
+#if 0
 	kernel_cap_t dest, a, b;
 	char *pathname = NULL;
-	char *p = NULL;
 	struct mm_struct *mm = NULL;
        	struct task_struct *task = NULL;
+#endif
 
 	if (!enabled)
 		return err;
 
+#if 0
 	rcu_read_lock();
 
        	task = current;
@@ -965,6 +981,7 @@ static int honeybest_capset(struct cred *new, const struct cred *old,
 		if (mm->exe_file) {
 			pathname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (pathname) {
+				char *p = NULL;
 				p = d_path(&mm->exe_file->f_path, pathname, PATH_MAX);
 			}
 		}
@@ -981,6 +998,7 @@ static int honeybest_capset(struct cred *new, const struct cred *old,
 	kfree(pathname);
 
 	rcu_read_unlock();
+#endif
 	return err;
 }
 
@@ -1042,6 +1060,11 @@ static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 	}
 
 	filename = kmalloc(PATH_MAX, GFP_KERNEL);
+	if (!filename) {
+		kfree(tmp);
+		goto out;
+	}
+
 	strcpy(filename, tmp);
 	kfree(tmp);
 
@@ -1145,11 +1168,10 @@ static int honeybest_sb_remount(struct super_block *sb, void *data)
 	int err = 0;
 	struct security_mnt_opts opts;
 	char **mount_options;
-	int *flags;
+	//int *flags;
 	int i = 0;
 	char *na = "N/A";
 	char uid[UID_STR_SIZE];
-	hb_sb_ll *record = NULL;
 	struct cred *cred = NULL;
 
 	if (!enabled || !enabled_sb)
@@ -1167,8 +1189,10 @@ static int honeybest_sb_remount(struct super_block *sb, void *data)
 
 	security_init_mnt_opts(&opts);
 	mount_options = opts.mnt_opts;
-	flags = opts.mnt_opts_flags;
+	//flags = opts.mnt_opts_flags;
 	for (i = 0; i < opts.num_mnt_opts; i++) {
+		hb_sb_ll *record = NULL;
+
 		record = search_sb_record(HB_SB_REMOUNT, current->cred->uid.val, sb->s_id, (char *)sb->s_type->name, na, na, 0);
 
 		if (record) {
@@ -1250,7 +1274,6 @@ static int honeybest_sb_statfs(struct dentry *dentry)
 	struct cred *cred = NULL;
        	struct super_block *sb = dentry->d_sb;
 	char *na = "N/A";
-	char uid[UID_STR_SIZE];
 	hb_sb_ll *record = NULL;
 
 	if (!enabled || !enabled_sb)
@@ -1274,6 +1297,8 @@ static int honeybest_sb_statfs(struct dentry *dentry)
 			err = -EOPNOTSUPP;
 	}
 	else {
+		char uid[UID_STR_SIZE];
+
 		sprintf(uid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
@@ -1390,7 +1415,6 @@ static int honeybest_umount(struct vfsmount *mnt, int flags)
 	struct cred *cred = NULL;
        	struct super_block *sb = NULL;
 	char *na = "N/A";
-	char uid[UID_STR_SIZE];
 	hb_sb_ll *record = NULL;
 
 	if (!enabled || !enabled_sb)
@@ -1415,6 +1439,8 @@ static int honeybest_umount(struct vfsmount *mnt, int flags)
 			err = -EOPNOTSUPP;
 	}
 	else {
+		char uid[UID_STR_SIZE];
+
 		sprintf(uid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
@@ -2500,7 +2526,8 @@ static int honeybest_inode_init_security(struct inode *inode, struct inode *dir,
 	if (!enabled)
 		return err;
 
-	return -EOPNOTSUPP;
+	err = -EOPNOTSUPP;
+	return err;
 }
 
 static int honeybest_inode_create(struct inode *dir, struct dentry *dentry, umode_t mode)
@@ -2968,12 +2995,16 @@ static int honeybest_file_ioctl(struct file *file, unsigned int cmd,
 
 	tmp = kstrdup_quotable_file(file, GFP_KERNEL);
 
-	if (!tmp)
+	if (!tmp) {
+		err = -EOPNOTSUPP;
 		goto out;
+	}
 
 	filename = kmalloc(PATH_MAX, GFP_KERNEL);
-	if (!filename)
-		goto out1;
+	if (!filename) {
+		kfree(tmp);
+		goto out;
+	}
 
 	strcpy(filename, tmp);
 	kfree(tmp);
@@ -3070,6 +3101,11 @@ static int honeybest_mmap_file(struct file *file, unsigned long reqprot,
 	}
 
 	filename = kmalloc(PATH_MAX, GFP_KERNEL);
+	if (!filename) {
+		kfree(tmp);
+		goto out;
+	}
+
 	strcpy(filename, tmp);
 	kfree(tmp);
 
@@ -3082,7 +3118,7 @@ static int honeybest_mmap_file(struct file *file, unsigned long reqprot,
 
 	record = search_binprm_record(HB_FILE_MMAP, current->cred->uid.val, filename, digest);
 	if (record) {
-	       	;//printk(KERN_INFO "Found set creds record func=%u, hash=[%s]\n", record->fid, record->digest);
+	       	//printk(KERN_INFO "Found set creds record func=%u, hash=[%s]\n", record->fid, record->digest);
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -3162,10 +3198,17 @@ static int honeybest_file_receive(struct file *file)
 
 	tmp = kstrdup_quotable_file(file, GFP_KERNEL);
 
-	if (!tmp)
+	if (!tmp) {
+		err = -EOPNOTSUPP;
 		goto out;
+	}
 
 	filename = kmalloc(PATH_MAX, GFP_KERNEL);
+	if (!filename) {
+		kfree(tmp);
+		goto out;
+	}
+
 	strcpy(filename, tmp);
 	kfree(tmp);
 
@@ -3256,16 +3299,19 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 
 	tmp = kstrdup_quotable_file(file, GFP_KERNEL);
 
-	if (!tmp)
+	if (!tmp) {
+		err = -EOPNOTSUPP;
 		goto out;
+	}
 
 	filename = kmalloc(PATH_MAX, GFP_KERNEL);
-	if (!filename)
-		goto out;
-	else {
-		strcpy(filename, tmp);
+	if (!filename) {
 		kfree(tmp);
+		goto out;
 	}
+
+	strcpy(filename, tmp);
+	kfree(tmp);
 
 	if (allow_file_whitelist(filename)) {
 		goto out1;
@@ -3347,15 +3393,13 @@ static int honeybest_cred_alloc_blank(struct cred *cred, gfp_t gfp)
 
 static void honeybest_cred_free(struct cred *cred)
 {
-	int err = 0;
 
 	if (!enabled)
 		return;
 
 	rcu_read_lock();
 
-	if (free_honeybest_tracker(cred))
-	       	err = -ENOMEM;
+	free_honeybest_tracker(cred);
 
 	rcu_read_unlock();
 
@@ -3368,7 +3412,6 @@ static int honeybest_cred_prepare(struct cred *new, const struct cred *old,
 {
 	int err = 0;
 	hb_track_info *old_sec = NULL;
-	hb_track_info *new_sec = NULL;
 
 	if (!enabled)
 		return err;
@@ -3377,6 +3420,8 @@ static int honeybest_cred_prepare(struct cred *new, const struct cred *old,
 
 	old_sec = old->security;
 	if (old_sec) {
+		hb_track_info *new_sec = NULL;
+
 		new_sec = kmemdup(old_sec, sizeof(hb_track_info), gfp);
 		if (new_sec) {
 			new->security = (hb_track_info *)new_sec;
@@ -3451,10 +3496,17 @@ static int honeybest_kernel_module_from_file(struct file *file)
 
 	tmp = kstrdup_quotable_file(file, GFP_KERNEL);
 
-	if (!tmp)
+	if (!tmp) {
+		err = -EOPNOTSUPP;
 		goto out;
+	}
 
 	filename = kmalloc(PATH_MAX, GFP_KERNEL);
+	if (!filename) {
+		kfree(tmp);
+		goto out;
+	}
+
 	strcpy(filename, tmp);
 	kfree(tmp);
 
@@ -3504,7 +3556,6 @@ static int honeybest_kernel_module_request(char *kmod_name)
 {
 	int err = 0;
 	struct cred *cred = NULL;
-	char uid[UID_STR_SIZE];
 	char *na = "N/A";
 	hb_kmod_ll *record = NULL;
 
@@ -3526,6 +3577,8 @@ static int honeybest_kernel_module_request(char *kmod_name)
 			err = -EOPNOTSUPP;
 	}
 	else {
+		char uid[UID_STR_SIZE];
+
 		sprintf(uid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0)) 
@@ -4438,7 +4491,6 @@ static int honeybest_ipc_permission(struct kern_ipc_perm *ipcp, short flag)
        	struct task_struct *task = NULL;
 	struct cred *cred = NULL;
 	struct mm_struct *mm = NULL;
-	char uid[UID_STR_SIZE];
 	uid_t ipc_uid = ipcp->uid.val;
 	uid_t ipc_gid = ipcp->gid.val;
 	uid_t ipc_cuid = ipcp->cuid.val;
@@ -4480,6 +4532,8 @@ static int honeybest_ipc_permission(struct kern_ipc_perm *ipcp, short flag)
 			err = -EOPNOTSUPP;
 	}
 	else {
+		char uid[UID_STR_SIZE];
+
 		sprintf(uid, "%u", current->cred->uid.val);
 
 		if ((locking == 0) && (bl == 0))

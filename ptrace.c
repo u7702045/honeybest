@@ -124,10 +124,10 @@ int match_ptrace_record(hb_ptrace_ll *data, unsigned int fid, uid_t uid, char *p
 
 hb_ptrace_ll *search_ptrace_record(unsigned int fid, uid_t uid, char *parent, char *child, unsigned int mode)
 {
-	hb_ptrace_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_ptrace_list_head.list) {
+		hb_ptrace_ll *tmp = NULL;
 
 		tmp = list_entry(pos, hb_ptrace_ll, list);
 
@@ -230,12 +230,13 @@ out:
 
 int read_ptrace_record(struct seq_file *m, void *v)
 {
-	hb_ptrace_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
 	seq_printf(m, "NO\tFUNC\tUID\tACTION\tPARENT BINPRM\t\t\t\tCHILD BINPRM\t\t\t\tMODE\n");
 	list_for_each(pos, &hb_ptrace_list_head.list) {
+		hb_ptrace_ll *tmp = NULL;
+
 		tmp = list_entry(pos, hb_ptrace_ll, list);
 		seq_printf(m, "%lu\t%u\t%s\t%c\t%s\t\t\t\t%s\t\t\t\t%u\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->parent, tmp->child, tmp->mode);
 	}
@@ -274,7 +275,7 @@ ssize_t write_ptrace_record(struct file *file, const char __user *buffer, size_t
 	}
 	memset(acts_buff, '\0', TOTAL_ACT_SIZE);
 
-	if (count <= 0) {
+	if (count == 0) {
 		goto out1;
 	}
 
@@ -311,7 +312,7 @@ ssize_t write_ptrace_record(struct file *file, const char __user *buffer, size_t
 			continue;
 		}
 
-		sscanf(token, "%u %s %c %s %s %u", &fid, uid, &act_allow, parent, child, &mode);
+		sscanf(token, "%u %5s %c %4095s %4096s %u", &fid, uid, &act_allow, parent, child, &mode);
 		if (add_ptrace_record(HB_PTRACE_ACCESS_CHECK, uid, act_allow, parent, child, mode) != 0) {
 			printk(KERN_WARNING "Failure to add ptrace record %s, %s, %s\n", uid, parent, child);
 		}

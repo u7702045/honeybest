@@ -130,10 +130,10 @@ int match_ipc_record(hb_ipc_ll *data, unsigned int fid, uid_t uid, char *binprm,
 hb_ipc_ll *search_ipc_record(unsigned int fid, uid_t uid, char *binprm, \
 		uid_t ipc_uid, uid_t ipc_gid, uid_t ipc_cuid, uid_t ipc_cgid, short flag, umode_t mode)
 {
-	hb_ipc_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_ipc_list_head.list) {
+		hb_ipc_ll *tmp = NULL;
 
 		tmp = list_entry(pos, hb_ipc_ll, list);
 
@@ -235,12 +235,13 @@ out:
 
 int read_ipc_record(struct seq_file *m, void *v)
 {
-	hb_ipc_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
 	seq_printf(m, "NO\tFUNC\tUID\tACTION\tBINPRM\t\t\t\tI_UID\tI_GID\tI_CUID\tI_GID\tFLAGS\n");
 	list_for_each(pos, &hb_ipc_list_head.list) {
+		hb_ipc_ll *tmp = NULL;
+
 		tmp = list_entry(pos, hb_ipc_ll, list);
 		seq_printf(m, "%lu\t%u\t%s\t%c\t%s\t%d\t%d\t%d\t%d\t%u\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->binprm, tmp->ipc_uid, tmp->ipc_gid, tmp->ipc_cuid, tmp->ipc_cgid, tmp->flag);
 	}
@@ -278,7 +279,7 @@ ssize_t write_ipc_record(struct file *file, const char __user *buffer, size_t co
 	}
 	memset(acts_buff, '\0', TOTAL_ACT_SIZE);
 
-	if (count <= 0) {
+	if (count == 0) {
 		goto out1;
 	}
 
@@ -306,14 +307,14 @@ ssize_t write_ipc_record(struct file *file, const char __user *buffer, size_t co
 		uid_t ipc_cuid = 0;
 		uid_t ipc_cgid = 0;
 		umode_t mode = 0;
-		short flag = 0;
+		unsigned short flag = 0;
 
 		binprm = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
 		if (binprm == NULL) {
 			continue;
 		}
 
-		sscanf(token, "%u %s %c %s %d %d %d %d %hu %hu", &fid, uid, &act_allow, binprm, \
+		sscanf(token, "%u %5s %c %4095s %d %d %d %d %hu %hu", &fid, uid, &act_allow, binprm, \
 				&ipc_uid, &ipc_gid, &ipc_cuid, &ipc_cgid, &flag, &mode);
 		if (add_ipc_record(fid, uid, act_allow, binprm, ipc_uid, ipc_gid, ipc_cuid, ipc_cgid, flag, mode) != 0) {
 			printk(KERN_WARNING "Failure to add ipc perm record %s, %s\n", uid, binprm);

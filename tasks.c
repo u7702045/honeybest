@@ -123,10 +123,10 @@ int match_task_record(hb_task_ll *data, unsigned int fid, uid_t uid, int sig, u3
 
 hb_task_ll *search_task_record(unsigned int fid, uid_t uid, int sig, u32 secid, char *binprm)
 {
-	hb_task_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_task_list_head.list) {
+		hb_task_ll *tmp = NULL;
 
 		tmp = list_entry(pos, hb_task_ll, list);
 
@@ -217,12 +217,13 @@ out:
 
 int read_task_record(struct seq_file *m, void *v)
 {
-	hb_task_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
 	seq_printf(m, "NO\tFUNC\tUID\tACTION\tSIGNAL\tSIGNO\tERRNO\tSECID\tBINPRM\n");
 	list_for_each(pos, &hb_task_list_head.list) {
+		hb_task_ll *tmp = NULL;
+
 		tmp = list_entry(pos, hb_task_ll, list);
 		seq_printf(m, "%lu\t%u\t%s\t%c\t%d\t%u\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->sig, tmp->secid, tmp->binprm);
 	}
@@ -260,7 +261,7 @@ ssize_t write_task_record(struct file *file, const char __user *buffer, size_t c
 	}
 	memset(acts_buff, '\0', TOTAL_ACT_SIZE);
 
-	if (count <= 0) {
+	if (count == 0) {
 		goto out1;
 	}
 
@@ -292,7 +293,7 @@ ssize_t write_task_record(struct file *file, const char __user *buffer, size_t c
 			continue;
 		}
 
-		sscanf(token, "%u %s %c %d %u %s", &fid, uid, &act_allow, &sig, &secid, binprm);
+		sscanf(token, "%u %5s %c %d %u %4095s", &fid, uid, &act_allow, &sig, &secid, binprm);
 		if (add_task_record(HB_TASK_SIGNAL, uid, act_allow, sig, secid, binprm) != 0) {
 			printk(KERN_WARNING "Failure to add task record %s, %d, %s\n", uid, sig, binprm);
 		}

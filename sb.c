@@ -160,10 +160,10 @@ int match_sb_record(hb_sb_ll *data, unsigned int fid, uid_t uid, char *s_id, cha
 hb_sb_ll *search_sb_record(unsigned int fid, uid_t uid, char *s_id, char *name, \
 		char *dev_name, char *type, int flags)
 {
-	hb_sb_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_sb_list_head.list) {
+		hb_sb_ll *tmp = NULL;
 
 		tmp = list_entry(pos, hb_sb_ll, list);
 
@@ -260,8 +260,8 @@ int add_sb_record(unsigned int fid, char *uid, char act_allow, char *s_id, char 
 		strncpy(tmp->name, name, strlen(name));
 	if(dev_name != NULL)
 		strncpy(tmp->dev_name, dev_name, strlen(dev_name));
-	if(type != NULL)
-		strncpy(tmp->type, type, strlen(type));
+
+	strncpy(tmp->type, type, strlen(type));
 
 	tmp->flags = flags;
 
@@ -292,13 +292,14 @@ out:
 
 int read_sb_record(struct seq_file *m, void *v)
 {
-	hb_sb_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
 	seq_printf(m, "NO\tFUNC\tUID\tACTION\tSID\tNAME\tDEV_NAME\tTYPE\tFLAGS\n");
 
 	list_for_each(pos, &hb_sb_list_head.list) {
+		hb_sb_ll *tmp = NULL;
+
 		tmp = list_entry(pos, hb_sb_ll, list);
 		seq_printf(m, "%lu\t%u\t%s\t%c\t%s\t%s\t%s\t\t%s\t%d\n", total++, tmp->fid, tmp->uid, tmp->act_allow,
 				tmp->s_id, tmp->name, tmp->dev_name, tmp->type, tmp->flags);
@@ -340,7 +341,7 @@ ssize_t write_sb_record(struct file *file, const char __user *buffer, size_t cou
 	}
 	memset(acts_buff, '\0', TOTAL_ACT_SIZE);
 
-	if (count <= 0) {
+	if (count == 0) {
 		goto out1;
 	}
 
@@ -389,7 +390,7 @@ ssize_t write_sb_record(struct file *file, const char __user *buffer, size_t cou
 			goto out4;
 		}
 
-		sscanf(token, "%u %s %c %s %s %s %s %d", &fid, uid, &act_allow, s_id, name, dev_name, type, &flags);
+		sscanf(token, "%u %5s %c %31s %31s %31s %31s %d", &fid, uid, &act_allow, s_id, name, dev_name, type, &flags);
 		if (add_sb_record(fid, uid, act_allow, s_id, name, dev_name, type, flags) != 0) {
 			printk(KERN_WARNING "Failure to add sb record %s, %s %s %s\n", s_id, name, dev_name, type);
 		}

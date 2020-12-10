@@ -138,10 +138,10 @@ int match_file_record(hb_file_ll *data, unsigned int fid, uid_t uid, char *filen
 
 hb_file_ll *search_file_record(unsigned int fid, uid_t uid, char *filename, char *binprm, unsigned int cmd, unsigned long arg)
 {
-	hb_file_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_file_list_head.list) {
+		hb_file_ll *tmp = NULL;
 
 		tmp = list_entry(pos, hb_file_ll, list);
 
@@ -251,12 +251,13 @@ out:
 
 int read_file_record(struct seq_file *m, void *v)
 {
-	hb_file_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
 	seq_printf(m, "NO\tFUNC\tUID\tACTION\t\tPATH\t\t\t\tBINPRM\t\t\t\tCMD\tARG\n");
 	list_for_each(pos, &hb_file_list_head.list) {
+		hb_file_ll *tmp = NULL;
+
 		tmp = list_entry(pos, hb_file_ll, list);
 		seq_printf(m, "%lu\t%u\t%s\t%c\t%s\t%s\t%u\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->filename, tmp->binprm, tmp->cmd);
 	}
@@ -295,7 +296,7 @@ ssize_t write_file_record(struct file *file, const char __user *buffer, size_t c
 	}
 	memset(acts_buff, '\0', TOTAL_ACT_SIZE);
 
-	if (count <= 0) {
+	if (count == 0) {
 		goto out1;
 	}
 
@@ -333,7 +334,7 @@ ssize_t write_file_record(struct file *file, const char __user *buffer, size_t c
 			continue;
 		}
 
-		sscanf(token, "%u %s %c %s %s %u %lu", &fid, uid, &act_allow, filename, binprm, &cmd, &arg);
+		sscanf(token, "%u %5s %c %4095s %4095s %u %lu", &fid, uid, &act_allow, filename, binprm, &cmd, &arg);
 		if (add_file_record(fid, uid, act_allow, filename, binprm, cmd, arg) != 0) {
 			printk(KERN_WARNING "Failure to add file record %s, %s, %s\n", uid, filename, binprm);
 		}
