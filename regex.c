@@ -133,7 +133,7 @@ int compare_regex(char *str1, char *str2)
 		       	return strncmp(str1, str2, len2) && 1;
 	}
 	else if (match == Middle) {
-			int ret = 1;
+			int ret = 0;
 			int ret1 = 1;
 			char *p = NULL;
 

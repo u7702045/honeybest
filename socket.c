@@ -195,10 +195,10 @@ int match_socket_record(hb_socket_ll *data, unsigned int fid, uid_t uid, int fam
 hb_socket_ll *search_socket_record(unsigned int fid, uid_t uid, int family, int type, int protocol,
 		int port, int level, int optname, char *binprm)
 {
-	hb_socket_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_socket_list_head.list) {
+		hb_socket_ll *tmp = NULL;
 
 		tmp = list_entry(pos, hb_socket_ll, list);
 
@@ -237,12 +237,13 @@ hb_socket_ll *search_notify_socket_record(unsigned int fid, char *uid, int famil
 
 int read_socket_record(struct seq_file *m, void *v)
 {
-	hb_socket_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
 	seq_printf(m, "NO\tFUNC\tUID\tACTION\tFAMILY\tTYPE\tPROTO\tPORT\tLEVEL\tOPTNAME\tBINPRM\n");
 	list_for_each(pos, &hb_socket_list_head.list) {
+		hb_socket_ll *tmp = NULL;
+
 		tmp = list_entry(pos, hb_socket_ll, list);
 		seq_printf(m, "%lu\t%u\t%s\t%c\t%d\t%d\t%d\t%d\t%d\t%d\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->family, tmp->type, tmp->protocol, tmp->port, tmp->level, tmp->optname, tmp->binprm);
 	}
@@ -345,7 +346,7 @@ ssize_t write_socket_record(struct file *file, const char __user *buffer, size_t
 	}
 	memset(acts_buff, '\0', TOTAL_ACT_SIZE);
 
-	if (count <= 0) {
+	if (count == 0) {
 		goto out1;
 	}
 
@@ -379,7 +380,7 @@ ssize_t write_socket_record(struct file *file, const char __user *buffer, size_t
 		if (!binprm)
 			goto out1;
 
-		sscanf(token, "%u %s %c %d %d %d %d %d %d %s", &fid, uid, &act_allow, &family, &type, &protocol,
+		sscanf(token, "%u %5s %c %d %d %d %d %d %d %4095s", &fid, uid, &act_allow, &family, &type, &protocol,
 				&port, &level, &optname, binprm);
 		if (add_socket_record(fid, uid, act_allow, family, type, protocol,
 					port, level, optname, binprm) != 0) {

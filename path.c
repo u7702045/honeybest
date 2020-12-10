@@ -174,10 +174,10 @@ int match_path_record(hb_path_ll *data, unsigned int fid, uid_t uid, umode_t mod
 
 hb_path_ll *search_path_record(unsigned int fid, uid_t uid, umode_t mode, char *s_path, char *t_path, uid_t suid, uid_t sgid, unsigned int dev, char *binprm)
 {
-	hb_path_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_path_list_head.list) {
+		hb_path_ll *tmp = NULL;
 
 		tmp = list_entry(pos, hb_path_ll, list);
 
@@ -317,13 +317,14 @@ out:
 
 int read_path_record(struct seq_file *m, void *v)
 {
-	hb_path_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
 	seq_printf(m, "NO\tFUNC\tUID\tACTION\tMODE\tSUID\tGUID\tDEV NODE\tSOURCE PATH\t\t\tTARGET PATH\t\t\tBINPRM\n");
 
 	list_for_each(pos, &hb_path_list_head.list) {
+		hb_path_ll *tmp = NULL;
+
 		tmp = list_entry(pos, hb_path_ll, list);
 		seq_printf(m, "%lu\t%u\t%s\t%c\t%u\t%s\t%s\t%u\t%s\t\t%s\t\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->mode, tmp->suid, tmp->sgid, tmp->dev, tmp->s_path, tmp->t_path, tmp->binprm);
 
@@ -369,7 +370,7 @@ ssize_t write_path_record(struct file *file, const char __user *buffer, size_t c
 	}
 	memset(acts_buff, '\0', TOTAL_ACT_SIZE);
 
-	if (count <= 0) {
+	if (count == 0) {
 		goto out1;
 	}
 
@@ -420,7 +421,7 @@ ssize_t write_path_record(struct file *file, const char __user *buffer, size_t c
 			continue;
 		}
 
-		sscanf(token, "%u %s %c %hd %s %s %u %s %s %s", &fid, uid, &act_allow, &mode, suid, sgid, &dev, s_path, t_path, binprm);
+		sscanf(token, "%u %5s %c %hd %5s %5s %u %4095s %4095s %4095s", &fid, uid, &act_allow, &mode, suid, sgid, &dev, s_path, t_path, binprm);
 		if (add_path_record(fid, uid, act_allow, mode, s_path, t_path, suid, sgid, dev, binprm) != 0) {
 			printk(KERN_WARNING "Failure to add path record %s, %s, %s, %s\n", uid, s_path, t_path, binprm);
 		}

@@ -4,13 +4,15 @@
 #include <stdlib.h>
 #include "regex_test.h"
 
-int compare_regex(char *str1, int len1, char *str2, int len2)
+int compare_regex(char *str1, char *str2)
 {
 	int i = 0;
 	int asterik_offset = 0;
 	int have_asterik = 0;
 	int str1_leftover = 0;
 	enum regex_match match = End;
+	int len1 = strlen(str1);
+	int len2 = strlen(str2);
 
 	if ((len1 <= 0) || (len2 <= 0))
 		return 1;
@@ -36,17 +38,17 @@ int compare_regex(char *str1, int len1, char *str2, int len2)
 		}
 	}
 
-	;//printf( "Match is [%d], len %d, ", match, len1);
+	;//printf("Match is [%d], len %d, ", match, len1);
 
 	if (match == Full) {
-	       	;//printf( "str1 %s, compare %d bytes\n", str1, len1>len2?len1:len2);
+	       	;//printf("str1 %s, compare %d bytes\n", str1, len1>len2?len1:len2);
 		if (len1 > len2)
 		       	return strncmp(str1, str2, len1) && 1;
 		else
 		       	return strncmp(str1, str2, len2) && 1;
 	}
 	else if (match == Middle) {
-			int ret = 1;
+			int ret = 0;
 			int ret1 = 1;
 			char *p = NULL;
 
@@ -63,12 +65,12 @@ int compare_regex(char *str1, int len1, char *str2, int len2)
 	       		return (ret || ret1);
 	}
 	else if (match == End) {
-	       	;//printf( "str1 %s, compare %d bytes\n", str1, asterik_offset);
+	       	;//printf("str1 %s, compare %d bytes\n", str1, asterik_offset);
 		if (strlen(str1) <= strlen(str2))
 	       		return strncmp(str1, str2, asterik_offset) && 1;
 	}
 	else
-	       	printf( "Unknown regular expression.\n");
+	       	printf("Unknown regular expression.\n");
 
 	return 1;
 }
@@ -92,7 +94,7 @@ int main(void)
 	src_size = strlen("/var/log/run/disk");
 	strncpy(src, "/var/log/run/disk", src_size);
 
-	printf("result: %d, expect 0\n", compare_regex(dest, strlen(dest), src, strlen(src)));
+	printf("result: %d, expect 0\n", compare_regex(dest, src));
 	/*************/
 	printf("Testing match full, dest less\n");
 	memset(dest, '\0', 2048); memset(src, '\0', 2048);
@@ -102,7 +104,7 @@ int main(void)
 	src_size = strlen("/var/log/run/disk");
 	strncpy(src, "/var/log/run/disk", src_size);
 
-	printf("result: %d, expect 1\n", compare_regex(dest, strlen(dest), src, strlen(src)));
+	printf("result: %d, expect 1\n", compare_regex(dest, src));
 	/*************/
 	printf("Testing match full, src less\n");
 	memset(dest, '\0', 2048); memset(src, '\0', 2048);
@@ -112,7 +114,7 @@ int main(void)
 	src_size = strlen("/var/log/run/di");
 	strncpy(src, "/var/log/run/di", src_size);
 
-	printf("result: %d, expect 1\n", compare_regex(dest, strlen(dest), src, strlen(src)));
+	printf("result: %d, expect 1\n", compare_regex(dest, src));
 	/*************/
 	/* src will never have asterik */
 	printf("Testing match end, dest less\n");
@@ -123,7 +125,7 @@ int main(void)
 	src_size = strlen("/var/log/run/disk");
 	strncpy(src, "/var/log/run/disk", src_size);
 
-	printf("result: %d, expect 0\n", compare_regex(dest, strlen(dest), src, strlen(src)));
+	printf("result: %d, expect 0\n", compare_regex(dest, src));
 	/*************/
 	printf("Testing match end, dest more\n");
 	memset(dest, '\0', 2048); memset(src, '\0', 2048);
@@ -133,7 +135,7 @@ int main(void)
 	src_size = strlen("/var/log/run/disk");
 	strncpy(src, "/var/log/run/disk", src_size);
 
-	printf("result: %d, expect 1\n", compare_regex(dest, strlen(dest), src, strlen(src)));
+	printf("result: %d, expect 1\n", compare_regex(dest, src));
 	/*************/
 	printf("Testing match end, dest/src same\n");
 	memset(dest, '\0', 2048); memset(src, '\0', 2048);
@@ -143,7 +145,7 @@ int main(void)
 	src_size = strlen("/var/log/run/disk");
 	strncpy(src, "/var/log/run/disk", src_size);
 
-	printf("result: %d, expect 0\n", compare_regex(dest, strlen(dest), src, strlen(src)));
+	printf("result: %d, expect 0\n", compare_regex(dest, src));
 	/*************/
 	printf("Testing match end, dest full\n");
 	memset(dest, '\0', 2048); memset(src, '\0', 2048);
@@ -153,7 +155,7 @@ int main(void)
 	src_size = strlen("/var/log/run/disk");
 	strncpy(src, "/var/log/run/disk", src_size);
 
-	printf("result: %d, expect 0\n", compare_regex(dest, strlen(dest), src, strlen(src)));
+	printf("result: %d, expect 0\n", compare_regex(dest, src));
 	/*************/
 	printf("Testing match end, dest last char\n");
 	memset(dest, '\0', 2048); memset(src, '\0', 2048);
@@ -163,7 +165,17 @@ int main(void)
 	src_size = strlen("/var/log/run/disk/");
 	strncpy(src, "/var/log/run/disk/", src_size);
 
-	printf("result: %d, expect 1\n", compare_regex(dest, strlen(dest), src, strlen(src)));
+	printf("result: %d, expect 1\n", compare_regex(dest, src));
+	/*************/
+	printf("Testing match end, dest last char diff\n");
+	memset(dest, '\0', 2048); memset(src, '\0', 2048);
+	dest_size = strlen("/var/log/run/diskk");
+	strncpy(dest, "/var/log/run/diskk", dest_size);
+
+	src_size = strlen("/var/log/run/disk/");
+	strncpy(src, "/var/log/run/disk/", src_size);
+
+	printf("result: %d, expect 1\n", compare_regex(dest, src));
 	/*************/
 	/*************/
 	/* src will never have asterik */
@@ -175,7 +187,7 @@ int main(void)
 	src_size = strlen("/var/log/run/12/disk");
 	strncpy(src, "/var/log/run/12/disk", src_size);
 
-	printf("result: %d, expect 0\n", compare_regex(dest, strlen(dest), src, strlen(src)));
+	printf("result: %d, expect 0\n", compare_regex(dest, src));
 	/*************/
 	printf("Testing match middle, dest more\n");
 	memset(dest, '\0', 2048); memset(src, '\0', 2048);
@@ -185,7 +197,7 @@ int main(void)
 	src_size = strlen("/var/log/run/12/disk");
 	strncpy(src, "/var/log/run/12/disk", src_size);
 
-	printf("result: %d, expect 1\n", compare_regex(dest, strlen(dest), src, strlen(src)));
+	printf("result: %d, expect 1\n", compare_regex(dest, src));
 	/*************/
 	printf("Testing match middle, dest less\n");
 	memset(dest, '\0', 2048); memset(src, '\0', 2048);
@@ -195,7 +207,7 @@ int main(void)
 	src_size = strlen("/var/log/run/12/disk/1");
 	strncpy(src, "/var/log/run/12/disk/1", src_size);
 
-	printf("result: %d, expect 1\n", compare_regex(dest, strlen(dest), src, strlen(src)));
+	printf("result: %d, expect 1\n", compare_regex(dest, src));
 	/*************/
 	printf("Testing match middle, dest last char\n");
 	memset(dest, '\0', 2048); memset(src, '\0', 2048);
@@ -205,7 +217,7 @@ int main(void)
 	src_size = strlen("/var/log/run/disk/");
 	strncpy(src, "/var/log/run/disk/", src_size);
 
-	printf("result: %d, expect 1\n", compare_regex(dest, strlen(dest), src, strlen(src)));
+	printf("result: %d, expect 1\n", compare_regex(dest, src));
 	/*************/
 	printf("Testing match middle, dest more\n");
 	memset(dest, '\0', 2048); memset(src, '\0', 2048);
@@ -215,7 +227,10 @@ int main(void)
 	src_size = strlen("/var/log/run/disk/");
 	strncpy(src, "/var/log/run/disk/", src_size);
 
-	printf("result: %d, expect 1\n", compare_regex(dest, strlen(dest), src, strlen(src)));
+	printf("result: %d, expect 1\n", compare_regex(dest, src));
 	/*************/
+
+	free(src);
+	free(dest);
 	return 0;
 }

@@ -215,21 +215,23 @@ void *hb_notify_seq_next(struct seq_file *s, void *v, loff_t *pos)
 
 void hb_notify_seq_stop(struct seq_file *s, void *v)
 {
-	hb_notify_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	struct list_head *q = NULL;
-       	hb_binprm_ll *binprm = NULL;
-       	hb_file_ll *files = NULL;
-       	hb_task_ll *tasks = NULL;
-       	hb_socket_ll *sockets = NULL;
-       	hb_path_ll *paths = NULL;
-       	hb_inode_ll *inodes = NULL;
-       	hb_sb_ll *sbs = NULL;
-       	hb_kmod_ll *kmods = NULL;
-       	hb_ipc_ll *ipc = NULL;
-       	hb_ptrace_ll *ptrace = NULL;
 
 	list_for_each_safe(pos, q, &hb_notify_list_head.list) {
+		hb_notify_ll *tmp = NULL;
+	       	hb_binprm_ll *binprm = NULL;
+	       	hb_file_ll *files = NULL;
+	       	hb_task_ll *tasks = NULL;
+	       	hb_socket_ll *sockets = NULL;
+	       	hb_path_ll *paths = NULL;
+	       	hb_inode_ll *inodes = NULL;
+	       	hb_sb_ll *sbs = NULL;
+	       	hb_kmod_ll *kmods = NULL;
+	       	hb_ipc_ll *ipc = NULL;
+	       	hb_ptrace_ll *ptrace = NULL;
+
+
 		tmp = list_entry(pos, hb_notify_ll, list);
 		if (tmp->dirty != true)
 			continue;
@@ -310,21 +312,23 @@ void hb_notify_seq_stop(struct seq_file *s, void *v)
 
 int hb_notify_seq_show(struct seq_file *s, void *v)
 {
-	hb_notify_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	struct list_head *q = NULL;
-       	hb_binprm_ll *binprm = NULL;
-       	hb_file_ll *files = NULL;
-       	hb_task_ll *tasks = NULL;
-       	hb_socket_ll *sockets = NULL;
-       	hb_path_ll *paths = NULL;
-       	hb_inode_ll *inodes = NULL;
-       	hb_sb_ll *sbs = NULL;
-       	hb_kmod_ll *kmods = NULL;
-       	hb_ipc_ll *ipc = NULL;
-       	hb_ptrace_ll *ptrace = NULL;
 
 	list_for_each_safe(pos, q, &hb_notify_list_head.list) {
+		hb_notify_ll *tmp = NULL;
+	       	hb_binprm_ll *binprm = NULL;
+	       	hb_file_ll *files = NULL;
+	       	hb_task_ll *tasks = NULL;
+	       	hb_socket_ll *sockets = NULL;
+	       	hb_path_ll *paths = NULL;
+	       	hb_inode_ll *inodes = NULL;
+	       	hb_sb_ll *sbs = NULL;
+	       	hb_kmod_ll *kmods = NULL;
+	       	hb_ipc_ll *ipc = NULL;
+	       	hb_ptrace_ll *ptrace = NULL;
+
+
 		tmp = list_entry(pos, hb_notify_ll, list);
 		if (tmp->dirty == true)
 			continue;

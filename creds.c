@@ -131,10 +131,10 @@ int match_binprm_record(hb_binprm_ll *data, unsigned int fid, uid_t uid, char *p
 
 hb_binprm_ll *search_binprm_record(unsigned int fid, uid_t uid, char *pathname, char *digest)
 {
-	hb_binprm_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 
 	list_for_each(pos, &hb_binprm_list_head.list) {
+		hb_binprm_ll *tmp = NULL;
 
 		tmp = list_entry(pos, hb_binprm_ll, list);
 
@@ -317,12 +317,13 @@ out:
 
 int read_binprm_record(struct seq_file *m, void *v)
 {
-	hb_binprm_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
 	seq_printf(m, "NO\tFUNC\tUID\tACTION\tDIGEST\t\t\t\t\t\tPATH\n");
 	list_for_each(pos, &hb_binprm_list_head.list) {
+		hb_binprm_ll *tmp = NULL;
+
 		tmp = list_entry(pos, hb_binprm_ll, list);
 		seq_printf(m, "%lu\t%u\t%s\t%c\t%s\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->digest, tmp->pathname);
 	}
@@ -361,7 +362,7 @@ ssize_t write_binprm_record(struct file *file, const char __user *buffer, size_t
 	}
 	memset(acts_buff, '\0', TOTAL_ACT_SIZE);
 
-	if (count <= 0) {
+	if (count == 0) {
 		goto out1;
 	}
 
@@ -397,7 +398,7 @@ ssize_t write_binprm_record(struct file *file, const char __user *buffer, size_t
 			continue;
 		}
 
-		sscanf(token, "%u %s %c %s %s", &fid, uid, &act_allow, digest, pathname);
+		sscanf(token, "%u %5s %c %40s %4095s", &fid, uid, &act_allow, digest, pathname);
 		if (add_binprm_record(fid, uid, act_allow, pathname, digest) != 0) {
 			printk(KERN_WARNING "Failure to add binprm record %s, %s, %s\n", uid, pathname, digest);
 		}

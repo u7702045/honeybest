@@ -131,13 +131,13 @@ int match_inode_record(hb_inode_ll *data, unsigned int fid, uid_t uid, char *nam
 
 hb_inode_ll *search_inode_record(unsigned int fid, uid_t uid, char *name, char *binprm)
 {
-	hb_inode_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 
 	if (!name || !binprm)
 		return NULL;
 
 	list_for_each(pos, &hb_inode_list_head.list) {
+		hb_inode_ll *tmp = NULL;
 
 		tmp = list_entry(pos, hb_inode_ll, list);
 
@@ -239,13 +239,14 @@ out:
 
 int read_inode_record(struct seq_file *m, void *v)
 {
-	hb_inode_ll *tmp = NULL;
 	struct list_head *pos = NULL;
 	unsigned long total = 0;
 
 	seq_printf(m, "NO\tFUNC\tUID\tACTION\tXATTR\t\t\tBINPRM\n");
 
 	list_for_each(pos, &hb_inode_list_head.list) {
+		hb_inode_ll *tmp = NULL;
+
 		tmp = list_entry(pos, hb_inode_ll, list);
 		seq_printf(m, "%lu\t%u\t%s\t%c\t%s\t%s\n", total++, tmp->fid, tmp->uid, tmp->act_allow, tmp->name, tmp->binprm);
 	}
@@ -286,7 +287,7 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 	}
 	memset(acts_buff, '\0', TOTAL_ACT_SIZE);
 
-	if (count <= 0) {
+	if (count == 0) {
 		goto out1;
 	}
 
@@ -322,7 +323,7 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 			continue;
 		}
 
-		sscanf(token, "%u %s %c %s %s", &fid, uid, &act_allow, name, binprm);
+		sscanf(token, "%u %5s %c %4095s %4095s", &fid, uid, &act_allow, name, binprm);
 		if (add_inode_record(fid, uid, act_allow, name, binprm) != 0) {
 			//printk(KERN_WARNING "Failure to add inode record %s, %s, %s\n", uid, name, binprm);
 		}
