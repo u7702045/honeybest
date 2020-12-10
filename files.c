@@ -265,8 +265,10 @@ int read_file_record(struct seq_file *m, void *v)
 
 void free_file_record(hb_file_ll *data)
 {
-	kfree(data->filename);
-	kfree(data->binprm);
+	if (data->filename)
+	       	kfree(data->filename);
+	if (data->binprm)
+	       	kfree(data->binprm);
 }
 
 ssize_t write_file_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)

@@ -232,7 +232,8 @@ int read_task_record(struct seq_file *m, void *v)
 
 void free_task_record(hb_task_ll *data)
 {
-	kfree(data->binprm);
+	if (data->binprm)
+	       	kfree(data->binprm);
 }
 
 ssize_t write_task_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)

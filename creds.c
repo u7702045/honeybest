@@ -332,7 +332,8 @@ int read_binprm_record(struct seq_file *m, void *v)
 
 void free_cred_record(hb_binprm_ll *data)
 {
-	kfree(data->pathname);
+	if (data->pathname)
+	       	kfree(data->pathname);
 }
 
 ssize_t write_binprm_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)

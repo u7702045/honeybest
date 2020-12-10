@@ -196,7 +196,6 @@ int add_inode_record(unsigned int fid, char *uid, char act_allow, char *name, ch
 	}
 	tmp->binprm = kmalloc(strlen(binprm)+1, GFP_KERNEL);
 	if (tmp->binprm == NULL) {
-		kfree(tmp->name);
 		err = -EOPNOTSUPP;
 		goto out;
 	}
@@ -256,8 +255,10 @@ int read_inode_record(struct seq_file *m, void *v)
 
 void free_inode_record(hb_inode_ll *data)
 {
-	kfree(data->name);
-	kfree(data->binprm);
+	if (data->name)
+	       	kfree(data->name);
+	if (data->binprm)
+	       	kfree(data->binprm);
 }
 
 ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)

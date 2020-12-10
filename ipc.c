@@ -250,7 +250,8 @@ int read_ipc_record(struct seq_file *m, void *v)
 
 void free_ipc_record(hb_ipc_ll *data)
 {
-	kfree(data->binprm);
+	if (data->binprm)
+	       	kfree(data->binprm);
 }
 
 ssize_t write_ipc_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)

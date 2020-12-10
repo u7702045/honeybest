@@ -316,7 +316,8 @@ out:
 
 void free_socket_record(hb_socket_ll *data)
 {
-	kfree(data->binprm);
+	if (data->binprm)
+	       	kfree(data->binprm);
 }
 
 ssize_t write_socket_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)

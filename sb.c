@@ -309,10 +309,17 @@ int read_sb_record(struct seq_file *m, void *v)
 
 void free_sb_record(hb_sb_ll *data)
 {
-	kfree(data->s_id);
-	kfree(data->name);
-	kfree(data->dev_name);
-	kfree(data->type);
+	if (data->s_id)
+	       	kfree(data->s_id);
+
+	if (data->name)
+	       	kfree(data->name);
+
+	if (data->dev_name)
+	       	kfree(data->dev_name);
+
+	if (data->type)
+	       	kfree(data->type);
 }
 
 ssize_t write_sb_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)

@@ -260,8 +260,10 @@ int read_kmod_record(struct seq_file *m, void *v)
 
 void free_kmod_record(hb_kmod_ll *data)
 {
-	kfree(data->name);
-	kfree(data->filename);
+	if (data->name)
+	       	kfree(data->name);
+	if (data->filename)
+	       	kfree(data->filename);
 }
 
 ssize_t write_kmod_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)

@@ -245,8 +245,11 @@ int read_ptrace_record(struct seq_file *m, void *v)
 
 void free_ptrace_record(hb_ptrace_ll *data)
 {
-	kfree(data->parent);
-	kfree(data->child);
+	if (data->parent)
+	       	kfree(data->parent);
+
+	if (data->child)
+	       	kfree(data->child);
 }
 
 ssize_t write_ptrace_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)

@@ -334,9 +334,14 @@ int read_path_record(struct seq_file *m, void *v)
 
 void free_path_record(hb_path_ll *data)
 {
-	kfree(data->s_path);
-	kfree(data->t_path);
-	kfree(data->binprm);
+	if (data->s_path)
+	       	kfree(data->s_path);
+
+	if (data->t_path)
+	       	kfree(data->t_path);
+
+	if (data->binprm)
+	       	kfree(data->binprm);
 }
 
 ssize_t write_path_record(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
