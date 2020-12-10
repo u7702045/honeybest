@@ -206,7 +206,6 @@ int add_file_record(unsigned int fid, char *uid, char act_allow, char *filename,
 
 	tmp->binprm = kmalloc(binprm_len+1, GFP_KERNEL);
 	if (tmp->binprm == NULL) {
-		kfree(tmp->filename);
 		err = -EOPNOTSUPP;
 		goto out;
 	}
