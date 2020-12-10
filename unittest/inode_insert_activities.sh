@@ -1,5 +1,6 @@
 #!/bin/bash
 ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
+ENABLE_INODE=/proc/sys/kernel/honeybest/inode
 LOCK_PROC=/proc/sys/kernel/honeybest/locking
 INODE_PROC=/proc/honeybest/inode
 HB_TEMPLATE=./template/
@@ -7,8 +8,10 @@ HB_INODE=${HB_TEMPLATE}/inode
 TMP_FILE=/dev/shm/xxxx
 activate(){
 	if [ $1 == 'start' ]; then
+		echo 1 > ${ENABLE_INODE}
 		echo 1 > ${ENABLE_PROC}
 	else
+		echo 0 > ${ENABLE_INODE}
 		echo 0 > ${ENABLE_PROC}
        	fi
 }

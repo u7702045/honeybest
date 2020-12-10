@@ -1,12 +1,15 @@
 #!/bin/bash
 ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
+ENABLE_KMOD=/proc/sys/kernel/honeybest/kmod
 INTERACT_PROC=/proc/sys/kernel/honeybest/interact
 NOTIFY_PROC=/proc/honeybest/notify
 HB_TEMPLATE=./template/
 activate(){
 	if [ $1 == 'start' ]; then
+		echo 1 > ${ENABLE_KMOD}
 		echo 1 > ${ENABLE_PROC}
 	else
+		echo 0 > ${ENABLE_KMOD}
 		echo 0 > ${ENABLE_PROC}
        	fi
 }

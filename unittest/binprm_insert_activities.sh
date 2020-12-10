@@ -1,5 +1,6 @@
 #!/bin/bash
 ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
+ENABLE_BINPRM=/proc/sys/kernel/honeybest/binprm
 LOCK_PROC=/proc/sys/kernel/honeybest/locking
 BINPRM_PROC=/proc/honeybest/binprm
 HB_TEMPLATE=./template/
@@ -7,9 +8,11 @@ HB_BINPRM=${HB_TEMPLATE}/binprm
 TMP_FILE=/dev/shm/xxxx
 activate(){
 	if [ $1 == 'start' ]; then
+		echo 1 > ${ENABLE_BINPRM}
 		echo 1 > ${ENABLE_PROC}
 	else
 		echo 0 > ${ENABLE_PROC}
+		echo 0 > ${ENABLE_BINPRM}
        	fi
 }
 

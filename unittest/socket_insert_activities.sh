@@ -1,5 +1,6 @@
 #!/bin/bash
 ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
+ENABLE_SOCKET=/proc/sys/kernel/honeybest/socket
 LOCK_PROC=/proc/sys/kernel/honeybest/locking
 SOCKET_PROC=/proc/honeybest/socket
 HB_TEMPLATE=./template/
@@ -7,8 +8,10 @@ HB_SOCKET=${HB_TEMPLATE}/socket
 TMP_FILE=/dev/shm/xxxx
 activate(){
 	if [ $1 == 'start' ]; then
+		echo 1 > ${ENABLE_SOCKET}
 		echo 1 > ${ENABLE_PROC}
 	else
+		echo 0 > ${ENABLE_SOCKET}
 		echo 0 > ${ENABLE_PROC}
        	fi
 }

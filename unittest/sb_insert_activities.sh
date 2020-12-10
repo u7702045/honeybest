@@ -1,5 +1,6 @@
 #!/bin/bash
 ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
+ENABLE_SB=/proc/sys/kernel/honeybest/sb
 LOCK_PROC=/proc/sys/kernel/honeybest/locking
 SB_PROC=/proc/honeybest/sb
 HB_TEMPLATE=./template/
@@ -7,8 +8,10 @@ HB_SB=${HB_TEMPLATE}/sb
 TMP_FILE=/dev/shm/xxxx
 activate(){
 	if [ $1 == 'start' ]; then
+		echo 1 > ${ENABLE_SB}
 		echo 1 > ${ENABLE_PROC}
 	else
+		echo 0 > ${ENABLE_SB}
 		echo 0 > ${ENABLE_PROC}
        	fi
 }

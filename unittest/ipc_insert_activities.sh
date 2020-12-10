@@ -1,5 +1,6 @@
 #!/bin/bash
 ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
+ENABLE_IPC=/proc/sys/kernel/honeybest/ipc
 LOCK_PROC=/proc/sys/kernel/honeybest/locking
 IPC_PROC=/proc/honeybest/ipc
 HB_TEMPLATE=./template/
@@ -8,8 +9,10 @@ TMP_FILE=/dev/shm/xxxx
 ID=0
 activate(){
 	if [ $1 == 'start' ]; then
+		echo 1 > ${ENABLE_IPC}
 		echo 1 > ${ENABLE_PROC}
 	else
+		echo 0 > ${ENABLE_IPC}
 		echo 0 > ${ENABLE_PROC}
        	fi
 }

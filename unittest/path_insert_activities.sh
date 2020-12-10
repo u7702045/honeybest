@@ -1,5 +1,6 @@
 #!/bin/bash
 ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
+ENABLE_PATH=/proc/sys/kernel/honeybest/path
 LOCK_PROC=/proc/sys/kernel/honeybest/locking
 PATH_PROC=/proc/honeybest/path
 HB_TEMPLATE=./template/
@@ -7,8 +8,10 @@ HB_PATH=${HB_TEMPLATE}/path
 TMP_FILE=/dev/shm/xxxx
 activate(){
 	if [ $1 == 'start' ]; then
+		echo 1 > ${ENABLE_PATH}
 		echo 1 > ${ENABLE_PROC}
 	else
+		echo 0 > ${ENABLE_PATH}
 		echo 0 > ${ENABLE_PROC}
        	fi
 }
@@ -66,8 +69,8 @@ test_path_context() {
 }
 
 test_path_enable() {
-	rm -rf /tmp/aaa
 	activate "stop"
+	rm -rf /tmp/aaa
 	activate "start"
 
 	tmp=$(clean_path_proc)

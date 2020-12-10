@@ -1,5 +1,6 @@
 #!/bin/bash
 ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
+ENABLE_KMOD=/proc/sys/kernel/honeybest/kmod
 LOCK_PROC=/proc/sys/kernel/honeybest/locking
 KMOD_PROC=/proc/honeybest/kmod
 HB_TEMPLATE=./template/
@@ -7,8 +8,10 @@ HB_KMOD=${HB_TEMPLATE}/kmod
 TMP_FILE=/dev/shm/xxxx
 activate(){
 	if [ $1 == 'start' ]; then
+		echo 1 > ${ENABLE_KMOD}
 		echo 1 > ${ENABLE_PROC}
 	else
+		echo 0 > ${ENABLE_KMOD}
 		echo 0 > ${ENABLE_PROC}
        	fi
 }

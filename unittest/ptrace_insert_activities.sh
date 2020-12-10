@@ -1,5 +1,6 @@
 #!/bin/bash
 ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
+ENABLE_PTRACE=/proc/sys/kernel/honeybest/ptrace
 LOCK_PROC=/proc/sys/kernel/honeybest/locking
 PTRACE_PROC=/proc/honeybest/ptrace
 HB_TEMPLATE=./template/
@@ -7,8 +8,10 @@ HB_PTRACE=${HB_TEMPLATE}/ptrace
 TMP_FILE=/dev/shm/xxxx
 activate(){
 	if [ $1 == 'start' ]; then
+		echo 1 > ${ENABLE_PTRACE}
 		echo 1 > ${ENABLE_PROC}
 	else
+		echo 0 > ${ENABLE_PTRACE}
 		echo 0 > ${ENABLE_PROC}
        	fi
 }

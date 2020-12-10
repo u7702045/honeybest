@@ -1,1 +1,9 @@
 2000    0       A       6824b1ee73a9f50a97369a674a009ec687a09cff        /bin/ls
+5003    0       A       709ee3af19ba791b699fea9127df0da6dc2bc248        /lib/arm-linux-gnueabihf/ld-2.24.so
+5003    0       A       1b2d185455830d003bd43fa240427bba07b00d35        /usr/lib/locale/locale-archive
+5003    0       A       590c0918e3f320a3fd03fe41a4b086cfc436addb        /etc/ld.so.cache
+5003    0       A       8a19688711dcc94c7870a4cf94dd586c6001ec24        /lib/arm-linux-gnueabihf/libselinux.so.1
+5003    0       A       bf6a7d6f83332b055c5d88f6c9bb7dbdf4cf2f90        /lib/arm-linux-gnueabihf/libc-2.24.so
+5003    0       A       fe6b9f78f6660f9a826ef8b8ff42335e76459849        /lib/arm-linux-gnueabihf/libpcre.so.3.13.3
+5003    0       A       57e57fd870bf2c50e8572df88db338dc393eea14        /lib/arm-linux-gnueabihf/libdl-2.24.so
+5003    0       A       2aee7d1ded0eca4004e8c00882582b37796aafc2        /lib/arm-linux-gnueabihf/libpthread-2.24.so
