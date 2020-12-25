@@ -90,9 +90,11 @@
 #include "regex.h"
 #include "notify.h"
 #include "honeybest.h"
+#include "audit.h"
 
 extern int locking;
 extern int hb_level;
+extern int enabled_audit;
 extern int hb_interact;
 extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
@@ -318,6 +320,10 @@ ssize_t write_ptrace_record(struct file *file, const char __user *buffer, size_t
 		sscanf(token, "%u %5s %c %4095s %4096s %u", &fid, uid, &act_allow, parent, child, &mode);
 		if (add_ptrace_record(HB_PTRACE_ACCESS_CHECK, uid, act_allow, parent, child, mode) != 0) {
 			printk(KERN_WARNING "Failure to add ptrace record %s, %s, %s\n", uid, parent, child);
+		}
+		else {
+			if (enabled_audit)
+				honeybest_audit_report(token);
 		}
 
 		kfree(parent);

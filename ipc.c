@@ -89,9 +89,11 @@
 #include "regex.h"
 #include "notify.h"
 #include "honeybest.h"
+#include "audit.h"
 
 extern int locking;
 extern int hb_level;
+extern int enabled_audit;
 extern int hb_interact;
 extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
@@ -319,6 +321,10 @@ ssize_t write_ipc_record(struct file *file, const char __user *buffer, size_t co
 				&ipc_uid, &ipc_gid, &ipc_cuid, &ipc_cgid, &flag, &mode);
 		if (add_ipc_record(fid, uid, act_allow, binprm, ipc_uid, ipc_gid, ipc_cuid, ipc_cgid, flag, mode) != 0) {
 			printk(KERN_WARNING "Failure to add ipc perm record %s, %s\n", uid, binprm);
+		}
+		else {
+			if (enabled_audit)
+				honeybest_audit_report(token);
 		}
 
 		kfree(binprm);

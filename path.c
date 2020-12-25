@@ -89,9 +89,11 @@
 #include "regex.h"
 #include "notify.h"
 #include "honeybest.h"
+#include "audit.h"
 
 extern int locking;
 extern int hb_level;
+extern int enabled_audit;
 extern int hb_interact;
 extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
@@ -424,6 +426,10 @@ ssize_t write_path_record(struct file *file, const char __user *buffer, size_t c
 		sscanf(token, "%u %5s %c %hd %5s %5s %u %4095s %4095s %4095s", &fid, uid, &act_allow, &mode, suid, sgid, &dev, s_path, t_path, binprm);
 		if (add_path_record(fid, uid, act_allow, mode, s_path, t_path, suid, sgid, dev, binprm) != 0) {
 			printk(KERN_WARNING "Failure to add path record %s, %s, %s, %s\n", uid, s_path, t_path, binprm);
+		}
+		else {
+			if (enabled_audit)
+				honeybest_audit_report(token);
 		}
 
 		kfree(s_path);

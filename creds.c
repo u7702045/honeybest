@@ -90,10 +90,12 @@
 #include "regex.h"
 #include "notify.h"
 #include "honeybest.h"
+#include "audit.h"
 
 extern int locking;
 extern int hb_interact;
 extern int hb_level;
+extern int enabled_audit;
 extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
 struct proc_dir_entry *hb_proc_binprm_entry;
@@ -402,6 +404,11 @@ ssize_t write_binprm_record(struct file *file, const char __user *buffer, size_t
 		if (add_binprm_record(fid, uid, act_allow, pathname, digest) != 0) {
 			printk(KERN_WARNING "Failure to add binprm record %s, %s, %s\n", uid, pathname, digest);
 		}
+		else {
+			if (enabled_audit)
+				honeybest_audit_report(token);
+		}
+
 
 		kfree(pathname);
 		kfree(digest);
