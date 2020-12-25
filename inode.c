@@ -89,9 +89,11 @@
 #include "regex.h"
 #include "notify.h"
 #include "honeybest.h"
+#include "audit.h"
 
 extern int locking;
 extern int hb_level;
+extern int enabled_audit;
 extern int hb_interact;
 extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
@@ -327,6 +329,11 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 		if (add_inode_record(fid, uid, act_allow, name, binprm) != 0) {
 			//printk(KERN_WARNING "Failure to add inode record %s, %s, %s\n", uid, name, binprm);
 		}
+		else {
+			if (enabled_audit)
+				honeybest_audit_report(token);
+		}
+
 		kfree(name);
 		kfree(binprm);
 	} //while

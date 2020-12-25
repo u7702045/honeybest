@@ -100,6 +100,7 @@
 #include "ptrace.h"
 #include "ipc.h"
 #include "notify.h"
+#include "audit.h"
 
 /**
  * @brief honeybest.c is the entry point of honeybest LSM. Main job

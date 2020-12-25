@@ -89,9 +89,11 @@
 #include "notify.h"
 #include "regex.h"
 #include "honeybest.h"
+#include "audit.h"
 
 extern int locking;
 extern int hb_level;
+extern int enabled_audit;
 extern int hb_interact;
 extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
@@ -400,6 +402,10 @@ ssize_t write_sb_record(struct file *file, const char __user *buffer, size_t cou
 		sscanf(token, "%u %5s %c %31s %31s %31s %31s %d", &fid, uid, &act_allow, s_id, name, dev_name, type, &flags);
 		if (add_sb_record(fid, uid, act_allow, s_id, name, dev_name, type, flags) != 0) {
 			printk(KERN_WARNING "Failure to add sb record %s, %s %s %s\n", s_id, name, dev_name, type);
+		}
+		else {
+			if (enabled_audit)
+				honeybest_audit_report(token);
 		}
 
 		kfree(type);

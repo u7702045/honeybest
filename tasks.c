@@ -89,9 +89,11 @@
 #include "notify.h"
 #include "regex.h"
 #include "honeybest.h"
+#include "audit.h"
 
 extern int locking;
 extern int hb_level;
+extern int enabled_audit;
 extern int hb_interact;
 extern unsigned long total_notify_record;
 extern hb_notify_ll hb_notify_list_head;
@@ -298,6 +300,12 @@ ssize_t write_task_record(struct file *file, const char __user *buffer, size_t c
 		if (add_task_record(HB_TASK_SIGNAL, uid, act_allow, sig, secid, binprm) != 0) {
 			printk(KERN_WARNING "Failure to add task record %s, %d, %s\n", uid, sig, binprm);
 		}
+		else {
+			if (enabled_audit)
+				honeybest_audit_report(token);
+		}
+
+		kfree(binprm);
 	}
 
 out1:
