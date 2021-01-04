@@ -116,7 +116,9 @@ int match_ptrace_record(hb_ptrace_ll *data, unsigned int fid, uid_t uid, char *p
 
 	if ((data->fid == HB_PTRACE_ACCESS_CHECK) && do_compare_uid && !compare_regex(data->parent, parent) && !compare_regex(data->child, child) && (data->mode == mode)) {
 		/* we find the record */
-		//printk(KERN_INFO "Found ptrace access record !!!!\n");
+#if defined(HONEYBEST_DEBUG)
+		printk(KERN_INFO "Found ptrace access record !!!!\n");
+#endif
 		match = 1;
 	}
 
@@ -215,7 +217,9 @@ int add_ptrace_record(unsigned int fid, char *uid, char act_allow, char *parent,
 			}
 		}
 		else {
-			//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+#if defined(HONEYBEST_DEBUG)
+			printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+#endif
 			err = -EOPNOTSUPP;
 			goto out;
 		}

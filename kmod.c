@@ -117,14 +117,18 @@ int match_kmod_record(hb_kmod_ll *data, unsigned int fid, uid_t uid, char *name,
 		case HB_KMOD_REQ:
 			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->name, name)) {
 				/* we find the record */
-				//printk(KERN_INFO "Found kernel module record !!!!\n");
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_INFO "Found kernel module record !!!!\n");
+#endif
 				match = 1;
 			}
 			break;
 		case HB_KMOD_LOAD_FROM_FILE:
 			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->filename, filename) && !strncmp(data->digest, digest, SHA1_HONEYBEST_DIGEST_SIZE)) {
 				/* we find the record */
-				//printk(KERN_INFO "Found kernel load module record !!!!\n");
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_INFO "Found kernel load module record !!!!\n");
+#endif
 				match = 1;
 			}
 			break;
@@ -230,7 +234,9 @@ int add_kmod_record(unsigned int fid, char *uid, char act_allow, char *name, cha
 			}
 		}
 		else {
-			//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+#if defined(HONEYBEST_DEBUG)
+			printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+#endif
 			err = -EOPNOTSUPP;
 			goto out;
 		}

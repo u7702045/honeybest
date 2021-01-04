@@ -140,7 +140,9 @@ int match_path_record(hb_path_ll *data, unsigned int fid, uid_t uid, umode_t mod
 		case HB_PATH_UNLINK:
 			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_path, s_path) && !compare_regex(data->t_path, t_path) && !compare_regex(data->binprm, binprm)) {
 				/* we find the record */
-				//printk(KERN_INFO "Found link/rename/rmdir/symlink/unlink path record !!!!\n");
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_INFO "Found link/rename/rmdir/symlink/unlink path record !!!!\n");
+#endif
 				match = 1;
 			}
 			break;
@@ -148,21 +150,27 @@ int match_path_record(hb_path_ll *data, unsigned int fid, uid_t uid, umode_t mod
 		case HB_PATH_CHMOD:
 			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_path, s_path) && (data->mode == mode) && !compare_regex(data->binprm, binprm)) {
 				/* we find the record */
-				//printk(KERN_INFO "Found chmod path record !!!!\n");
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_INFO "Found chmod path record !!!!\n");
+#endif
 				match = 1;
 			}
 			break;
 		case HB_PATH_CHOWN:
 			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_path, s_path) && do_compare_suid && do_compare_sgid && !compare_regex(data->binprm, binprm)) {
 				/* we find the record */
-				//printk(KERN_INFO "Found chown path record !!!!\n");
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_INFO "Found chown path record !!!!\n");
+#endif
 				match = 1;
 			}
 			break;
 		case HB_PATH_MKNOD:
 			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_path, s_path) && (data->dev == dev) && !compare_regex(data->binprm, binprm)) {
 				/* we find the record */
-				//printk(KERN_INFO "Found mknod path record !!!!\n");
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_INFO "Found mknod path record !!!!\n");
+#endif
 				match = 1;
 			}
 			break;
@@ -303,7 +311,9 @@ int add_path_record(unsigned int fid, char *uid, char act_allow, umode_t mode, c
 			}
 		}
 		else {
-			//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+#if defined(HONEYBEST_DEBUG)
+			printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+#endif
 			err = -EOPNOTSUPP;
 			goto out;
 		}

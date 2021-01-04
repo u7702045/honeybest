@@ -118,7 +118,9 @@ int match_ipc_record(hb_ipc_ll *data, unsigned int fid, uid_t uid, char *binprm,
 		case HB_IPC_PERM:
 			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->binprm, binprm) && (data->ipc_uid == ipc_uid) && (data->ipc_gid == ipc_gid) && (data->ipc_cuid == ipc_cuid) && (data->ipc_cgid == ipc_cgid) && (data->flag == flag)) {
 				/* we find the record */
-				//printk(KERN_INFO "Found ipc perm record %s, %s!!!!\n", filename, data->filename);
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_INFO "Found ipc perm record %s, %s!!!!\n", filename, data->filename);
+#endif
 				match = 1;
 			}
 			break;
@@ -221,7 +223,9 @@ int add_ipc_record(unsigned int fid, char *uid, char act_allow, char *binprm, \
 			}
 		}
 		else {
-			//printk(KERN_ERR "notify record found or exceed number %lu\n", total_notify_record);
+#if defined(HONEYBEST_DEBUG)
+			printk(KERN_ERR "notify record found or exceed number %lu\n", total_notify_record);
+#endif
 			err = -EOPNOTSUPP;
 			goto out;
 		}
