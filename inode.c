@@ -120,7 +120,9 @@ int match_inode_record(hb_inode_ll *data, unsigned int fid, uid_t uid, char *nam
 		case HB_INODE_SETXATTR:
 			if ((fid == data->fid) && do_compare_uid && !compare_regex(data->name, name) && !compare_regex(data->binprm, binprm)) {
 				/* we find the record */
-				//printk(KERN_INFO "Found inode open record !!!!\n");
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_INFO "Found inode open record !!!!\n");
+#endif
 				match = 1;
 			}
 			break;
@@ -225,7 +227,9 @@ int add_inode_record(unsigned int fid, char *uid, char act_allow, char *name, ch
 			}
 		}
 		else {
-			//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+#if defined(HONEYBEST_DEBUG)
+			printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+#endif
 			err = -EOPNOTSUPP;
 			goto out;
 		}
@@ -327,7 +331,7 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 
 		sscanf(token, "%u %5s %c %4095s %4095s", &fid, uid, &act_allow, name, binprm);
 		if (add_inode_record(fid, uid, act_allow, name, binprm) != 0) {
-			//printk(KERN_WARNING "Failure to add inode record %s, %s, %s\n", uid, name, binprm);
+			printk(KERN_WARNING "Failure to add inode record %s, %s, %s\n", uid, name, binprm);
 		}
 		else {
 			if (enabled_audit)

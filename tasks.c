@@ -115,7 +115,9 @@ int match_task_record(hb_task_ll *data, unsigned int fid, uid_t uid, int sig, u3
 
 	if ((data->fid == HB_TASK_SIGNAL) && do_compare_uid && (data->sig == sig) && !compare_regex(data->binprm, binprm)) {
 		/* we find the record */
-		//printk(KERN_INFO "Found task open record !!!!\n");
+#if defined(HONEYBEST_DEBUG)
+		printk(KERN_INFO "Found task open record !!!!\n");
+#endif
 		match = 1;
 	}
 
@@ -204,7 +206,9 @@ int add_task_record(unsigned int fid, char *uid, char act_allow, int sig, u32 se
 			}
 		}
 		else {
-			//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+#if defined(HONEYBEST_DEBUG)
+			printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+#endif
 			err = -EOPNOTSUPP;
 			goto out;
 		}

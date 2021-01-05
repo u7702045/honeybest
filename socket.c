@@ -170,19 +170,25 @@ int match_socket_record(hb_socket_ll *data, unsigned int fid, uid_t uid, int fam
 			break;
 		case HB_SOCKET_CREATE:
 			if ((data->fid == fid) && do_compare_uid && (data->family == family) && (data->type == type) && (data->protocol == protocol) && !compare_regex(data->binprm, binprm)) {
-				//printk(KERN_INFO "Found socket create record !!!!\n");
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_INFO "Found socket create record !!!!\n");
+#endif
 				match = 1;
 			}
 			break;
 		case HB_SOCKET_BIND:
 			if ((data->fid == fid) && do_compare_uid && (data->port == port) && !compare_regex(data->binprm, binprm)) {
-				//printk(KERN_INFO "Found socket bind record !!!!\n");
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_INFO "Found socket bind record !!!!\n");
+#endif
 				match = 1;
 			}
 			break;
 		case HB_SOCKET_SETSOCKOPT:
 			if ((data->fid == fid) && do_compare_uid && (data->level == level) && (data->optname == optname) && !compare_regex(data->binprm, binprm)) {
-				//printk(KERN_INFO "Found socket setsockopt record !!!!\n");
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_INFO "Found socket setsockopt record !!!!\n");
+#endif
 				match = 1;
 			}
 			break;
@@ -304,7 +310,9 @@ int add_socket_record(unsigned int fid, char *uid, char act_allow, int family, i
 			}
 		}
 		else {
-			//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+#if defined(HONEYBEST_DEBUG)
+			printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+#endif
 			err = -EOPNOTSUPP;
 			goto out;
 		}

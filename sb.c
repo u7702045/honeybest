@@ -118,7 +118,9 @@ int match_sb_record(hb_sb_ll *data, unsigned int fid, uid_t uid, char *s_id, cha
 		case HB_SB_COPY_DATA:
 			if ((data->fid == fid) && do_compare_uid) {
 				/* we find the record */
-				//printk(KERN_INFO "Found sb copy data record !!!!\n");
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_INFO "Found sb copy data record !!!!\n");
+#endif
 				match = 1;
 			}
 			break;
@@ -126,28 +128,36 @@ int match_sb_record(hb_sb_ll *data, unsigned int fid, uid_t uid, char *s_id, cha
 		case HB_SB_REMOUNT:
 			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_id, s_id) && !compare_regex(data->name, name)) {
 				/* we find the record */
-				//printk(KERN_INFO "Found sb remount/statfs data record !!!!\n");
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_INFO "Found sb remount/statfs data record !!!!\n");
+#endif
 				match = 1;
 			}
 			break;
 		case HB_SB_UMOUNT:
 			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_id, s_id) && !compare_regex(data->name, name) && (data->flags == flags)) {
 				/* we find the record */
-				//printk(KERN_INFO "Found sb umount data record !!!!\n");
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_INFO "Found sb umount data record !!!!\n");
+#endif
 				match = 1;
 			}
 			break;
 		case HB_SB_MOUNT:
 			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->dev_name, dev_name) && !strncmp(data->type, type, strlen(data->type)) && (data->flags == flags)) {
 				/* we find the record */
-				//printk(KERN_INFO "Found sb mount data record !!!!\n");
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_INFO "Found sb mount data record !!!!\n");
+#endif
 				match = 1;
 			}
 			break;
 		case HB_SB_KERN_MOUNT:
 			if ((data->fid == fid) && do_compare_uid && !compare_regex(data->s_id, s_id) && (data->flags == flags)) {
 				/* we find the record */
-				//printk(KERN_INFO "Found sb kern mount data record !!!!\n");
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_INFO "Found sb kern mount data record !!!!\n");
+#endif
 				match = 1;
 			}
 			break;
@@ -267,7 +277,9 @@ int add_sb_record(unsigned int fid, char *uid, char act_allow, char *s_id, char 
 
 	tmp->flags = flags;
 
-	//printk(KERN_DEBUG "%s, %s, %s, %s, %s, %d\n", __FUNCTION__, tmp->s_id, tmp->name, tmp->dev_name, tmp->type, tmp->flags);
+#if defined(HONEYBEST_DEBUG)
+	printk(KERN_DEBUG "%s, %s, %s, %s, %s, %d\n", __FUNCTION__, tmp->s_id, tmp->name, tmp->dev_name, tmp->type, tmp->flags);
+#endif
 	if ((err == 0) && (hb_interact == 0))
 		list_add_tail(&(tmp->list), &(hb_sb_list_head.list));
 
@@ -279,7 +291,9 @@ int add_sb_record(unsigned int fid, char *uid, char act_allow, char *s_id, char 
 			}
 		}
 		else {
-			//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+#if defined(HONEYBEST_DEBUG)
+			printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+#endif
 			err = -EOPNOTSUPP;
 			goto out;
 		}

@@ -119,7 +119,9 @@ int match_binprm_record(hb_binprm_ll *data, unsigned int fid, uid_t uid, char *p
 		case HB_BPRM_SET_CREDS:
 			if (((data->fid == HB_BPRM_SET_CREDS) || (data->fid == HB_FILE_MMAP)) && !compare_regex(data->digest, digest) && do_compare_uid && !compare_regex(data->pathname, pathname)) {
 				/* we find the record */
-				//printk(KERN_INFO "Found binprm set record !!!!\n");
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_INFO "Found binprm set record !!!!\n");
+#endif
 				match = 1;
 			}
 		       	break;
@@ -214,7 +216,9 @@ int add_binprm_record(unsigned int fid, char *uid, char act_allow, char *pathnam
 			}
 		}
 		else {
-			//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+#if defined(HONEYBEST_DEBUG)
+			printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+#endif
 			err = -EOPNOTSUPP;
 			goto out;
 		}
@@ -282,7 +286,9 @@ int lookup_binprm_digest(struct file *file, char *digest)
 	while (offset < size) {
 		int rbuf_len;
 		rbuf_len = kernel_read(file, offset, rbuf, PAGE_SIZE);
-		//printk(KERN_ERR "rbuf_len is %d, offset is %d\n", rbuf_len, offset);
+#if defined(HONEYBEST_DEBUG)
+		printk(KERN_ERR "rbuf_len is %d, offset is %d\n", rbuf_len, offset);
+#endif
 
 		if (rbuf_len < 0) {
 			rc = rbuf_len;
@@ -307,8 +313,9 @@ int lookup_binprm_digest(struct file *file, char *digest)
 	for (i = 0; i < SHA1_DIGEST_SIZE; i++) {
 		snprintf(digest + (i * 2), 4, "%02x", hash[i]);
 	}
-	//printk(KERN_ERR "digest is %s\n", digest);
-
+#if defined(HONEYBEST_DEBUG)
+	printk(KERN_ERR "digest is %s\n", digest);
+#endif
 out2:
        	kfree(desc);
 out1:

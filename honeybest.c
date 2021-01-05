@@ -447,7 +447,9 @@ int free_honeybest_tracker(struct cred *cred)
 	hb_track_info *sec = cred_cxt(cred);
 
 	if (sec) {
-		;//printk(KERN_ERR "free %lu\n", sec->tsid);
+#if defined(HONEYBEST_DEBUG)
+		printk(KERN_ERR "free %lu\n", sec->tsid);
+#endif
 	       	kfree(sec);
 		sec = NULL;
 	}
@@ -479,7 +481,9 @@ int inject_honeybest_tracker(struct cred *cred, unsigned int fid)
 		if (sec->curr_fid != fid) {
 			sec->prev_fid = sec->curr_fid;
 			sec->curr_fid = fid;
-			;//printk(KERN_ERR "%s(%d) alloc %lu\n", __FUNCTION__, __LINE__, sec->tsid);
+#if defined(HONEYBEST_DEBUG)
+			printk(KERN_ERR "%s(%d) alloc %lu\n", __FUNCTION__, __LINE__, sec->tsid);
+#endif
 		}
 		return err;
 	}
@@ -491,7 +495,9 @@ int inject_honeybest_tracker(struct cred *cred, unsigned int fid)
 			sec->curr_fid = fid;
 			sec->uid = uid;
 			cred_cxt(cred) = (hb_track_info *)sec;
-			//printk(KERN_ERR "%s(%d) alloc %lu\n", __FUNCTION__, __LINE__, sec->tsid);
+#if defined(HONEYBEST_DEBUG)
+			printk(KERN_ERR "%s(%d) alloc %lu\n", __FUNCTION__, __LINE__, sec->tsid);
+#endif
 		}
 		else 
 			err = -ENOMEM;
@@ -852,7 +858,9 @@ static int honeybest_ptrace_access_check(struct task_struct *child,
 			parent_taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (parent_taskname) {
 				parent_binprm = d_path(&parent_mm->exe_file->f_path, parent_taskname, PATH_MAX);
-				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#endif
 			}
 		}
 		up_read(&parent_mm->mmap_sem);
@@ -867,7 +875,9 @@ static int honeybest_ptrace_access_check(struct task_struct *child,
 			child_taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (child_taskname) {
 				child_binprm = d_path(&child_mm->exe_file->f_path, child_taskname, PATH_MAX);
-				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#endif
 			}
 		}
 		up_read(&child_mm->mmap_sem);
@@ -876,12 +886,16 @@ static int honeybest_ptrace_access_check(struct task_struct *child,
 	if (!child_binprm)
 		goto out1;
 
-//	printk(KERN_ERR "%s,%d -->%s, %s, %d\n", __FUNCTION__, __LINE__, parent_binprm, child_binprm, mode);
+#if defined(HONEYBEST_DEBUG)
+	printk(KERN_ERR "%s,%d -->%s, %s, %d\n", __FUNCTION__, __LINE__, parent_binprm, child_binprm, mode);
+#endif
 
 	record = search_ptrace_record(HB_PTRACE_ACCESS_CHECK, current->cred->uid.val, parent_binprm, child_binprm, mode);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found ptrace record func=%u, parent=[%s]\n", record->fid, record->parent);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found ptrace record func=%u, parent=[%s]\n", record->fid, record->parent);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -948,7 +962,9 @@ static int honeybest_capget(struct task_struct *target, kernel_cap_t *effective,
 	a = *effective;
 	b = *permitted;
 	CAP_BOP_ALL(dest, a, b, |);
-	//printk(KERN_ERR "target %s, uid=%u, effec=%u, inherit=%u, permit=%u, dest=%u\n", p, cred->uid.val, (u32)effective->cap, (u32)inheritable->cap, (u32)permitted->cap, (u32)dest.cap); rcu_read_unlock();
+#if defined(HONEYBEST_DEBUG)
+	printk(KERN_ERR "target %s, uid=%u, effec=%u, inherit=%u, permit=%u, dest=%u\n", p, cred->uid.val, (u32)effective->cap, (u32)inheritable->cap, (u32)permitted->cap, (u32)dest.cap); rcu_read_unlock();
+#endif
 #endif
 
 	return err;
@@ -995,7 +1011,9 @@ static int honeybest_capset(struct cred *new, const struct cred *old,
 	a = *effective;
 	b = *permitted;
 	CAP_BOP_ALL(dest, a, b, |);
-	//printk(KERN_ERR "program %s, old uid=%u, new uid=%u, effec=%u, inherit=%u, permit=%u, dest=%u\n", p, old->uid.val, new->uid.val, (u32)effective->cap, (u32)inheritable->cap, (u32)permitted->cap, (u32)dest.cap); rcu_read_unlock();
+#if defined(HONEYBEST_DEBUG)
+	printk(KERN_ERR "program %s, old uid=%u, new uid=%u, effec=%u, inherit=%u, permit=%u, dest=%u\n", p, old->uid.val, new->uid.val, (u32)effective->cap, (u32)inheritable->cap, (u32)permitted->cap, (u32)dest.cap); rcu_read_unlock();
+#endif
 	kfree(pathname);
 
 	rcu_read_unlock();
@@ -1080,7 +1098,9 @@ static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 	record = search_binprm_record(HB_BPRM_SET_CREDS, current->cred->uid.val, filename, digest);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found set creds record func=%u, hash=[%s]\n", record->fid, record->digest);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found set creds record func=%u, hash=[%s]\n", record->fid, record->digest);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -1197,7 +1217,10 @@ static int honeybest_sb_remount(struct super_block *sb, void *data)
 		record = search_sb_record(HB_SB_REMOUNT, current->cred->uid.val, sb->s_id, (char *)sb->s_type->name, na, na, 0);
 
 		if (record) {
-			;//printk(KERN_INFO "Found sb remount record func=%u, uid %u, s_id=%s, type name=%s\n", record->fid, record->uid, record->s_id, record->name);
+#if defined(HONEYBEST_DEBUG)
+			printk(KERN_INFO "Found sb remount record func=%u, uid %u, s_id=%s, type name=%s\n", record->fid, record->uid, record->s_id, record->name);
+#endif
+
 			if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 				err = -EOPNOTSUPP;
 		}
@@ -1242,7 +1265,9 @@ static int honeybest_sb_kern_mount(struct super_block *sb, int flags, void *data
 	record = search_sb_record(HB_SB_KERN_MOUNT, current->cred->uid.val, (char *)na, sb->s_id, (char *)na, (char *)na, flags);
 
 	if (record) {
-		;//printk(KERN_INFO "Found sb mount record func=%u, uid %u, dev_name=%s, type name=%s, flags=%d\n", record->fid, record->uid, record->dev_name, record->type, record->flags);
+#if defined(HONEYBEST_DEBUG)
+		printk(KERN_INFO "Found sb mount record func=%u, uid %u, dev_name=%s, type name=%s, flags=%d\n", record->fid, record->uid, record->dev_name, record->type, record->flags);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -1293,7 +1318,9 @@ static int honeybest_sb_statfs(struct dentry *dentry)
 	record = search_sb_record(HB_SB_STATFS, current->cred->uid.val, sb->s_id, (char *)sb->s_type->name, na, na, 0);
 
 	if (record) {
-		;//printk(KERN_INFO "Found sb statfs record func=%u, uid %u, s_id=%s, type name=%s\n", record->fid, record->uid, record->s_id, record->name);
+#if defined(HONEYBEST_DEBUG)
+		printk(KERN_INFO "Found sb statfs record func=%u, uid %u, s_id=%s, type name=%s\n", record->fid, record->uid, record->s_id, record->name);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -1336,8 +1363,10 @@ int honeybest_sb_pivotroot(struct path *old_path, struct path *new_path)
 	old_pathname = d_absolute_path(old_path, old_buff, PATH_MAX);
 	new_pathname = d_absolute_path(new_path, new_buff, PATH_MAX);
 
+#if defined(HONEYBEST_DEBUG)
 	printk(KERN_ERR "old_path %s\n", old_pathname);
 	printk(KERN_ERR "new_path %s\n", new_pathname);
+#endif
 
 	kfree(old_buff);
 	kfree(new_buff);
@@ -1383,7 +1412,9 @@ static int honeybest_mount(const char *dev_name, struct path *path,
 	record = search_sb_record(HB_SB_MOUNT, current->cred->uid.val, na, (char *)na, (char *)dev_name, (char *)type, flags);
 
 	if (record) {
-		;//printk(KERN_INFO "Found sb mount record func=%u, uid %u, dev_name=%s, type name=%s, flags=%d\n", record->fid, record->uid, record->dev_name, record->type, record->flags);
+#if defined(HONEYBEST_DEBUG)
+		printk(KERN_INFO "Found sb mount record func=%u, uid %u, dev_name=%s, type name=%s, flags=%d\n", record->fid, record->uid, record->dev_name, record->type, record->flags);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -1435,7 +1466,9 @@ static int honeybest_umount(struct vfsmount *mnt, int flags)
 	record = search_sb_record(HB_SB_UMOUNT, current->cred->uid.val, sb->s_id, (char *)sb->s_type->name, na, na, flags);
 
 	if (record) {
-		;//printk(KERN_INFO "Found sb umount record func=%u, uid %u, dev_name=%s, type name=%s, flags=%d\n", record->fid, record->uid, record->dev_name, record->type, record->flags);
+#if defined(HONEYBEST_DEBUG)
+		printk(KERN_INFO "Found sb umount record func=%u, uid %u, dev_name=%s, type name=%s, flags=%d\n", record->fid, record->uid, record->dev_name, record->type, record->flags);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -1550,7 +1583,9 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
-				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#endif
 			}
 		}
 		up_read(&mm->mmap_sem);
@@ -1563,7 +1598,9 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 	record = search_path_record(HB_PATH_UNLINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, binprm);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found path unlink record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found path unlink record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -1652,7 +1689,9 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
-				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#endif
 			}
 		}
 		up_read(&mm->mmap_sem);
@@ -1665,7 +1704,9 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 	record = search_path_record(HB_PATH_MKDIR, current->cred->uid.val, mode, s_path, t_path, 0, 0, 0, binprm);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found path mkdir record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found path mkdir record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -1748,7 +1789,9 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
-				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#endif
 			}
 		}
 		up_read(&mm->mmap_sem);
@@ -1761,7 +1804,9 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 	record = search_path_record(HB_PATH_RMDIR, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, binprm);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found path rmdir record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found path rmdir record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -1850,7 +1895,9 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
-				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#endif
 			}
 		}
 		up_read(&mm->mmap_sem);
@@ -1863,7 +1910,9 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 	record = search_path_record(HB_PATH_MKNOD, current->cred->uid.val, mode, s_path, t_path, 0, 0, dev, binprm);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found path mknod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found path mknod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -1956,7 +2005,9 @@ static int honeybest_path_truncate(struct path *path)
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
-				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#endif
 			}
 		}
 		up_read(&mm->mmap_sem);
@@ -1969,7 +2020,9 @@ static int honeybest_path_truncate(struct path *path)
 	record = search_path_record(HB_PATH_TRUNCATE, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, binprm);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found path truncate record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found path truncate record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -2054,7 +2107,9 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
-				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#endif
 			}
 		}
 		up_read(&mm->mmap_sem);
@@ -2067,7 +2122,9 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 	record = search_path_record(HB_PATH_SYMLINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, binprm);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found path symlink record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found path symlink record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -2171,7 +2228,9 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
-				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#endif
 			}
 		}
 		up_read(&mm->mmap_sem);
@@ -2184,7 +2243,9 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 	record = search_path_record(HB_PATH_LINK, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, binprm);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found path link record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found path link record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -2285,7 +2346,9 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
-				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#endif
 			}
 		}
 		up_read(&mm->mmap_sem);
@@ -2298,7 +2361,9 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 	record = search_path_record(HB_PATH_RENAME, current->cred->uid.val, 0, s_path, t_path, 0, 0, 0, binprm);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found path rename record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found path rename record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -2381,7 +2446,9 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
-				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#endif
 			}
 		}
 		up_read(&mm->mmap_sem);
@@ -2394,7 +2461,9 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 	record = search_path_record(HB_PATH_CHMOD, current->cred->uid.val, mode, s_path, t_path, 0, 0, 0, binprm);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found path chmod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found path chmod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -2477,7 +2546,9 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
-				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#endif
 			}
 		}
 		up_read(&mm->mmap_sem);
@@ -2490,7 +2561,9 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 	record = search_path_record(HB_PATH_CHOWN, current->cred->uid.val, 0, s_path, t_path, uid.val, gid.val, 0, binprm);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found path chmod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found path chmod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -2700,7 +2773,9 @@ static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
 	record = search_inode_record(HB_INODE_SETXATTR, current->cred->uid.val, (char *)name, binprm);
 
 	if (record) {
-		;//printk(KERN_INFO "Found inode setxattr name %s, dname %s\n", name, dname);
+#if defined(HONEYBEST_DEBUG)
+		printk(KERN_INFO "Found inode setxattr name %s, dname %s\n", name, dname);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -2769,7 +2844,9 @@ static int honeybest_inode_getxattr(struct dentry *dentry, const char *name)
 	record = search_inode_record(HB_INODE_GETXATTR, current->cred->uid.val, (char *)name, binprm);
 
 	if (record) {
-		;//printk(KERN_ERR "Found inode getxattr name %s, dname %s\n", name, binprm);
+#if defined(HONEYBEST_DEBUG)
+		printk(KERN_ERR "Found inode getxattr name %s, dname %s\n", name, binprm);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -2827,7 +2904,9 @@ static int honeybest_inode_listxattr(struct dentry *dentry)
 	record = search_inode_record(HB_INODE_LISTXATTR, current->cred->uid.val, (char *)name, binprm);
 
 	if (record) {
-		;//printk(KERN_INFO "Found inode setxattr name %s, dname %s\n", name, dname);
+#if defined(HONEYBEST_DEBUG)
+		printk(KERN_INFO "Found inode setxattr name %s, dname %s\n", name, dname);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -2889,7 +2968,9 @@ static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
 	record = search_inode_record(HB_INODE_REMOVEXATTR, current->cred->uid.val, (char *)name, binprm);
 
 	if (record) {
-		;//printk(KERN_INFO "Found inode removexattr name %s, dname %s\n", name, dname);
+#if defined(HONEYBEST_DEBUG)
+		printk(KERN_INFO "Found inode removexattr name %s, dname %s\n", name, dname);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -3021,7 +3102,9 @@ static int honeybest_file_ioctl(struct file *file, unsigned int cmd,
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
-				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#endif
 			}
 		}
 		up_read(&mm->mmap_sem);
@@ -3034,7 +3117,9 @@ static int honeybest_file_ioctl(struct file *file, unsigned int cmd,
 	record = search_file_record(HB_FILE_IOCTL, current->cred->uid.val, filename, binprm, cmd, arg);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->filename);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->filename);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -3119,7 +3204,9 @@ static int honeybest_mmap_file(struct file *file, unsigned long reqprot,
 
 	record = search_binprm_record(HB_FILE_MMAP, current->cred->uid.val, filename, digest);
 	if (record) {
-	       	//printk(KERN_INFO "Found set creds record func=%u, hash=[%s]\n", record->fid, record->digest);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found set creds record func=%u, hash=[%s]\n", record->fid, record->digest);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -3224,7 +3311,9 @@ static int honeybest_file_receive(struct file *file)
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
-				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#endif
 			}
 		}
 		up_read(&mm->mmap_sem);
@@ -3237,7 +3326,9 @@ static int honeybest_file_receive(struct file *file)
 	record = search_file_record(HB_FILE_RECEIVE, current->cred->uid.val, filename, binprm, 0, 0);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->filename);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->filename);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -3324,7 +3415,9 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
-				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#endif
 			}
 		}
 		up_read(&mm->mmap_sem);
@@ -3336,7 +3429,9 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 	record = search_file_record(HB_FILE_OPEN, current->cred->uid.val, filename, binprm, 0, 0);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->filename);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->filename);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -3521,7 +3616,9 @@ static int honeybest_kernel_module_from_file(struct file *file)
 	record = search_kmod_record(HB_KMOD_LOAD_FROM_FILE, current->cred->uid.val, na, filename, digest);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->filename);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->filename);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -3573,7 +3670,9 @@ static int honeybest_kernel_module_request(char *kmod_name)
 	record = search_kmod_record(HB_KMOD_REQ, current->cred->uid.val, kmod_name, na, na);
 
 	if (record) {
-		;//printk(KERN_INFO "Found kmod record func=%u, uid %u, name=%s\n", record->fid, record->uid, record->name);
+#if defined(HONEYBEST_DEBUG)
+		printk(KERN_INFO "Found kmod record func=%u, uid %u, name=%s\n", record->fid, record->uid, record->name);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -3695,7 +3794,9 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
-				//printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_ERR "binprm %s, file %s\n", binprm, filename);
+#endif
 			}
 		}
 		up_read(&mm->mmap_sem);
@@ -3708,7 +3809,9 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 	record = search_task_record(HB_TASK_SIGNAL, current->cred->uid.val, sig, secid, binprm);
 
 	if (record) {
-		;//printk(KERN_INFO "Found task struct sig %d, secid %d, signo %d, errno %d\n", record->sig, record->secid, record->si_signo, record->si_errno);
+#if defined(HONEYBEST_DEBUG)
+		printk(KERN_INFO "Found task struct sig %d, secid %d, signo %d, errno %d\n", record->sig, record->secid, record->si_signo, record->si_errno);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -3774,7 +3877,9 @@ static void honeybest_task_to_inode(struct task_struct *p,
 			taskbuff = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskbuff) {
 				taskpath = d_path(&mm->exe_file->f_path, taskbuff, PATH_MAX);
+#if defined(HONEYBEST_DEBUG)
 				printk(KERN_ERR "%s --> pid %d, tgid %d, inode %s, pathname %s\n", __FUNCTION__, p->pid, p->tgid, binprm, taskpath);
+#endif
 				kfree(taskbuff);
 			}
 		}
@@ -3836,7 +3941,9 @@ static int honeybest_socket_create(int family, int type,
 	record = search_socket_record(HB_SOCKET_CREATE, current->cred->uid.val, family, type, protocol, 0, 0, 0, binprm);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found socket create record func=%u, family %d, type %d, protocol %d, kern %d\n", record->fid, family, type, protocol, kern);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found socket create record func=%u, family %d, type %d, protocol %d, kern %d\n", record->fid, family, type, protocol, kern);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -3915,7 +4022,9 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 	record = search_socket_record(HB_SOCKET_BIND, current->cred->uid.val, 0, 0, 0, port, 0, 0, binprm);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found socket bind record func=%u, port=[%d]\n", record->fid, record->port);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found socket bind record func=%u, port=[%d]\n", record->fid, record->port);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -3989,7 +4098,9 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 	record = search_socket_record(HB_SOCKET_CONNECT, current->cred->uid.val, 0, 0, 0, port, 0, 0, binprm);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found socket bind record func=%u, port=[%d]\n", record->fid, record->port);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found socket bind record func=%u, port=[%d]\n", record->fid, record->port);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -4102,7 +4213,9 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 	record = search_socket_record(HB_SOCKET_SETSOCKOPT, current->cred->uid.val, 0, 0, 0, 0, level, optname, binprm);
 
 	if (record) {
-	       	;//printk(KERN_INFO "Found socket setsockopt record func=%u, level=%d, optname=%d\n", record->fid, level, optname);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found socket setsockopt record func=%u, level=%d, optname=%d\n", record->fid, level, optname);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
@@ -4517,7 +4630,9 @@ static int honeybest_ipc_permission(struct kern_ipc_perm *ipcp, short flag)
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
-				//printk(KERN_ERR "binprm %s, flag %d, uid %d, gid %d, cuid %d, cgid %d, mode %u\n", binprm, flag, ipc_uid, ipc_gid, ipc_cuid, ipc_cgid, mode);
+#if defined(HONEYBEST_DEBUG)
+				printk(KERN_ERR "binprm %s, flag %d, uid %d, gid %d, cuid %d, cgid %d, mode %u\n", binprm, flag, ipc_uid, ipc_gid, ipc_cuid, ipc_cgid, mode);
+#endif
 			}
 		}
 		up_read(&mm->mmap_sem);
@@ -4528,7 +4643,9 @@ static int honeybest_ipc_permission(struct kern_ipc_perm *ipcp, short flag)
 			ipc_uid, ipc_gid, ipc_cuid, ipc_cgid, flag, mode);
 
 	if (record) {
-	       	//printk(KERN_INFO "Found ipc open record func=%u, path=[%s]\n", record->fid, record->binprm);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_INFO "Found ipc open record func=%u, path=[%s]\n", record->fid, record->binprm);
+#endif
 		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}

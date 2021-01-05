@@ -123,10 +123,14 @@ int compare_regex(char *str1, char *str2)
 		}
 	}
 
-	;//printk(KERN_ERR  "Match is [%d], len %d, ", match, len1);
+#if defined(HONEYBEST_DEBUG)
+	printk(KERN_ERR  "Match is [%d], len %d, ", match, len1);
+#endif
 
 	if (match == Full) {
-	       	;//printk(KERN_ERR  "str1 %s, compare %d bytes\n", str1, len1>len2?len1:len2);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_ERR  "str1 %s, compare %d bytes\n", str1, len1>len2?len1:len2);
+#endif
 		if (len1 > len2)
 		       	return strncmp(str1, str2, len1) && 1;
 		else
@@ -150,7 +154,9 @@ int compare_regex(char *str1, char *str2)
 	       		return (ret || ret1);
 	}
 	else if (match == End) {
-	       	;//printk(KERN_ERR  "str1 %s, compare %d bytes\n", str1, asterik_offset);
+#if defined(HONEYBEST_DEBUG)
+	       	printk(KERN_ERR  "str1 %s, compare %d bytes\n", str1, asterik_offset);
+#endif
 		if (strlen(str1) <= strlen(str2))
 	       		return strncmp(str1, str2, asterik_offset) && 1;
 	}

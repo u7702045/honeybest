@@ -237,7 +237,9 @@ int add_file_record(unsigned int fid, char *uid, char act_allow, char *filename,
 			}
 		}
 		else {
-			//printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+#if defined(HONEYBEST_DEBUG)
+			printk(KERN_ERR "Notify record found or exceed number %lu\n", total_notify_record);
+#endif
 			err = -EOPNOTSUPP;
 			goto out;
 		}
@@ -362,7 +364,9 @@ int allow_file_whitelist(char *path)
 		goto out;
 
 	if (!strncmp(path, "/proc/sys/kernel/honeybest/", 27) || (!strncmp(path, "/proc/honeybest/", 16)) || (!strcmp(path, "/"))) {
-		//printk(KERN_ERR "Whitelist pass!!\n");
+#if defined(HONEYBEST_DEBUG)
+		printk(KERN_ERR "Whitelist pass!!\n");
+#endif
 		return 1;
 	}
 
