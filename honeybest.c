@@ -896,7 +896,7 @@ static int honeybest_ptrace_access_check(struct task_struct *child,
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found ptrace record func=%u, parent=[%s]\n", record->fid, record->parent);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -1101,7 +1101,7 @@ static int honeybest_bprm_set_creds(struct linux_binprm *bprm)
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found set creds record func=%u, hash=[%s]\n", record->fid, record->digest);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -1221,7 +1221,7 @@ static int honeybest_sb_remount(struct super_block *sb, void *data)
 			printk(KERN_INFO "Found sb remount record func=%u, uid %u, s_id=%s, type name=%s\n", record->fid, record->uid, record->s_id, record->name);
 #endif
 
-			if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+			if ((record->act_allow == 'R') && (locking == 1))
 				err = -EOPNOTSUPP;
 		}
 		else {
@@ -1268,7 +1268,7 @@ static int honeybest_sb_kern_mount(struct super_block *sb, int flags, void *data
 #if defined(HONEYBEST_DEBUG)
 		printk(KERN_INFO "Found sb mount record func=%u, uid %u, dev_name=%s, type name=%s, flags=%d\n", record->fid, record->uid, record->dev_name, record->type, record->flags);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -1321,7 +1321,7 @@ static int honeybest_sb_statfs(struct dentry *dentry)
 #if defined(HONEYBEST_DEBUG)
 		printk(KERN_INFO "Found sb statfs record func=%u, uid %u, s_id=%s, type name=%s\n", record->fid, record->uid, record->s_id, record->name);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -1415,7 +1415,7 @@ static int honeybest_mount(const char *dev_name, struct path *path,
 #if defined(HONEYBEST_DEBUG)
 		printk(KERN_INFO "Found sb mount record func=%u, uid %u, dev_name=%s, type name=%s, flags=%d\n", record->fid, record->uid, record->dev_name, record->type, record->flags);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -1469,7 +1469,7 @@ static int honeybest_umount(struct vfsmount *mnt, int flags)
 #if defined(HONEYBEST_DEBUG)
 		printk(KERN_INFO "Found sb umount record func=%u, uid %u, dev_name=%s, type name=%s, flags=%d\n", record->fid, record->uid, record->dev_name, record->type, record->flags);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -1601,7 +1601,7 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found path unlink record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -1707,7 +1707,7 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found path mkdir record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -1807,7 +1807,7 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found path rmdir record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -1913,7 +1913,7 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found path mknod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -2023,7 +2023,7 @@ static int honeybest_path_truncate(struct path *path)
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found path truncate record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -2125,7 +2125,7 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found path symlink record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -2246,7 +2246,7 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found path link record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -2364,7 +2364,7 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found path rename record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -2464,7 +2464,7 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found path chmod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -2564,7 +2564,7 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found path chmod record func=%u, uid %u, source=%s, target=%s\n", record->fid, record->uid, record->s_path, record->t_path);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -2776,7 +2776,7 @@ static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
 #if defined(HONEYBEST_DEBUG)
 		printk(KERN_INFO "Found inode setxattr name %s, dname %s\n", name, dname);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -2847,7 +2847,7 @@ static int honeybest_inode_getxattr(struct dentry *dentry, const char *name)
 #if defined(HONEYBEST_DEBUG)
 		printk(KERN_ERR "Found inode getxattr name %s, dname %s\n", name, binprm);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -2907,7 +2907,7 @@ static int honeybest_inode_listxattr(struct dentry *dentry)
 #if defined(HONEYBEST_DEBUG)
 		printk(KERN_INFO "Found inode setxattr name %s, dname %s\n", name, dname);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -2971,7 +2971,7 @@ static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
 #if defined(HONEYBEST_DEBUG)
 		printk(KERN_INFO "Found inode removexattr name %s, dname %s\n", name, dname);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -3120,7 +3120,7 @@ static int honeybest_file_ioctl(struct file *file, unsigned int cmd,
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->filename);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -3207,7 +3207,7 @@ static int honeybest_mmap_file(struct file *file, unsigned long reqprot,
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found set creds record func=%u, hash=[%s]\n", record->fid, record->digest);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -3329,7 +3329,7 @@ static int honeybest_file_receive(struct file *file)
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->filename);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -3432,7 +3432,7 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->filename);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -3619,7 +3619,7 @@ static int honeybest_kernel_module_from_file(struct file *file)
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found file open record func=%u, path=[%s]\n", record->fid, record->filename);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -3673,7 +3673,7 @@ static int honeybest_kernel_module_request(char *kmod_name)
 #if defined(HONEYBEST_DEBUG)
 		printk(KERN_INFO "Found kmod record func=%u, uid %u, name=%s\n", record->fid, record->uid, record->name);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -3812,7 +3812,7 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 #if defined(HONEYBEST_DEBUG)
 		printk(KERN_INFO "Found task struct sig %d, secid %d, signo %d, errno %d\n", record->sig, record->secid, record->si_signo, record->si_errno);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -3944,7 +3944,7 @@ static int honeybest_socket_create(int family, int type,
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found socket create record func=%u, family %d, type %d, protocol %d, kern %d\n", record->fid, family, type, protocol, kern);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -4025,7 +4025,7 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found socket bind record func=%u, port=[%d]\n", record->fid, record->port);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -4101,7 +4101,7 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found socket bind record func=%u, port=[%d]\n", record->fid, record->port);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -4216,7 +4216,7 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found socket setsockopt record func=%u, level=%d, optname=%d\n", record->fid, level, optname);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
@@ -4646,7 +4646,7 @@ static int honeybest_ipc_permission(struct kern_ipc_perm *ipcp, short flag)
 #if defined(HONEYBEST_DEBUG)
 	       	printk(KERN_INFO "Found ipc open record func=%u, path=[%s]\n", record->fid, record->binprm);
 #endif
-		if ((bl == 1) && (record->act_allow == 'R') && (locking == 1))
+		if ((record->act_allow == 'R') && (locking == 1))
 			err = -EOPNOTSUPP;
 	}
 	else {
