@@ -91,7 +91,7 @@
 #include "honeybest.h"
 #include "audit.h"
 
-extern int locking;
+extern int hb_lock;
 extern int hb_level;
 extern int enabled_audit;
 extern int hb_interact;
@@ -277,7 +277,7 @@ ssize_t write_inode_record(struct file *file, const char __user *buffer, size_t 
 	struct list_head *pos = NULL;
 	struct list_head *q = NULL;
 
-	if (locking == 1)
+	if (hb_lock == 1)
 		goto out;
 
 	if(*ppos > 0 || count > TOTAL_ACT_SIZE) {
