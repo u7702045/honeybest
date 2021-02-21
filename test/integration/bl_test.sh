@@ -1,4 +1,5 @@
 #!/bin/bash
+EXEC_PWD=$(dirname $(realpath $0))
 ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
 ENABLE_FILE=/proc/sys/kernel/honeybest/files
 ENABLE_BINPRM=/proc/sys/kernel/honeybest/binprm
@@ -6,7 +7,7 @@ BL_PROC=/proc/sys/kernel/honeybest/bl
 FILE_PROC=/proc/honeybest/files
 BINPRM_PROC=/proc/honeybest/binprm
 LOCK_PROC=/proc/sys/kernel/honeybest/locking
-HB_TEMPLATE=./template/
+HB_TEMPLATE=${EXEC_PWD}/template/
 LS_ACCEPT=${HB_TEMPLATE}/ls_accept
 LS_REJECT=${HB_TEMPLATE}/ls_reject
 activate_binprm(){

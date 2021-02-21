@@ -1,9 +1,10 @@
 #!/bin/bash
+EXEC_PWD=$(dirname $(realpath $0))
 ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
 ENABLE_PTRACE=/proc/sys/kernel/honeybest/ptrace
 LOCK_PROC=/proc/sys/kernel/honeybest/locking
 PTRACE_PROC=/proc/honeybest/ptrace
-HB_TEMPLATE=./template/
+HB_TEMPLATE=${EXEC_PWD}/template/
 HB_PTRACE=${HB_TEMPLATE}/ptrace
 TMP_FILE=/dev/shm/xxxx
 activate(){

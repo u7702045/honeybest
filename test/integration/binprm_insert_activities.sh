@@ -1,18 +1,19 @@
 #!/bin/bash
+EXEC_PWD=$(dirname $(realpath $0))
 ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
-ENABLE_FILE=/proc/sys/kernel/honeybest/files
+ENABLE_BINPRM=/proc/sys/kernel/honeybest/binprm
 LOCK_PROC=/proc/sys/kernel/honeybest/locking
-FILE_PROC=/proc/honeybest/files
-HB_TEMPLATE=./template/
-HB_FILE=${HB_TEMPLATE}/files
+BINPRM_PROC=/proc/honeybest/binprm
+HB_TEMPLATE=${EXEC_PWD}/template/
+HB_BINPRM=${HB_TEMPLATE}/binprm
 TMP_FILE=/dev/shm/xxxx
 activate(){
 	if [ $1 == 'start' ]; then
-		echo 1 > ${ENABLE_FILE}
+		echo 1 > ${ENABLE_BINPRM}
 		echo 1 > ${ENABLE_PROC}
 	else
-		echo 0 > ${ENABLE_FILE}
 		echo 0 > ${ENABLE_PROC}
+		echo 0 > ${ENABLE_BINPRM}
        	fi
 }
 
@@ -28,20 +29,20 @@ status() {
 	cat ${ENABLE_PROC}
 }
 
-clean_file_proc() {
-	echo "" > ${FILE_PROC}
-	cat ${FILE_PROC}
+clean_binprm_proc() {
+	echo "" > ${BINPRM_PROC}
+	cat ${BINPRM_PROC}
 }
 
-insert_file_proc() {
-	cat ${HB_FILE} > ${FILE_PROC}
-	cat ${FILE_PROC} > ${TMP_FILE}
+insert_binprm_proc() {
+	cat ${HB_BINPRM} > ${BINPRM_PROC}
+	cat ${BINPRM_PROC} > ${TMP_FILE}
 }
 
-test_clean_file() {
+test_clean_binprm() {
 	activate "stop"
 
-	tmp=$(clean_file_proc)
+	tmp=$(clean_binprm_proc)
 	actual=`echo $tmp|wc -l`
 	expected=1
 	assertEquals "test clean file" "$expected" "$actual"
@@ -50,44 +51,44 @@ test_clean_file() {
 test_insert_file() {
 	activate "stop"
 
-	insert_file_proc
+	insert_binprm_proc
 	actual=`cat ${TMP_FILE}|wc -l`
-	expected=7
+	expected=2
 	assertEquals "test insert file" "$expected" "$actual"
 }
 
 test_file_context() {
 	activate "stop"
 
-	tmp=$(clean_file_proc)
-	insert_file_proc
-	actual=`cat ${TMP_FILE}|grep cgroup|awk '{print $5}'|cut -d '/' -f 4`
-	expected='cgroup'
+	tmp=$(clean_binprm_proc)
+	insert_binprm_proc
+	actual=`cat ${TMP_FILE}|grep kmod|awk '{print $6}'|cut -d '/' -f 3`
+	expected='kmod'
 
 	assertEquals "test file context" "$expected" "$actual"
 }
 
-test_file_enable() {
+test_binprm_enable() {
 	activate "stop"
 	activate "start"
 
-	tmp=$(clean_file_proc)
+	tmp=$(clean_binprm_proc)
 	cat /proc/cpuinfo > /dev/null
 	sleep 2
-	cat ${FILE_PROC}|grep cpuinfo > /dev/null
+	cat ${BINPRM_PROC}|grep cat > /dev/null
 	actual=$?
 	expected=0
 
-	assertEquals "test file enable" "$expected" "$actual"
+	assertEquals "test binprm enable" "$expected" "$actual"
 
 	activate "stop"
-	tmp=$(clean_file_proc)
+	tmp=$(clean_binprm_proc)
 }
 
-test_file_lock() {
+test_binprm_lock() {
 	activate "stop"
 
-	tmp=$(clean_file_proc)
+	tmp=$(clean_binprm_proc)
 	locking "start"
 	activate "start"
 
@@ -95,11 +96,11 @@ test_file_lock() {
 	actual=$?
 	expected=1
 
-	assertEquals "test file lock" "$expected" "$actual"
+	assertNotEquals "test binprm lock" "$expected" "$actual"
 
 	activate "stop"
 	locking "stop"
-	tmp=$(clean_file_proc)
+	tmp=$(clean_binprm_proc)
 }
 
 

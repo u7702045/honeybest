@@ -1,9 +1,10 @@
 #!/bin/bash
+EXEC_PWD=$(dirname $(realpath $0))
 ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
 ENABLE_INODE=/proc/sys/kernel/honeybest/inode
 LOCK_PROC=/proc/sys/kernel/honeybest/locking
 INODE_PROC=/proc/honeybest/inode
-HB_TEMPLATE=./template/
+HB_TEMPLATE=${EXEC_PWD}/template/
 HB_INODE=${HB_TEMPLATE}/inode
 TMP_FILE=/dev/shm/xxxx
 activate(){

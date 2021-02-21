@@ -1,6 +1,7 @@
 #!/bin/bash
+EXEC_PWD=$(dirname $(realpath $0))
 ENABLE_PROC=/proc/sys/kernel/honeybest/level
-HB_TEMPLATE=./template/
+HB_TEMPLATE=${EXEC_PWD}/template/
 turn_level(){
 	if [ $1 == '1' ]; then
 		echo 1 > ${ENABLE_PROC}

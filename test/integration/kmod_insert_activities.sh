@@ -1,9 +1,10 @@
 #!/bin/bash
+EXEC_PWD=$(dirname $(realpath $0))
 ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
 ENABLE_KMOD=/proc/sys/kernel/honeybest/kmod
 LOCK_PROC=/proc/sys/kernel/honeybest/locking
 KMOD_PROC=/proc/honeybest/kmod
-HB_TEMPLATE=./template/
+HB_TEMPLATE=${EXEC_PWD}/template/
 HB_KMOD=${HB_TEMPLATE}/kmod
 TMP_FILE=/dev/shm/xxxx
 activate(){
