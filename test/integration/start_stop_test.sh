@@ -1,6 +1,7 @@
 #!/bin/bash
-ENABLE_PROC=/proc/sys/kernel/honeybest/locking
-HB_TEMPLATE=./template/
+EXEC_PWD=$(dirname $(realpath $0))
+ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
+HB_TEMPLATE=${EXEC_PWD}/template/
 activate(){
 	if [ $1 == 'start' ]; then
 		echo 1 > ${ENABLE_PROC}
@@ -13,14 +14,14 @@ status() {
 	cat ${ENABLE_PROC}
 }
 
-test_enable_locking() {
+test_enable() {
 	activate 'start'
 	actual=$(status)
 	expected=1
 	assertEquals "start" "$expected" "$actual"
 }
 
-test_disable_locking() {
+test_disable() {
 	activate 'stop'
 	actual=$(status)
 	expected=0

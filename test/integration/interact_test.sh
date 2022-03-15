@@ -1,9 +1,10 @@
 #!/bin/bash
+EXEC_PWD=$(dirname $(realpath $0))
 ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
 ENABLE_KMOD=/proc/sys/kernel/honeybest/kmod
 INTERACT_PROC=/proc/sys/kernel/honeybest/interact
 NOTIFY_PROC=/proc/honeybest/notify
-HB_TEMPLATE=./template/
+HB_TEMPLATE=${EXEC_PWD}/template/
 activate(){
 	if [ $1 == 'start' ]; then
 		echo 1 > ${ENABLE_KMOD}

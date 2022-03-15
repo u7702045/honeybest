@@ -1,9 +1,10 @@
 #!/bin/bash
+EXEC_PWD=$(dirname $(realpath $0))
 ENABLE_PROC=/proc/sys/kernel/honeybest/enabled
 ENABLE_SOCKET=/proc/sys/kernel/honeybest/socket
 LOCK_PROC=/proc/sys/kernel/honeybest/locking
 SOCKET_PROC=/proc/honeybest/socket
-HB_TEMPLATE=./template/
+HB_TEMPLATE=${EXEC_PWD}/template/
 HB_SOCKET=${HB_TEMPLATE}/socket
 TMP_FILE=/dev/shm/xxxx
 activate(){
