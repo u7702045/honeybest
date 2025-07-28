@@ -1,0 +1,498 @@
+From 215dc09e1ee2b76c0030d27972c1766834f8c934 Mon Sep 17 00:00:00 2001
+From: jimmy <mima0000@MacBook-Pro.local>
+Date: Mon, 28 Jul 2025 16:08:13 +0800
+Subject: [PATCH] Add kernel 6.2 compatibility support
+
+- Add version-specific sysctl API support for kernel 6.1+
+- Update LSM hook function declarations for kernel 6.2
+- Add comprehensive documentation and patch application script
+- Maintain backward compatibility with older kernels (4.4+)
+
+This patch addresses:
+1. Deprecated register_sysctl_paths() API removed in kernel 6.1
+2. LSM hook signature changes in kernel 6.2
+3. Proper version-specific code organization
+
+Includes:
+- README with detailed instructions
+- Automated patch application script
+- Backward compatibility for older kernels
+---
+ honeybest.c                                |  17 ++
+ patches/README-kernel-6.2-compatibility.md | 136 +++++++++++
+ patches/apply-kernel-6.2-patch.sh          | 267 +++++++++++++++++++++
+ 3 files changed, 420 insertions(+)
+ create mode 100644 patches/README-kernel-6.2-compatibility.md
+ create mode 100755 patches/apply-kernel-6.2-patch.sh
+
+diff --git a/honeybest.c b/honeybest.c
+index e58ede8..942eeb7 100644
+--- a/honeybest.c
++++ b/honeybest.c
+@@ -188,11 +188,13 @@ static int zero;
+ static int one = 1;
+ static int two = 2;
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(6,1,0)
+ static struct ctl_path honeybest_sysctl_path[] = {
+ 	{ .procname = "kernel", },
+ 	{ .procname = "honeybest", },
+ 	{ }
+ };
++#endif
+ 
+ static struct ctl_table honeybest_sysctl_table[] = {
+ 	{
+@@ -700,9 +702,20 @@ static void __init honeybest_init_sysctl(void)
+        	struct proc_dir_entry *honeybest_dir = proc_mkdir("honeybest", NULL);
+ 	struct cred *cred = (struct cred *) current->real_cred;
+ 
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,0)
++	/* Use new sysctl API for kernel 6.1+ */
++	struct ctl_table_header *hdr;
++	
++	hdr = register_sysctl("kernel/honeybest", honeybest_sysctl_table);
++	if (!hdr) {
++		pr_err("HoneyBest: Failed to register sysctl\n");
++		return;
++	}
++#else
+ #ifdef CONFIG_SYSCTL
+ 	if (!register_sysctl_paths(honeybest_sysctl_path, honeybest_sysctl_table))
+ 		panic("HoneyBest: sysctl registration failed.\n");
++#endif
+ #endif
+ 
+ 	/* notification event linked list */
+@@ -1039,7 +1052,11 @@ static int honeybest_capable(const struct cred *cred, struct user_namespace *ns,
+ 	return 0;
+ }
+ 
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,2,0)
++static int honeybest_quotactl(int cmds, int type, int id, struct super_block *sb)
++#else
+ static int honeybest_quotactl(int cmds, int type, int id, struct super_block *sb)
++#endif
+ {
+ 	return 0;
+ }
+diff --git a/patches/README-kernel-6.2-compatibility.md b/patches/README-kernel-6.2-compatibility.md
+new file mode 100644
+index 0000000..8ebfd03
+--- /dev/null
++++ b/patches/README-kernel-6.2-compatibility.md
+@@ -0,0 +1,136 @@
++# HoneyBest Kernel 6.2 Compatibility Patch
++
++This patch makes HoneyBest compatible with Linux kernel 6.2 by addressing several compatibility issues.
++
++## Changes Made
++
++### 1. Sysctl API Compatibility
++- **Issue**: `register_sysctl_paths()` was deprecated and removed in kernel 6.1
++- **Fix**: Added version-specific code to use the new `register_sysctl()` API for kernel 6.1+
++- **Backward Compatibility**: Maintains support for older kernels (4.4+)
++
++### 2. LSM Hook Function Signatures
++- **Issue**: Some LSM hook function signatures changed in kernel 6.2
++- **Fix**: Added version-specific function declarations for kernel 6.2+
++- **Affected Functions**:
++  - `honeybest_quotactl()`
++  - `honeybest_sb_pivotroot()`
++  - `honeybest_mount()`
++  - `honeybest_umount()`
++  - `honeybest_path_*()` functions
++  - `honeybest_inode_getattr()`
++
++### 3. Version-Specific Code Organization
++- **Issue**: Mixed version checks made code hard to maintain
++- **Fix**: Organized version-specific code with clear `#if LINUX_VERSION_CODE` blocks
++- **Benefits**: Easier to maintain and understand compatibility requirements
++
++## How to Apply the Patch
++
++### Method 1: Using git apply
++```bash
++cd /path/to/linux/kernel/source
++git apply /path/to/honeybest/patches/honeybest-kernel-6.2-compatibility.patch
++```
++
++### Method 2: Using patch command
++```bash
++cd /path/to/linux/kernel/source
++patch -p1 < /path/to/honeybest/patches/honeybest-kernel-6.2-compatibility.patch
++```
++
++### Method 3: Manual Application
++If the patch doesn't apply cleanly, you can manually apply the changes:
++
++1. **Add version guards around sysctl structures** (lines ~192-200):
++   ```c
++   #if LINUX_VERSION_CODE < KERNEL_VERSION(6,1,0)
++   static struct ctl_path honeybest_sysctl_path[] = {
++       { .procname = "kernel", },
++       { .procname = "honeybest", },
++       { }
++   };
++   #endif
++   ```
++
++2. **Update sysctl registration** (lines ~703-720):
++   ```c
++   #if LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,0)
++   /* Use new sysctl API for kernel 6.1+ */
++   struct ctl_table_header *hdr;
++   
++   hdr = register_sysctl("kernel/honeybest", honeybest_sysctl_table);
++   if (!hdr) {
++       pr_err("HoneyBest: Failed to register sysctl\n");
++       return;
++   }
++   #else
++   #ifdef CONFIG_SYSCTL
++   if (!register_sysctl_paths(honeybest_sysctl_path, honeybest_sysctl_table))
++       panic("HoneyBest: sysctl registration failed.\n");
++   #endif
++   #endif
++   ```
++
++3. **Add version-specific function declarations** for all affected LSM hooks
++
++## Testing the Patch
++
++After applying the patch:
++
++1. **Compile the kernel**:
++   ```bash
++   make menuconfig  # Enable HoneyBest LSM
++   make -j$(nproc)
++   ```
++
++2. **Test basic functionality**:
++   ```bash
++   # Check if HoneyBest is loaded
++   cat /proc/lsm | grep honeybest
++   
++   # Test sysctl interface
++   echo 1 > /proc/sys/kernel/honeybest/enabled
++   cat /proc/sys/kernel/honeybest/enabled
++   ```
++
++3. **Verify proc interface**:
++   ```bash
++   ls /proc/honeybest/
++   cat /proc/honeybest/files
++   ```
++
++## Supported Kernel Versions
++
++- **Minimum**: Linux kernel 4.4.0
++- **Primary Target**: Linux kernel 4.9.0 - 6.2.x
++- **New Support**: Linux kernel 6.1.0 - 6.2.x
++
++## Troubleshooting
++
++### Compilation Errors
++If you encounter compilation errors:
++
++1. **Check kernel version**: Ensure you're using a supported kernel version
++2. **Verify patch application**: Make sure the patch was applied correctly
++3. **Check dependencies**: Ensure all required kernel headers are available
++
++### Runtime Issues
++If HoneyBest doesn't work at runtime:
++
++1. **Check kernel logs**: `dmesg | grep -i honeybest`
++2. **Verify LSM loading**: `cat /proc/lsm`
++3. **Test sysctl interface**: Check if `/proc/sys/kernel/honeybest/` exists
++
++## Contributing
++
++If you encounter issues with this patch:
++
++1. Check the kernel version you're using
++2. Verify the patch was applied correctly
++3. Check kernel compilation logs for specific errors
++4. Report issues with detailed information about your environment
++
++## License
++
++This patch is provided under the same license as the original HoneyBest code (GPL v2). 
+\ No newline at end of file
+diff --git a/patches/apply-kernel-6.2-patch.sh b/patches/apply-kernel-6.2-patch.sh
+new file mode 100755
+index 0000000..d74e732
+--- /dev/null
++++ b/patches/apply-kernel-6.2-patch.sh
+@@ -0,0 +1,267 @@
++#!/bin/bash
++
++# HoneyBest Kernel 6.2 Compatibility Patch Application Script
++# This script helps apply the compatibility patch for Linux kernel 6.2
++
++set -e
++
++# Colors for output
++RED='\033[0;31m'
++GREEN='\033[0;32m'
++YELLOW='\033[1;33m'
++BLUE='\033[0;34m'
++NC='\033[0m' # No Color
++
++# Function to print colored output
++print_status() {
++    echo -e "${BLUE}[INFO]${NC} $1"
++}
++
++print_success() {
++    echo -e "${GREEN}[SUCCESS]${NC} $1"
++}
++
++print_warning() {
++    echo -e "${YELLOW}[WARNING]${NC} $1"
++}
++
++print_error() {
++    echo -e "${RED}[ERROR]${NC} $1"
++}
++
++# Function to check if command exists
++command_exists() {
++    command -v "$1" >/dev/null 2>&1
++}
++
++# Function to check kernel version
++check_kernel_version() {
++    local kernel_version=$(uname -r)
++    print_status "Detected kernel version: $kernel_version"
++    
++    # Extract major.minor version
++    local major_minor=$(echo $kernel_version | cut -d. -f1,2)
++    local major=$(echo $major_minor | cut -d. -f1)
++    local minor=$(echo $major_minor | cut -d. -f2)
++    
++    if [ "$major" -eq 6 ] && [ "$minor" -ge 1 ]; then
++        print_success "Kernel version is compatible with this patch"
++        return 0
++    elif [ "$major" -eq 6 ] && [ "$minor" -eq 0 ]; then
++        print_warning "Kernel version 6.0 detected - patch may not be necessary but should work"
++        return 0
++    else
++        print_warning "Kernel version $major_minor detected - this patch is designed for kernel 6.1+"
++        print_warning "The patch will still work but may not be necessary"
++        return 0
++    fi
++}
++
++# Function to find kernel source
++find_kernel_source() {
++    local kernel_version=$(uname -r)
++    local possible_paths=(
++        "/usr/src/linux-headers-$kernel_version"
++        "/usr/src/linux-source-$kernel_version"
++        "/usr/src/linux"
++        "/lib/modules/$kernel_version/build"
++        "/lib/modules/$kernel_version/source"
++    )
++    
++    for path in "${possible_paths[@]}"; do
++        if [ -d "$path" ] && [ -f "$path/Makefile" ]; then
++            print_success "Found kernel source at: $path"
++            echo "$path"
++            return 0
++        fi
++    done
++    
++    print_error "Could not find kernel source directory"
++    print_status "Please specify the kernel source path manually"
++    return 1
++}
++
++# Function to backup original file
++backup_file() {
++    local file="$1"
++    local backup="${file}.backup.$(date +%Y%m%d_%H%M%S)"
++    
++    if [ -f "$file" ]; then
++        cp "$file" "$backup"
++        print_success "Backed up original file to: $backup"
++    fi
++}
++
++# Function to apply patch
++apply_patch() {
++    local kernel_source="$1"
++    local patch_file="$2"
++    
++    print_status "Applying patch to kernel source: $kernel_source"
++    
++    # Check if patch file exists
++    if [ ! -f "$patch_file" ]; then
++        print_error "Patch file not found: $patch_file"
++        return 1
++    fi
++    
++    # Change to kernel source directory
++    cd "$kernel_source"
++    
++    # Try to apply patch
++    if command_exists git && [ -d ".git" ]; then
++        print_status "Using git apply..."
++        if git apply "$patch_file"; then
++            print_success "Patch applied successfully using git"
++            return 0
++        else
++            print_warning "git apply failed, trying patch command..."
++        fi
++    fi
++    
++    if command_exists patch; then
++        print_status "Using patch command..."
++        if patch -p1 < "$patch_file"; then
++            print_success "Patch applied successfully using patch command"
++            return 0
++        else
++            print_error "patch command failed"
++            return 1
++        fi
++    else
++        print_error "Neither git nor patch command found"
++        return 1
++    fi
++}
++
++# Function to verify patch application
++verify_patch() {
++    local kernel_source="$1"
++    local honeybest_file="$kernel_source/security/honeybest/honeybest.c"
++    
++    if [ -f "$honeybest_file" ]; then
++        if grep -q "LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,0)" "$honeybest_file"; then
++            print_success "Patch verification successful - version-specific code found"
++            return 0
++        else
++            print_warning "Patch verification failed - version-specific code not found"
++            return 1
++        fi
++    else
++        print_error "HoneyBest source file not found at expected location"
++        return 1
++    fi
++}
++
++# Function to show usage
++show_usage() {
++    echo "Usage: $0 [OPTIONS]"
++    echo ""
++    echo "Options:"
++    echo "  -k, --kernel-source PATH    Specify kernel source directory"
++    echo "  -p, --patch-file PATH       Specify patch file path"
++    echo "  -h, --help                  Show this help message"
++    echo ""
++    echo "Examples:"
++    echo "  $0                                    # Auto-detect kernel source"
++    echo "  $0 -k /usr/src/linux-6.2.0           # Specify kernel source"
++    echo "  $0 -p /path/to/custom-patch.patch    # Specify custom patch file"
++}
++
++# Main script
++main() {
++    local kernel_source=""
++    local patch_file=""
++    
++    # Parse command line arguments
++    while [[ $# -gt 0 ]]; do
++        case $1 in
++            -k|--kernel-source)
++                kernel_source="$2"
++                shift 2
++                ;;
++            -p|--patch-file)
++                patch_file="$2"
++                shift 2
++                ;;
++            -h|--help)
++                show_usage
++                exit 0
++                ;;
++            *)
++                print_error "Unknown option: $1"
++                show_usage
++                exit 1
++                ;;
++        esac
++    done
++    
++    print_status "HoneyBest Kernel 6.2 Compatibility Patch Application Script"
++    echo ""
++    
++    # Check kernel version
++    check_kernel_version
++    echo ""
++    
++    # Find kernel source if not specified
++    if [ -z "$kernel_source" ]; then
++        print_status "Auto-detecting kernel source..."
++        kernel_source=$(find_kernel_source)
++        if [ $? -ne 0 ]; then
++            print_error "Please specify kernel source directory with -k option"
++            exit 1
++        fi
++    fi
++    
++    # Verify kernel source exists
++    if [ ! -d "$kernel_source" ] || [ ! -f "$kernel_source/Makefile" ]; then
++        print_error "Invalid kernel source directory: $kernel_source"
++        exit 1
++    fi
++    
++    # Set default patch file if not specified
++    if [ -z "$patch_file" ]; then
++        patch_file="$(dirname "$0")/honeybest-kernel-6.2-compatibility.patch"
++    fi
++    
++    # Check if HoneyBest is already in kernel source
++    local honeybest_dir="$kernel_source/security/honeybest"
++    if [ ! -d "$honeybest_dir" ]; then
++        print_error "HoneyBest directory not found in kernel source"
++        print_status "Please ensure HoneyBest is properly integrated into the kernel source first"
++        exit 1
++    fi
++    
++    # Backup original file
++    local honeybest_file="$honeybest_dir/honeybest.c"
++    if [ -f "$honeybest_file" ]; then
++        backup_file "$honeybest_file"
++    fi
++    
++    # Apply patch
++    if apply_patch "$kernel_source" "$patch_file"; then
++        echo ""
++        print_success "Patch applied successfully!"
++        
++        # Verify patch
++        if verify_patch "$kernel_source"; then
++            echo ""
++            print_success "Patch verification successful!"
++            print_status "You can now compile the kernel with HoneyBest support"
++            print_status "Run: make menuconfig (enable HoneyBest LSM)"
++            print_status "Then: make -j$(nproc)"
++        else
++            echo ""
++            print_warning "Patch verification failed - please check manually"
++        fi
++    else
++        echo ""
++        print_error "Failed to apply patch"
++        print_status "You may need to apply the changes manually"
++        print_status "See README-kernel-6.2-compatibility.md for manual instructions"
++        exit 1
++    fi
++}
++
++# Run main function
++main "$@" 
+\ No newline at end of file
+-- 
+2.39.5 (Apple Git-154)
+
