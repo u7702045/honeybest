@@ -188,11 +188,13 @@ static int zero;
 static int one = 1;
 static int two = 2;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,1,0)
 static struct ctl_path honeybest_sysctl_path[] = {
 	{ .procname = "kernel", },
 	{ .procname = "honeybest", },
 	{ }
 };
+#endif
 
 static struct ctl_table honeybest_sysctl_table[] = {
 	{
@@ -700,9 +702,20 @@ static void __init honeybest_init_sysctl(void)
        	struct proc_dir_entry *honeybest_dir = proc_mkdir("honeybest", NULL);
 	struct cred *cred = (struct cred *) current->real_cred;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,0)
+	/* Use new sysctl API for kernel 6.1+ */
+	struct ctl_table_header *hdr;
+	
+	hdr = register_sysctl("kernel/honeybest", honeybest_sysctl_table);
+	if (!hdr) {
+		pr_err("HoneyBest: Failed to register sysctl\n");
+		return;
+	}
+#else
 #ifdef CONFIG_SYSCTL
 	if (!register_sysctl_paths(honeybest_sysctl_path, honeybest_sysctl_table))
 		panic("HoneyBest: sysctl registration failed.\n");
+#endif
 #endif
 
 	/* notification event linked list */
@@ -1039,7 +1052,11 @@ static int honeybest_capable(const struct cred *cred, struct user_namespace *ns,
 	return 0;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,2,0)
 static int honeybest_quotactl(int cmds, int type, int id, struct super_block *sb)
+#else
+static int honeybest_quotactl(int cmds, int type, int id, struct super_block *sb)
+#endif
 {
 	return 0;
 }
