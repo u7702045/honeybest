@@ -32,7 +32,7 @@ index 000000000000..111111111111 100644
 @@ -20,6 +20,7 @@ obj-$(CONFIG_SECURITY_TOMOYO)		+= tomoyo/
  obj-$(CONFIG_SECURITY_APPARMOR)		+= apparmor/
  obj-$(CONFIG_SECURITY_YAMA)		+= yama/
- obj-$(CONFIG_SECURITY_HONEYBEST)	+= honeybest/
++obj-$(CONFIG_SECURITY_HONEYBEST)	+= honeybest/
  obj-$(CONFIG_SECURITY_LOADPIN)		+= loadpin/
  obj-$(CONFIG_SECURITY_SAFESETID)       += safesetid/
  obj-$(CONFIG_SECURITY_LOCKDOWN_LSM)	+= lockdown/

@@ -18,7 +18,6 @@
 #include <linux/init.h>
 #include <linux/kd.h>
 #include <linux/kernel.h>
-#include <linux/tracehook.h>
 #include <linux/errno.h>
 #include <linux/sched.h>
 #include <linux/lsm_hooks.h>
@@ -27,6 +26,7 @@
 #include <linux/unistd.h>
 #include <linux/mm.h>
 #include <linux/mman.h>
+#include <linux/mmap_lock.h>
 #include <linux/slab.h>
 #include <linux/pagemap.h>
 #include <linux/proc_fs.h>
@@ -84,7 +84,7 @@
 #include <linux/string_helpers.h>
 #include <linux/list.h>
 #include <crypto/hash.h>
-#include <crypto/sha.h>
+#include <crypto/sha1.h>
 #include <crypto/algapi.h>
 #include <linux/version.h>
 #include <linux/module.h>
@@ -188,11 +188,7 @@ static int zero;
 static int one = 1;
 static int two = 2;
 
-static struct ctl_path honeybest_sysctl_path[] = {
-	{ .procname = "kernel", },
-	{ .procname = "honeybest", },
-	{ }
-};
+/* sysctl path is now a string - no longer using ctl_path */
 
 static struct ctl_table honeybest_sysctl_table[] = {
 	{
@@ -530,12 +526,11 @@ static int open_notify_proc(struct inode *inode, struct  file *file) {
 	  return seq_open(file, &hb_notify_seq_ops);
 }
 
-static const struct file_operations hb_proc_notify_fops = {
-	.open  = open_notify_proc,
-	.read  = seq_read,
-	//.write  = write_notify_record,
-	.llseek  = seq_lseek,
-	.release = seq_release,
+static const struct proc_ops hb_proc_notify_fops = {
+	.proc_open  = open_notify_proc,
+	.proc_read  = seq_read,
+	.proc_lseek  = seq_lseek,
+	.proc_release = seq_release,
 };
 
 /**
@@ -545,12 +540,12 @@ static int open_file_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_file_record, NULL);
 }
 
-static const struct file_operations hb_proc_file_fops = {
-	.open  = open_file_proc,
-	.read  = seq_read,
-	.write  = write_file_record,
-	.llseek  = seq_lseek,
-	.release = single_release,
+static const struct proc_ops hb_proc_file_fops = {
+	.proc_open  = open_file_proc,
+	.proc_read  = seq_read,
+	.proc_write  = write_file_record,
+	.proc_lseek  = seq_lseek,
+	.proc_release = single_release,
 };
 
 /**
@@ -560,12 +555,12 @@ static int open_task_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_task_record, NULL);
 }
 
-static const struct file_operations hb_proc_task_fops = {
-	.open  = open_task_proc,
-	.read  = seq_read,
-	.write  = write_task_record,
-	.llseek  = seq_lseek,
-	.release = single_release,
+static const struct proc_ops hb_proc_task_fops = {
+	.proc_open  = open_task_proc,
+	.proc_read  = seq_read,
+	.proc_write  = write_task_record,
+	.proc_lseek  = seq_lseek,
+	.proc_release = single_release,
 };
 
 /**
@@ -576,12 +571,12 @@ static int open_socket_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_socket_record, NULL);
 }
 
-static const struct file_operations hb_proc_socket_fops = {
-	.open  = open_socket_proc,
-	.read  = seq_read,
-	.write  = write_socket_record,
-	.llseek  = seq_lseek,
-	.release = single_release,
+static const struct proc_ops hb_proc_socket_fops = {
+	.proc_open  = open_socket_proc,
+	.proc_read  = seq_read,
+	.proc_write  = write_socket_record,
+	.proc_lseek  = seq_lseek,
+	.proc_release = single_release,
 };
 
 /**
@@ -592,12 +587,12 @@ static int open_binprm_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_binprm_record, NULL);
 }
 
-static const struct file_operations hb_proc_binprm_fops = {
-	.open  = open_binprm_proc,
-	.read  = seq_read,
-	.write  = write_binprm_record,
-	.llseek  = seq_lseek,
-	.release = single_release,
+static const struct proc_ops hb_proc_binprm_fops = {
+	.proc_open  = open_binprm_proc,
+	.proc_read  = seq_read,
+	.proc_write  = write_binprm_record,
+	.proc_lseek  = seq_lseek,
+	.proc_release = single_release,
 };
 
 /**
@@ -608,12 +603,12 @@ static int open_inode_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_inode_record, NULL);
 }
 
-static const struct file_operations hb_proc_inode_fops = {
-	.open  = open_inode_proc,
-	.read  = seq_read,
-	.write  = write_inode_record,
-	.llseek  = seq_lseek,
-	.release = single_release,
+static const struct proc_ops hb_proc_inode_fops = {
+	.proc_open  = open_inode_proc,
+	.proc_read  = seq_read,
+	.proc_write  = write_inode_record,
+	.proc_lseek  = seq_lseek,
+	.proc_release = single_release,
 };
 
 /**
@@ -624,12 +619,12 @@ static int open_path_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_path_record, NULL);
 }
 
-static const struct file_operations hb_proc_path_fops = {
-	.open  = open_path_proc,
-	.read  = seq_read,
-	.write  = write_path_record,
-	.llseek  = seq_lseek,
-	.release = single_release,
+static const struct proc_ops hb_proc_path_fops = {
+	.proc_open  = open_path_proc,
+	.proc_read  = seq_read,
+	.proc_write  = write_path_record,
+	.proc_lseek  = seq_lseek,
+	.proc_release = single_release,
 };
 
 /**
@@ -640,12 +635,12 @@ static int open_sb_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_sb_record, NULL);
 }
 
-static const struct file_operations hb_proc_sb_fops = {
-	.open  = open_sb_proc,
-	.read  = seq_read,
-	.write  = write_sb_record,
-	.llseek  = seq_lseek,
-	.release = single_release,
+static const struct proc_ops hb_proc_sb_fops = {
+	.proc_open  = open_sb_proc,
+	.proc_read  = seq_read,
+	.proc_write  = write_sb_record,
+	.proc_lseek  = seq_lseek,
+	.proc_release = single_release,
 };
 
 /**
@@ -656,12 +651,12 @@ static int open_kmod_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_kmod_record, NULL);
 }
 
-static const struct file_operations hb_proc_kmod_fops = {
-	.open  = open_kmod_proc,
-	.read  = seq_read,
-	.write  = write_kmod_record,
-	.llseek  = seq_lseek,
-	.release = single_release,
+static const struct proc_ops hb_proc_kmod_fops = {
+	.proc_open  = open_kmod_proc,
+	.proc_read  = seq_read,
+	.proc_write  = write_kmod_record,
+	.proc_lseek  = seq_lseek,
+	.proc_release = single_release,
 };
 
 /**
@@ -672,12 +667,12 @@ static int open_ptrace_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_ptrace_record, NULL);
 }
 
-static const struct file_operations hb_proc_ptrace_fops = {
-	.open  = open_ptrace_proc,
-	.read  = seq_read,
-	.write  = write_ptrace_record,
-	.llseek  = seq_lseek,
-	.release = single_release,
+static const struct proc_ops hb_proc_ptrace_fops = {
+	.proc_open  = open_ptrace_proc,
+	.proc_read  = seq_read,
+	.proc_write  = write_ptrace_record,
+	.proc_lseek  = seq_lseek,
+	.proc_release = single_release,
 };
 
 /**
@@ -687,12 +682,12 @@ static int open_ipc_proc(struct inode *inode, struct  file *file) {
 	  return single_open(file, read_ipc_record, NULL);
 }
 
-static const struct file_operations hb_proc_ipc_fops = {
-	.open  = open_ipc_proc,
-	.read  = seq_read,
-	.write  = write_ipc_record,
-	.llseek  = seq_lseek,
-	.release = single_release,
+static const struct proc_ops hb_proc_ipc_fops = {
+	.proc_open  = open_ipc_proc,
+	.proc_read  = seq_read,
+	.proc_write  = write_ipc_record,
+	.proc_lseek  = seq_lseek,
+	.proc_release = single_release,
 };
 
 static void __init honeybest_init_sysctl(void)
@@ -701,7 +696,7 @@ static void __init honeybest_init_sysctl(void)
 	struct cred *cred = (struct cred *) current->real_cred;
 
 #ifdef CONFIG_SYSCTL
-	if (!register_sysctl_paths(honeybest_sysctl_path, honeybest_sysctl_table))
+	if (!register_sysctl("kernel/honeybest", honeybest_sysctl_table))
 		panic("HoneyBest: sysctl registration failed.\n");
 #endif
 
@@ -807,26 +802,26 @@ static void __init honeybest_init_sysctl(void)
 	inject_honeybest_tracker(cred, HB_INITIALIZE);
 }
 
-static int honeybest_binder_set_context_mgr(struct task_struct *mgr)
+static int honeybest_binder_set_context_mgr(const struct cred *mgr)
 {
 	return 0;
 }
 
-static int honeybest_binder_transaction(struct task_struct *from,
-                                      struct task_struct *to)
+static int honeybest_binder_transaction(const struct cred *from,
+					const struct cred *to)
 {
 	return 0;
 }
 
-static int honeybest_binder_transfer_binder(struct task_struct *from,
-                                          struct task_struct *to)
+static int honeybest_binder_transfer_binder(const struct cred *from,
+					     const struct cred *to)
 {
 	return 0;
 }
 
-static int honeybest_binder_transfer_file(struct task_struct *from,
-                                        struct task_struct *to,
-                                        struct file *file)
+static int honeybest_binder_transfer_file(const struct cred *from,
+					   const struct cred *to,
+					   const struct file *file)
 {
 	return 0;
 }
@@ -863,7 +858,7 @@ static int honeybest_ptrace_access_check(struct task_struct *child,
 	       	err = -ENOMEM;
 
 	if (parent_mm) {
-		down_read(&parent_mm->mmap_sem);
+		mmap_read_lock(parent_mm);
 		if (parent_mm->exe_file) {
 			parent_taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (parent_taskname) {
@@ -873,14 +868,14 @@ static int honeybest_ptrace_access_check(struct task_struct *child,
 #endif
 			}
 		}
-		up_read(&parent_mm->mmap_sem);
+		mmap_read_unlock(parent_mm);
 	}
 
 	if (!parent_binprm)
 		goto out;
 
 	if (child_mm) {
-		down_read(&child_mm->mmap_sem);
+		mmap_read_lock(child_mm);
 		if (child_mm->exe_file) {
 			child_taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (child_taskname) {
@@ -890,7 +885,7 @@ static int honeybest_ptrace_access_check(struct task_struct *child,
 #endif
 			}
 		}
-		up_read(&child_mm->mmap_sem);
+		mmap_read_unlock(child_mm);
 	}
 
 	if (!child_binprm)
@@ -944,8 +939,8 @@ static int honeybest_ptrace_traceme(struct task_struct *parent)
 	return err;
 }
 
-static int honeybest_capget(struct task_struct *target, kernel_cap_t *effective,
-                          kernel_cap_t *inheritable, kernel_cap_t *permitted)
+static int honeybest_capget(const struct task_struct *target, kernel_cap_t *effective,
+			     kernel_cap_t *inheritable, kernel_cap_t *permitted)
 {
 	int err = 0;
 
@@ -957,14 +952,14 @@ static int honeybest_capget(struct task_struct *target, kernel_cap_t *effective,
 	char *pathname,*p;
 	struct mm_struct *mm = target->mm;
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			pathname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (pathname) {
 				p = d_path(&mm->exe_file->f_path, pathname, PATH_MAX);
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 
 	cap_clear(dest);
@@ -1006,7 +1001,7 @@ static int honeybest_capset(struct cred *new, const struct cred *old,
 
 	task_lock(task);
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			pathname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (pathname) {
@@ -1014,7 +1009,7 @@ static int honeybest_capset(struct cred *new, const struct cred *old,
 				p = d_path(&mm->exe_file->f_path, pathname, PATH_MAX);
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 	task_unlock(task);
 
@@ -1034,12 +1029,12 @@ static int honeybest_capset(struct cred *new, const struct cred *old,
 }
 
 static int honeybest_capable(const struct cred *cred, struct user_namespace *ns,
-                           int cap, int audit)
+			      int cap, unsigned int opts)
 {
 	return 0;
 }
 
-static int honeybest_quotactl(int cmds, int type, int id, struct super_block *sb)
+static int honeybest_quotactl(int cmds, int type, int id, const struct super_block *sb)
 {
 	return 0;
 }
@@ -1157,12 +1152,12 @@ static inline void flush_unauthorized_files(const struct cred *cred,
 	return ;
 }
 
-static void honeybest_bprm_committing_creds(struct linux_binprm *bprm)
+static void honeybest_bprm_committing_creds(const struct linux_binprm *bprm)
 {
 	return ;
 }
 
-static void honeybest_bprm_committed_creds(struct linux_binprm *bprm)
+static void honeybest_bprm_committed_creds(const struct linux_binprm *bprm)
 {
 }
 
@@ -1198,10 +1193,10 @@ static int honeybest_sb_copy_data(char *orig, char *copy)
  * This function use to tracking remount activity.
  * Tracking info: superblock id / disk format 
  */
-static int honeybest_sb_remount(struct super_block *sb, void *data)
+static int honeybest_sb_remount(struct super_block *sb, void *mnt_opts)
 {
 	int err = 0;
-	struct security_mnt_opts opts;
+	/* struct security_mnt_opts removed in newer kernels */
 	char **mount_options;
 	//int *flags;
 	int i = 0;
@@ -1222,10 +1217,16 @@ static int honeybest_sb_remount(struct super_block *sb, void *data)
 	if (!sb)
 		return err;
 
+	/* security_mnt_opts API removed in newer kernels - simplified */
+	mount_options = NULL;
+	/* Skip mount options parsing for now - API changed */
+#if 0
 	security_init_mnt_opts(&opts);
 	mount_options = opts.mnt_opts;
 	//flags = opts.mnt_opts_flags;
 	for (i = 0; i < opts.num_mnt_opts; i++) {
+#endif
+	if (0) { /* disabled mount options parsing */
 		hb_sb_ll *record = NULL;
 
 		record = search_sb_record(HB_SB_REMOUNT, current->cred->uid.val, sb->s_id, (char *)sb->s_type->name, na, na, 0);
@@ -1259,7 +1260,7 @@ static int honeybest_sb_remount(struct super_block *sb, void *data)
 	return err;
 }
 
-static int honeybest_sb_kern_mount(struct super_block *sb, int flags, void *data)
+static int honeybest_sb_kern_mount(const struct super_block *sb)
 {
 	int err = 0;
 	struct cred *cred = NULL;
@@ -1280,7 +1281,7 @@ static int honeybest_sb_kern_mount(struct super_block *sb, int flags, void *data
 	if (!sb)
 		goto out;
 
-	record = search_sb_record(HB_SB_KERN_MOUNT, current->cred->uid.val, (char *)na, sb->s_id, (char *)na, (char *)na, flags);
+	record = search_sb_record(HB_SB_KERN_MOUNT, current->cred->uid.val, (char *)na, sb->s_id, (char *)na, (char *)na, 0);
 
 	if (record) {
 #if defined(HONEYBEST_DEBUG)
@@ -1300,9 +1301,9 @@ static int honeybest_sb_kern_mount(struct super_block *sb, int flags, void *data
 		}
 		else {
 			if(bl == 0)
-				add_sb_record(HB_SB_KERN_MOUNT, uid, 'A', (char *)sb->s_id, (char *)na, (char *)na, (char *)na, flags);
+				add_sb_record(HB_SB_KERN_MOUNT, uid, 'A', (char *)sb->s_id, (char *)na, (char *)na, (char *)na, 0);
 			else
-				add_sb_record(HB_SB_KERN_MOUNT, uid, 'R', (char *)sb->s_id, (char *)na, (char *)na, (char *)na, flags);
+				add_sb_record(HB_SB_KERN_MOUNT, uid, 'R', (char *)sb->s_id, (char *)na, (char *)na, (char *)na, 0);
 		}
 	}
 
@@ -1545,8 +1546,8 @@ static void honeybest_inode_free_security(struct inode *inode)
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
 static int honeybest_dentry_init_security(struct dentry *dentry, int mode,
-                                        const struct qstr *name, void **ctx,
-                                        u32 *ctxlen)
+					   const struct qstr *name, const char **xattr_name,
+					   struct lsm_context *cp)
 {
 	int err = 0;
 
@@ -1570,7 +1571,7 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 	int err = 0;
        	char *binprm = NULL;
        	char *taskname = NULL;
-	struct path source = { dir->mnt, dentry };
+	struct path source = { .mnt = dir->mnt, .dentry = dentry };
 	char *s_path = NULL;
        	char *t_path = "N/A";
 	char *s_buff = NULL;
@@ -1612,7 +1613,7 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 
 	task_lock(task);
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
@@ -1622,7 +1623,7 @@ static int honeybest_path_unlink(struct path *dir, struct dentry *dentry)
 #endif
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 	task_unlock(task);
 
@@ -1680,7 +1681,7 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 	int err = 0;
        	char *binprm = NULL;
        	char *taskname = NULL;
-	struct path source = { dir->mnt, dentry };
+	struct path source = { .mnt = dir->mnt, .dentry = dentry };
 	char *s_path = NULL;
        	char *t_path = "N/A";
 	char *s_buff = NULL;
@@ -1722,7 +1723,7 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 
 	task_lock(task);
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
@@ -1732,7 +1733,7 @@ static int honeybest_path_mkdir(struct path *dir, struct dentry *dentry,
 #endif
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 	task_unlock(task);
 
@@ -1788,7 +1789,7 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 	int err = 0;
        	char *binprm = NULL;
        	char *taskname = NULL;
-	struct path source = { dir->mnt, dentry };
+	struct path source = { .mnt = dir->mnt, .dentry = dentry };
 	char *s_path = NULL;
        	char *t_path = "N/A";
 	char *s_buff = NULL;
@@ -1826,7 +1827,7 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 
 	task_lock(task);
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
@@ -1836,7 +1837,7 @@ static int honeybest_path_rmdir(struct path *dir, struct dentry *dentry)
 #endif
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 	task_unlock(task);
 
@@ -1894,7 +1895,7 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 	int err = 0;
        	char *binprm = NULL;
        	char *taskname = NULL;
-	struct path source = { dir->mnt, dentry };
+	struct path source = { .mnt = dir->mnt, .dentry = dentry };
 	char *s_path = NULL;
        	char *t_path = "N/A";
 	char *s_buff = NULL;
@@ -1936,7 +1937,7 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 
 	task_lock(task);
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
@@ -1946,7 +1947,7 @@ static int honeybest_path_mknod(struct path *dir, struct dentry *dentry,
 #endif
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 	task_unlock(task);
 
@@ -1990,7 +1991,7 @@ out:
 
 static inline bool mediated_filesystem(struct dentry *dentry)
 {
-	return !(dentry->d_sb->s_flags & MS_NOUSER);
+	return !(dentry->d_sb->s_flags & SB_NOUSER);
 }
 /**
  * This function use to tracking resize file activity.
@@ -2050,7 +2051,7 @@ static int honeybest_path_truncate(struct path *path)
 
 	task_lock(task);
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
@@ -2060,7 +2061,7 @@ static int honeybest_path_truncate(struct path *path)
 #endif
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 	task_unlock(task);
 
@@ -2118,7 +2119,7 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 	int err = 0;
        	char *binprm = NULL;
        	char *taskname = NULL;
-	struct path target = { dir->mnt, dentry };
+	struct path target = { .mnt = dir->mnt, .dentry = dentry };
 	char *s_path = (char *)old_name;
        	char *t_path = NULL;
 	char *t_buff = NULL;
@@ -2156,7 +2157,7 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 
 	task_lock(task);
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
@@ -2166,7 +2167,7 @@ static int honeybest_path_symlink(struct path *dir, struct dentry *dentry,
 #endif
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 	task_unlock(task);
 
@@ -2224,8 +2225,8 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 	int err = 0;
        	char *binprm = NULL;
        	char *taskname = NULL;
-	struct path source = { new_dir->mnt, new_dentry };
-	struct path target = { new_dir->mnt, old_dentry };
+	struct path source = { .mnt = new_dir->mnt, .dentry = new_dentry };
+	struct path target = { .mnt = new_dir->mnt, .dentry = old_dentry };
 	char *s_path = NULL;
        	char *t_path = NULL;
 	char *s_buff = NULL;
@@ -2281,7 +2282,7 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 
 	task_lock(task);
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
@@ -2291,7 +2292,7 @@ static int honeybest_path_link(struct dentry *old_dentry, struct path *new_dir,
 #endif
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 	task_unlock(task);
 
@@ -2341,17 +2342,19 @@ out:
  */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
 static int honeybest_path_rename(const struct path *old_dir, struct dentry *old_dentry,
-				const struct path *new_dir, struct dentry *new_dentry)
+				  const struct path *new_dir, struct dentry *new_dentry,
+				  unsigned int flags)
 #else
 static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry,
-				struct path *new_dir, struct dentry *new_dentry)
+				  struct path *new_dir, struct dentry *new_dentry,
+				  unsigned int flags)
 #endif
 {
 	int err = 0;
        	char *binprm = NULL;
        	char *taskname = NULL;
-	struct path target = { new_dir->mnt, new_dentry };
-	struct path source = { old_dir->mnt, old_dentry };
+	struct path target = { .mnt = new_dir->mnt, .dentry = new_dentry };
+	struct path source = { .mnt = old_dir->mnt, .dentry = old_dentry };
 	char *s_path = NULL;
        	char *t_path = NULL;
 	char *s_buff = NULL;
@@ -2403,7 +2406,7 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 
 	task_lock(task);
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
@@ -2413,7 +2416,7 @@ static int honeybest_path_rename(struct path *old_dir, struct dentry *old_dentry
 #endif
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 	task_unlock(task);
 
@@ -2507,7 +2510,7 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 
 	task_lock(task);
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
@@ -2517,7 +2520,7 @@ static int honeybest_path_chmod(struct path *path, umode_t mode)
 #endif
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 	task_unlock(task);
 
@@ -2611,7 +2614,7 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 
 	task_lock(task);
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
@@ -2621,7 +2624,7 @@ static int honeybest_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 #endif
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 	task_unlock(task);
 
@@ -2665,9 +2668,8 @@ out:
 }
 
 static int honeybest_inode_init_security(struct inode *inode, struct inode *dir,
-                                       const struct qstr *qstr,
-                                       const char **name,
-                                       void **value, size_t *len)
+					  const struct qstr *qstr, struct xattr *xattrs,
+					  int *xattr_count)
 {
 	int err = 0;
 
@@ -2748,8 +2750,8 @@ static int honeybest_inode_mknod(struct inode *dir, struct dentry *dentry, umode
         return err;
 }
 
-static int honeybest_inode_rename(struct inode *old_inode, struct dentry *old_dentry,
-                                struct inode *new_inode, struct dentry *new_dentry)
+static int honeybest_inode_rename(struct inode *old_dir, struct dentry *old_dentry,
+				   struct inode *new_dir, struct dentry *new_dentry)
 {
 	int err = 0;
 
@@ -2790,7 +2792,8 @@ static int honeybest_inode_permission(struct inode *inode, int mask)
         return err;
 }
 
-static int honeybest_inode_setattr(struct dentry *dentry, struct iattr *iattr)
+static int honeybest_inode_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+				    struct iattr *attr)
 {
 	int err = 0;
 
@@ -2815,8 +2818,8 @@ static int honeybest_inode_getattr(const struct path *path)
  * Trigger during add file extend attribute
  * Tracking info: user id / xattr key / xattr value
  */
-static int honeybest_inode_setxattr(struct dentry *dentry, const char *name,
-                                  const void *value, size_t size, int flags)
+static int honeybest_inode_setxattr(struct mnt_idmap *idmap, struct dentry *dentry,
+				     const char *name, const void *value, size_t size, int flags)
 {
 	int err = 0;
 	char *pathname = NULL;
@@ -3017,7 +3020,8 @@ out:
  * Trigger during remove file extend attribute
  * Tracking info: user id / xattr key / xattr value
  */
-static int honeybest_inode_removexattr(struct dentry *dentry, const char *name)
+static int honeybest_inode_removexattr(struct mnt_idmap *idmap, struct dentry *dentry,
+					const char *name)
 {
 	int err = 0;
 	char *pathname = NULL;
@@ -3078,7 +3082,8 @@ out:
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
-static int honeybest_inode_getsecurity(struct inode *inode, const char *name, void **buffer, bool alloc)
+static int honeybest_inode_getsecurity(struct mnt_idmap *idmap, struct inode *inode,
+					const char *name, void **buffer, bool alloc)
 {
 	return -EOPNOTSUPP;
 }
@@ -3179,7 +3184,7 @@ static int honeybest_file_ioctl(struct file *file, unsigned int cmd,
 
 	task_lock(task);
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
@@ -3189,7 +3194,7 @@ static int honeybest_file_ioctl(struct file *file, unsigned int cmd,
 #endif
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 	task_unlock(task);
 
@@ -3393,7 +3398,7 @@ static int honeybest_file_receive(struct file *file)
 
 	//task_lock(task);
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
@@ -3403,7 +3408,7 @@ static int honeybest_file_receive(struct file *file)
 #endif
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 	//task_unlock(task);
 
@@ -3450,7 +3455,7 @@ out:
  * Trigger during open file
  * Tracking info: user id / filename / digest? (future)
  */
-static int honeybest_file_open(struct file *file, const struct cred *cred)
+static int honeybest_file_open(struct file *file)
 {
 	int err = 0;
 	hb_file_ll *record = NULL;
@@ -3499,7 +3504,7 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 	}
 
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
@@ -3509,7 +3514,7 @@ static int honeybest_file_open(struct file *file, const struct cred *cred)
 #endif
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 
 	if (!binprm)
@@ -3550,7 +3555,7 @@ out:
 
 }
 
-static int honeybest_task_create(unsigned long clone_flags)
+static int honeybest_task_alloc(struct task_struct *task, unsigned long clone_flags)
 {
 	int err = 0;
 
@@ -3586,7 +3591,7 @@ static void honeybest_cred_free(struct cred *cred)
 
 	rcu_read_lock();
 
-	free_honeybest_tracker(cred);
+	free_honeybest_tracker((struct cred *)cred);
 
 	rcu_read_unlock();
 
@@ -3793,7 +3798,8 @@ static int honeybest_kernel_module_request(char *kmod_name)
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
-static int honeybest_kernel_read_file(struct file *file, enum kernel_read_file_id id)
+static int honeybest_kernel_read_file(struct file *file, enum kernel_read_file_id id,
+				       bool contents)
 {
 	return 0;
 }
@@ -3814,7 +3820,7 @@ static int honeybest_task_getsid(struct task_struct *p)
         return 0;
 }
 
-static void honeybest_task_getsecid(struct task_struct *p, u32 *secid)
+static void honeybest_task_getsecid(const struct task_struct *p, u32 *secid)
 {
 	*secid = 0;
 }
@@ -3860,14 +3866,14 @@ static int honeybest_task_movememory(struct task_struct *p)
  * Trigger during kill [NUMBER]
  * Tracking info: user id / signal number / signal err / securityID
  */
-static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
-                                int sig, u32 secid)
+static int honeybest_task_kill(struct task_struct *p, struct kernel_siginfo *info,
+				int sig, const struct cred *cred)
 {
 	int err = 0;
        	char *binprm = NULL;
        	char *taskname = NULL;
-       	struct task_struct *task = NULL;
-	struct cred *cred = NULL;
+	struct task_struct *task = NULL;
+	struct cred *current_cred = NULL;
 	struct mm_struct *mm = NULL;
 	char uid[UID_STR_SIZE];
 	hb_task_ll *record;
@@ -3886,7 +3892,7 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 
 	task_lock(task);
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
@@ -3896,14 +3902,14 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 #endif
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 	task_unlock(task);
 
 	if (!binprm)
 		goto out;
 
-	record = search_task_record(HB_TASK_SIGNAL, current->cred->uid.val, sig, secid, binprm);
+	record = search_task_record(HB_TASK_SIGNAL, current->cred->uid.val, sig, 0, binprm);
 
 	if (record) {
 #if defined(HONEYBEST_DEBUG)
@@ -3923,9 +3929,9 @@ static int honeybest_task_kill(struct task_struct *p, struct siginfo *info,
 		}
 		else {
 			if(bl == 0)
-				add_task_record(HB_TASK_SIGNAL, uid, 'A', sig, secid, binprm);
+				add_task_record(HB_TASK_SIGNAL, uid, 'A', sig, 0, binprm);
 			else
-				add_task_record(HB_TASK_SIGNAL, uid, 'R', sig, secid, binprm);
+				add_task_record(HB_TASK_SIGNAL, uid, 'R', sig, 0, binprm);
 		}
 	}
 
@@ -3971,7 +3977,7 @@ static void honeybest_task_to_inode(struct task_struct *p,
 
 	/* task */
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			taskbuff = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskbuff) {
@@ -3982,7 +3988,7 @@ static void honeybest_task_to_inode(struct task_struct *p,
 				kfree(taskbuff);
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 out1:
 	kfree(pathname);
@@ -4023,14 +4029,14 @@ static int honeybest_socket_create(int family, int type,
 
 	task_lock(task);
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 	task_unlock(task);
 
@@ -4106,14 +4112,14 @@ static int honeybest_socket_bind(struct socket *sock, struct sockaddr *address, 
 
 	task_lock(task);
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 	task_unlock(task);
 
@@ -4184,14 +4190,14 @@ static int honeybest_socket_connect(struct socket *sock, struct sockaddr *addres
 
 	task_lock(task);
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 	task_unlock(task);
 
@@ -4303,14 +4309,14 @@ static int honeybest_socket_setsockopt(struct socket *sock, int level, int optna
 
 	task_lock(task);
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
 				binprm = d_path(&mm->exe_file->f_path, taskname, PATH_MAX);
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 	task_unlock(task);
 
@@ -4378,8 +4384,8 @@ static int honeybest_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 	return 0;
 }
 
-static int honeybest_socket_getpeersec_stream(struct socket *sock, char __user *optval,
-                                            int __user *optlen, unsigned len)
+static int honeybest_socket_getpeersec_stream(struct socket *sock, sockptr_t optval,
+					       sockptr_t optlen, unsigned int len)
 {
 	return 0;
 }
@@ -4410,7 +4416,7 @@ static void honeybest_sk_clone_security(const struct sock *sk, struct sock *news
 {
 }
 
-static void honeybest_sk_getsecid(struct sock *sk, u32 *secid)
+static void honeybest_sk_getsecid(const struct sock *sk, u32 *secid)
 {
 }
 
@@ -4419,8 +4425,8 @@ static void honeybest_sock_graft(struct sock *sk, struct socket *parent)
 }
 #endif
 
-static int honeybest_inet_conn_request(struct sock *sk, struct sk_buff *skb,
-                                     struct request_sock *req)
+static int honeybest_inet_conn_request(const struct sock *sk, struct sk_buff *skb,
+				       struct request_sock *req)
 {
 	return 0;
 }
@@ -4448,12 +4454,12 @@ static void honeybest_secmark_refcount_dec(void)
 }
 
 static void honeybest_req_classify_flow(const struct request_sock *req,
-                                      struct flowi *fl)
+					 struct flowi_common *flic)
 {
 }
 
 #ifdef CONFIG_SECURITY_NETWORK
-static int honeybest_tun_dev_alloc_security(void **security)
+static int honeybest_tun_dev_alloc_security(void *security)
 {
 	int err = 0;
 
@@ -4557,14 +4563,14 @@ int honeybest_xfrm_state_delete(struct xfrm_state *x)
 	return 0;
 }
 
-int honeybest_xfrm_policy_lookup(struct xfrm_sec_ctx *ctx, u32 fl_secid, u8 dir)
+int honeybest_xfrm_policy_lookup(struct xfrm_sec_ctx *ctx, u32 fl_secid)
 {
 	return 0;
 }
 
 int honeybest_xfrm_state_pol_flow_match(struct xfrm_state *x,
-                                      struct xfrm_policy *xp,
-                                      const struct flowi *fl)
+					  struct xfrm_policy *xp,
+					  const struct flowi_common *flic)
 {
 	return 0;
 }
@@ -4600,7 +4606,7 @@ static void honeybest_msg_msg_free_security(struct msg_msg *msg)
 }
 
 
-static int honeybest_msg_queue_alloc_security(struct msg_queue *msq)
+static int honeybest_msg_queue_alloc_security(struct kern_ipc_perm *perm)
 {
 	int err = 0;
 
@@ -4610,7 +4616,7 @@ static int honeybest_msg_queue_alloc_security(struct msg_queue *msq)
 	return err;
 }
 
-static void honeybest_msg_queue_free_security(struct msg_queue *msq)
+static void honeybest_msg_queue_free_security(struct kern_ipc_perm *perm)
 {
 
 	if (!enabled)
@@ -4618,29 +4624,28 @@ static void honeybest_msg_queue_free_security(struct msg_queue *msq)
 	return;
 }
 
-static int honeybest_msg_queue_associate(struct msg_queue *msq, int msqflg)
+static int honeybest_msg_queue_associate(struct kern_ipc_perm *perm, int msqflg)
 {
         return 0;
 }
 
-static int honeybest_msg_queue_msgctl(struct msg_queue *msq, int cmd)
+static int honeybest_msg_queue_msgctl(struct kern_ipc_perm *perm, int cmd)
 {
         return 0;
 }
 
-static int honeybest_msg_queue_msgsnd(struct msg_queue *msq, struct msg_msg *msg, int msqflg)
+static int honeybest_msg_queue_msgsnd(struct kern_ipc_perm *perm, struct msg_msg *msg, int msqflg)
 {
 	return 0;
 }
 
-static int honeybest_msg_queue_msgrcv(struct msg_queue *msq, struct msg_msg *msg,
-                                    struct task_struct *target,
-                                    long type, int mode)
+static int honeybest_msg_queue_msgrcv(struct kern_ipc_perm *perm, struct msg_msg *msg,
+				       struct task_struct *target, long type, int mode)
 {
 	return 0;
 }
 
-static int honeybest_shm_alloc_security(struct shmid_kernel *shp)
+static int honeybest_shm_alloc_security(struct kern_ipc_perm *perm)
 {
 	int err = 0;
 
@@ -4650,7 +4655,7 @@ static int honeybest_shm_alloc_security(struct shmid_kernel *shp)
 	return err;
 }
 
-static void honeybest_shm_free_security(struct shmid_kernel *shp)
+static void honeybest_shm_free_security(struct kern_ipc_perm *perm)
 {
 
 	if (!enabled)
@@ -4658,23 +4663,23 @@ static void honeybest_shm_free_security(struct shmid_kernel *shp)
 	return;
 }
 
-static int honeybest_shm_associate(struct shmid_kernel *shp, int shmflg)
+static int honeybest_shm_associate(struct kern_ipc_perm *perm, int shmflg)
 {
 	return 0;
 }
 
-static int honeybest_shm_shmctl(struct shmid_kernel *shp, int cmd)
+static int honeybest_shm_shmctl(struct kern_ipc_perm *perm, int cmd)
 {
 	return 0;
 }
 
-static int honeybest_shm_shmat(struct shmid_kernel *shp,
-                             char __user *shmaddr, int shmflg)
+static int honeybest_shm_shmat(struct kern_ipc_perm *perm,
+				char __user *shmaddr, int shmflg)
 {
 	return 0;
 }
 
-static int honeybest_sem_alloc_security(struct sem_array *sma)
+static int honeybest_sem_alloc_security(struct kern_ipc_perm *perm)
 {
 	int err = 0;
 
@@ -4684,25 +4689,25 @@ static int honeybest_sem_alloc_security(struct sem_array *sma)
 	return err;
 }
 
-static void honeybest_sem_free_security(struct sem_array *sma)
+static void honeybest_sem_free_security(struct kern_ipc_perm *perm)
 {
 	if (!enabled)
 		return;
 	return;
 }
 
-static int honeybest_sem_associate(struct sem_array *sma, int semflg)
+static int honeybest_sem_associate(struct kern_ipc_perm *perm, int semflg)
 {
 	return 0;
 }
 
-static int honeybest_sem_semctl(struct sem_array *sma, int cmd)
+static int honeybest_sem_semctl(struct kern_ipc_perm *perm, int cmd)
 {
 	return 0;
 }
 
-static int honeybest_sem_semop(struct sem_array *sma,
-                             struct sembuf *sops, unsigned nsops, int alter)
+static int honeybest_sem_semop(struct kern_ipc_perm *perm, struct sembuf *sops,
+				unsigned nsops, int alter)
 {
         return 0;
 }
@@ -4736,7 +4741,7 @@ static int honeybest_ipc_permission(struct kern_ipc_perm *ipcp, short flag)
 
 	task_lock(task);
 	if (mm) {
-		down_read(&mm->mmap_sem);
+		mmap_read_lock(mm);
 		if (mm->exe_file) {
 			taskname = kmalloc(PATH_MAX, GFP_ATOMIC);
 			if (taskname) {
@@ -4746,7 +4751,7 @@ static int honeybest_ipc_permission(struct kern_ipc_perm *ipcp, short flag)
 #endif
 			}
 		}
-		up_read(&mm->mmap_sem);
+		mmap_read_unlock(mm);
 	}
 	task_unlock(task);
 
@@ -4795,14 +4800,13 @@ static void honeybest_d_instantiate(struct dentry *dentry, struct inode *inode)
 	return;
 }
 
-static int honeybest_getprocattr(struct task_struct *p,
-                               char *name, char **value)
+static int honeybest_getprocattr(struct task_struct *p, const char *name,
+				  char **value)
 {
 	return -EINVAL;
 }
 
-static int honeybest_setprocattr(struct task_struct *p,
-                               char *name, void *value, size_t size)
+static int honeybest_setprocattr(const char *name, void *value, size_t size)
 {
 	return -EINVAL;
 }
@@ -4813,7 +4817,7 @@ static int honeybest_ismaclabel(const char *name)
 	return 0;
 }
 
-static int honeybest_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+static int honeybest_secid_to_secctx(u32 secid, struct lsm_context *ctx)
 {
 	return -EOPNOTSUPP;
 }
@@ -4824,7 +4828,7 @@ static int honeybest_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
-static void honeybest_release_secctx(char *secdata, u32 seclen)
+static void honeybest_release_secctx(struct lsm_context *ctx)
 {
 }
 
@@ -4842,7 +4846,7 @@ static int honeybest_inode_setsecctx(struct dentry *dentry, void *ctx, u32 ctxle
 	return 0;
 }
 
-static int honeybest_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxlen)
+static int honeybest_inode_getsecctx(struct inode *inode, struct lsm_context *ctx)
 {
 	return 0;
 }
@@ -4889,23 +4893,25 @@ static int honeybest_sb_show_options(struct seq_file *m, struct super_block *sb)
 	return 0;
 }
 
-static int honeybest_set_mnt_opts(struct super_block *sb,
-                                struct security_mnt_opts *opts,
-                                unsigned long kern_flags,
-                                unsigned long *set_kern_flags)
+static int honeybest_set_mnt_opts(struct super_block *sb, void *mnt_opts,
+				   unsigned long kern_flags,
+				   unsigned long *set_kern_flags)
 {
 	return 0;
 }
 
 
 static int honeybest_sb_clone_mnt_opts(const struct super_block *oldsb,
-                                        struct super_block *newsb)
+					struct super_block *newsb,
+					unsigned long kern_flags,
+					unsigned long *set_kern_flags)
 {
 	return 0;
 }
 
 #ifdef CONFIG_AUDIT
-static int honeybest_audit_rule_init(u32 field, u32 op, char *rulestr, void **lsmrule)
+static int honeybest_audit_rule_init(u32 field, u32 op, char *rulestr,
+				     void **lsmrule, gfp_t gfp)
 {
 
 	return 0;
@@ -4916,8 +4922,8 @@ static int honeybest_audit_rule_known(struct audit_krule *krule)
 	return 0;
 }
 
-static int honeybest_audit_rule_match(u32 secid, u32 field, u32 op, void *lsmrule,
-				struct audit_context *actx)
+static int honeybest_audit_rule_match(struct lsm_prop *prop, u32 field, u32 op,
+				      void *lsmrule)
 {
 	return 0;
 }
@@ -4956,14 +4962,11 @@ static struct security_hook_list honeybest_hooks[] = {
 
         LSM_HOOK_INIT(netlink_send, honeybest_netlink_send),
 
-        LSM_HOOK_INIT(bprm_set_creds, honeybest_bprm_set_creds),
         LSM_HOOK_INIT(bprm_committing_creds, honeybest_bprm_committing_creds),
         LSM_HOOK_INIT(bprm_committed_creds, honeybest_bprm_committed_creds),
-        LSM_HOOK_INIT(bprm_secureexec, honeybest_bprm_secureexec),
 
         LSM_HOOK_INIT(sb_alloc_security, honeybest_sb_alloc_security),
         LSM_HOOK_INIT(sb_free_security, honeybest_sb_free_security),
-        LSM_HOOK_INIT(sb_copy_data, honeybest_sb_copy_data),
         LSM_HOOK_INIT(sb_pivotroot, honeybest_sb_pivotroot),
         LSM_HOOK_INIT(sb_remount, honeybest_sb_remount),
         LSM_HOOK_INIT(sb_kern_mount, honeybest_sb_kern_mount),
@@ -4973,7 +4976,6 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(sb_umount, honeybest_umount),
         LSM_HOOK_INIT(sb_set_mnt_opts, honeybest_set_mnt_opts),
         LSM_HOOK_INIT(sb_clone_mnt_opts, honeybest_sb_clone_mnt_opts),
-        LSM_HOOK_INIT(sb_parse_opts_str, honeybest_parse_opts_str),
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
         LSM_HOOK_INIT(dentry_init_security, honeybest_dentry_init_security),
@@ -5017,7 +5019,6 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(inode_getsecurity, honeybest_inode_getsecurity),
         LSM_HOOK_INIT(inode_setsecurity, honeybest_inode_setsecurity),
         LSM_HOOK_INIT(inode_listsecurity, honeybest_inode_listsecurity),
-        LSM_HOOK_INIT(inode_getsecid, honeybest_inode_getsecid),
 #endif
 
         LSM_HOOK_INIT(file_permission, honeybest_file_permission),
@@ -5034,7 +5035,7 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(file_receive, honeybest_file_receive),
         LSM_HOOK_INIT(file_open, honeybest_file_open),
 
-        LSM_HOOK_INIT(task_create, honeybest_task_create),
+        LSM_HOOK_INIT(task_alloc, honeybest_task_alloc),
         LSM_HOOK_INIT(cred_alloc_blank, honeybest_cred_alloc_blank),
         LSM_HOOK_INIT(cred_free, honeybest_cred_free),
         LSM_HOOK_INIT(cred_prepare, honeybest_cred_prepare),
@@ -5051,7 +5052,6 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(task_setpgid, honeybest_task_setpgid),
         LSM_HOOK_INIT(task_getpgid, honeybest_task_getpgid),
         LSM_HOOK_INIT(task_getsid, honeybest_task_getsid),
-        LSM_HOOK_INIT(task_getsecid, honeybest_task_getsecid),
         LSM_HOOK_INIT(task_setnice, honeybest_task_setnice),
         LSM_HOOK_INIT(task_setioprio, honeybest_task_setioprio),
         LSM_HOOK_INIT(task_getioprio, honeybest_task_getioprio),
@@ -5060,11 +5060,9 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(task_getscheduler, honeybest_task_getscheduler),
         LSM_HOOK_INIT(task_movememory, honeybest_task_movememory),
         LSM_HOOK_INIT(task_kill, honeybest_task_kill),
-        LSM_HOOK_INIT(task_wait, honeybest_task_wait),
         LSM_HOOK_INIT(task_to_inode, honeybest_task_to_inode),
 
         LSM_HOOK_INIT(ipc_permission, honeybest_ipc_permission),
-        LSM_HOOK_INIT(ipc_getsecid, honeybest_ipc_getsecid),
 
         LSM_HOOK_INIT(msg_msg_alloc_security, honeybest_msg_msg_alloc_security),
         LSM_HOOK_INIT(msg_msg_free_security, honeybest_msg_msg_free_security),
@@ -5137,7 +5135,6 @@ static struct security_hook_list honeybest_hooks[] = {
         LSM_HOOK_INIT(secmark_refcount_dec, honeybest_secmark_refcount_dec),
         LSM_HOOK_INIT(req_classify_flow, honeybest_req_classify_flow),
         LSM_HOOK_INIT(tun_dev_alloc_security, honeybest_tun_dev_alloc_security),
-        LSM_HOOK_INIT(tun_dev_free_security, honeybest_tun_dev_free_security),
         LSM_HOOK_INIT(tun_dev_create, honeybest_tun_dev_create),
         LSM_HOOK_INIT(tun_dev_attach_queue, honeybest_tun_dev_attach_queue),
         LSM_HOOK_INIT(tun_dev_attach, honeybest_tun_dev_attach),
@@ -5162,7 +5159,6 @@ static struct security_hook_list honeybest_hooks[] = {
 
 #ifdef CONFIG_KEYS
         LSM_HOOK_INIT(key_alloc, honeybest_key_alloc),
-        LSM_HOOK_INIT(key_free, honeybest_key_free),
         LSM_HOOK_INIT(key_permission, honeybest_key_permission),
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
         LSM_HOOK_INIT(key_getsecurity, honeybest_key_getsecurity),
@@ -5178,10 +5174,15 @@ static struct security_hook_list honeybest_hooks[] = {
 
 };
 
+static const struct lsm_id honeybest_lsmid = {
+	.name = "honeybest",
+	.id = 114, /* Temporary ID - should be registered with LSM maintainers */
+};
+
 void __init honeybest_add_hooks(void)
 {
 	printk(KERN_INFO "ready to honeybest (currently %sabled)\n", enabled ? "en" : "dis");
-	security_add_hooks(honeybest_hooks, ARRAY_SIZE(honeybest_hooks));
+	security_add_hooks(honeybest_hooks, ARRAY_SIZE(honeybest_hooks), &honeybest_lsmid);
 	honeybest_init_sysctl();
 }
 

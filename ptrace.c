@@ -17,7 +17,6 @@
 #include <linux/init.h>
 #include <linux/kd.h>
 #include <linux/kernel.h>
-#include <linux/tracehook.h>
 #include <linux/errno.h>
 #include <linux/sched.h>
 #include <linux/lsm_hooks.h>
@@ -83,7 +82,7 @@
 #include <linux/string_helpers.h>
 #include <linux/list.h>
 #include <crypto/hash.h>
-#include <crypto/sha.h>
+#include <crypto/sha1.h>
 #include <crypto/algapi.h>
 #include <linux/version.h>
 #include "ptrace.h"
