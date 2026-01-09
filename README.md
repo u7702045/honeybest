@@ -1,140 +1,586 @@
-# HoneyBest LSM <br/><img src="images/HoneyBest.jpg" width="200" height="250" />
-HoneyBest is the new implementation of Linux Security Module project.<br/> 
+# HoneyBest LSM
+
+<img src="images/HoneyBest.jpg" width="200" height="250" />
+
+**HoneyBest** is a Linux Security Module (LSM) designed to provide adaptive, user-friendly security policies through activity-based whitelisting and real-time interaction mechanisms.
+
 *Read this in other languages: [English](README.md), [正體中文](README.zh-tw.md).*
-## __Background__
-Over the years few security modules have been developed on Linux distribution, such as SELinux / Apparmor / Smack / Tomoyo project, but there is still huge space to make improvement nevertheless. Until now, the high entry barrier keep apart from most of the Linux user. For those who have little understanding of system behavior & security thread model are frustracte to apply the software. In order to build the more user friendly module, our target is to hide the complexity of rules, but also allow advanced user to be able to refine the granularity.<br/> 
-Most of the case, security module begin to involve in post software development stage. Take an embedded devices, NAS appliance for the example. Security developer have to write a bunch of rules to protect applications, configuration files from other unauthorized process & restriction to certain resources. In order to do so, they had to go deep understanding through every single process to prevent from threats. We ask ourselves few question, is there any possible we can build an auto generation secure module policy base on real time scenario? How if the secure module policy support interaction with developer whether or not to add new rules or requesting permission under safe condition? Is there an alternative approach to replace rules concept? HoneyBest secure module might be for those answer. <br/>
-## __Concept__
-Let us imaging few conditions here.
-#### Condition A – Environment complexity is hard to apply rules
-Team of developers have complete their software development on Linux box. The appliance involve NGINX server for user to configure setting; Samba server for file sharing; SNMP server for remote setting; Syslog server to track system record. They handle the appliance to one of their security guy, Bob, who are the expertise in security module. In order to create threat model, Bob have to understand every single process running on the box, how each process interfere with system and other processes. He now create rules to protect base on the threat model. At first, he create rules to restrict process to access only certain system resource, such as Syslog server. Syslog server is allowed to create files under /var/log/*.log, with WRITE permission only; Syslog server is allow to create only localhost 514 UDP port, receive other application log message. Here come small part of complicate scenario, log message files could grow up over the time and Logrotate daemon are design into system to handle compression job; log message files need permission rules to MOVE files(DELETE/CREATE/READ/WRITE); Meanwhile, NGINX we server need permission READ in order to show context while user login via web page. After Bob figure out all those cross over relationship & rules, he start to apply into system. It turn out, the box does not act as normal as expect to pass system integration test. Bob have to invite developer to figure out what going on to the system. It turn out that NGINX web server need permission rules to interact with 514 UDP port for logging itself message. <br/>
-In real world, security expertise feel frustrate to do their job because of complexity environment involve. Honeybest change the way to more adaptive into development flow, see below:<br/>
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Background](#background)
+- [Design Philosophy](#design-philosophy)
+  - [Condition A: Environment Complexity](#condition-a-environment-complexity)
+  - [Condition B: High Learning Curve](#condition-b-high-learning-curve)
+  - [Condition C: Untrusted Root](#condition-c-untrusted-root)
+  - [Condition D: Real-Time Interaction](#condition-d-real-time-interaction)
+  - [Condition E: Bidirectional Protection](#condition-e-bidirectional-protection)
+- [Architecture](#architecture)
+- [Building and Installation](#building-and-installation)
+- [Configuration](#configuration)
+  - [Enablement Options](#enablement-options)
+  - [Feature Selection](#feature-selection)
+  - [Locking Mode](#locking-mode)
+  - [Interactive Mode](#interactive-mode)
+  - [Blacklist/Whitelist Mode](#blacklistwhitelist-mode)
+  - [Granularity Levels](#granularity-levels)
+- [Activity Configuration](#activity-configuration)
+  - [Common Fields](#common-fields)
+  - [Activity Files](#activity-files)
+  - [Tuning Example](#tuning-example)
+  - [Save and Restore](#save-and-restore)
+- [Use Cases](#use-cases)
+  - [Proprietary Shared Library Protection](#proprietary-shared-library-protection)
+- [License](#license)
+
+---
+
+## Overview
+
+HoneyBest is a Linux Security Module that addresses the complexity and usability challenges of traditional security modules like SELinux, AppArmor, Smack, and Tomoyo. Unlike rule-based security modules that require extensive expertise to configure, HoneyBest uses an activity-based approach that automatically generates security policies from observed system behavior.
+
+**Key Features:**
+- **Activity-based policy generation**: Automatically creates security policies by tracking kernel activities
+- **Real-time interaction**: Interactive mode allows developers to approve or deny new activities as they occur
+- **Low learning curve**: Hides rule complexity while allowing advanced users to fine-tune granularity
+- **Bidirectional protection**: Protects both resources from tasks and tasks from unauthorized access
+- **Production-ready**: Supports secure boot integration and hardware Root of Trust binding
+
+---
+
+## Background
+
+Traditional Linux security modules have been available for years, including SELinux, AppArmor, Smack, and Tomoyo. However, these solutions present significant barriers to adoption:
+
+- **High entry barrier**: Most Linux users lack the expertise to configure complex rule-based security policies
+- **Post-development integration**: Security modules are typically integrated after software development, requiring security experts to understand every process and interaction
+- **Complex rule management**: Creating and maintaining security rules requires deep understanding of system behavior and threat models
+
+HoneyBest addresses these challenges by:
+
+1. **Automatic policy generation**: Building security policies based on real-time system scenarios rather than manual rule creation
+2. **Interactive development**: Supporting real-time interaction with developers to approve or deny activities under safe conditions
+3. **Alternative to rules**: Providing an activity-based model that eliminates the need for traditional rule concepts
+
+---
+
+## Design Philosophy
+
+HoneyBest addresses five core challenges in security module design:
+
+### Condition A: Environment Complexity
+
+**Problem**: Complex environments make it difficult to apply security rules correctly.
+
+**Example Scenario**: A development team completes software for a Linux appliance that includes:
+- NGINX server for web configuration
+- Samba server for file sharing
+- SNMP server for remote management
+- Syslog server for system logging
+
+A security expert (Bob) must understand every process, how they interact with the system and each other, and create rules accordingly. For example:
+- Syslog server needs to create files under `/var/log/*.log` with WRITE permission only
+- Syslog server needs to bind to localhost UDP port 514 to receive log messages
+- Logrotate daemon needs permission to MOVE log files (DELETE/CREATE/READ/WRITE)
+- NGINX web server needs READ permission to display log content via web interface
+- NGINX also needs permission to interact with UDP port 514 for its own logging
+
+After creating rules based on this threat model, the system fails integration tests. Investigation reveals that NGINX requires permission to interact with UDP port 514, which was overlooked.
+
+**HoneyBest Solution**: HoneyBest adapts to the development workflow by automatically tracking activities during system integration testing, eliminating the need to manually map all process interactions.
+
 <img src="images/DevelopmentFlow.JPG" width="500" height="220" />
 
-#### Condition B – High learning curves
-User, roles, level, category, labeling, and hats are not easy to understand, those are security expertise concept with specific tools. Most of the small/medium company do not have security expertise to rely on. We want to help software developers secure their product as much as we can.<br/>
-#### Condition C – Untrusted root in design
-he complete security policies should treat super user (root) as normal root. Root are not allow to change others policies but its own. Penetration to root user might corrupt whole policies wall you made. In our design, policies update or change should bind tightly with secure boot process, more precisely, with hardware Root of Trust.<br/>
-#### Condition D – Interaction in real time instead of post rules applied
-Real time interaction feedback mechanism are more easy way for developers to understand what going. Instead of rules, pop out dialogue asking permission to explain activity is an effective way to make progress. For the fine-grain advanced user, our design also consider to fulfill such needs.<br/>
-#### Condition E – Different perspective of software protection
-In some privacy scenario, system designer not only require the task to have restriction from accessing resources, but also restriction from other resources to access the task. Here are the 2 examples, I want to protect my private libraries/program from piracy, however, still allow certain program to use; I want only “upgrade-firmware” command to be able upgrade system firmware, not “dd” command, and the integrity of “upgrade-firmware” command is concerned. <br/>
-### __Design__
-Our core design is to focus on capturing the kernel activities triggered by user space program. Activities which is tracking will later turn into list data structure for security module to detect an unexpected occur event. The size of list data structure is tightly depends on level of granularity. The more precise restriction or control to be chosen, the higher space requirement for data structure to be saved. Above the surface of such design, here is the approach to apply secure module. Unfreeze the box in your security environment, run all activities as you can to create a model, then freeze the box. Once you freeze the box, all activities are restrict to previous model. You might consider fine-grain the model because some activities are not able to perform in your security environment. Either use an editor to edit the model or turn on interaction mode, developers are able to selectively choose prompt up dialogue with new activity in real world situation. Below figure show how the lifecycle go:
-1.	Product finish development
-2.	Turn on unfreeze mode / Turn off interaction mode
-3.	1st End to End System Integration Test 
-4.	Turn off unfreeze mode / Turn on interaction mode
-5.	2nd End to End System Integration Test or Manually edit model
-6.	Turn off interaction mode.
-### __Compiling__
-Similar to SELinux/Apparmor design, HoneyBest security module is hooked on Linux Security Module layer. Clone the source code into Linux kernel source and follow instruction below:
-1.	Create a new directory called honeybest under [KERNEL SOURCE]/security directory.
-2.	Clone Honeybest source code into honeybest directory.
-3.	If you are Debian/Ubuntu environment, install necessary packages to compile new kernel (`apt-get install build-essential libncurses-dev bison flex libssl-dev libelf-dev bc`).
-4.	Change directory to honeybest and run the Kconfig.patch & Makefile.path
-5.	Copy original kernel configuration to [KERNEL SOURCE]/.config (`cat /boot/config-4.9.X > [KERNEL SOURCE/.config`.
-6.	Select HoneyBest security module (`make menuconfig`)
-7.	Compiling kernel under [KERNEL SOURCE] (`make modules bzImage`)
-8.	Install new kernel & modules (`make install`)
-### __Usage__
-##### Enablement option – on mode or off mode
-HoneyBest security module stay in deactivate mode / non-interactive mode as default. It provides 2 activation options, below: 
-1.	Add string hashlock.enabled=1 into GRUB parameter.
-2.	Enable at initrd-ramfs stage (`echo 1 > /proc/sys/kernel/honeybest/enabled`)
-**__There is no deactivate after activate for security reason (compiling kernel with option CONFIG_HONEYBEST_PROD), update GRUB/initrd image must design tightly with secure boot verification process.__**
-Once you activate HoneyBest, kernel tracking activities start to record into different files under directory /proc/honeybest. User can monitor the tracking progress via read file application such as tail/cat/head. 
-##### selective features option – on mode or off mode
-HoneyBest offer rich feature set to tracking from different perspective, such as binary file, socket, ipc, inode and so on. Section "Files" expose more detail to each different perspective features. Enabling selective features with command (`echo 1 > /proc/sys/kernel/honeybest/[Files]`), e.g to turn on binary hash, command (`echo 1 > /proc/sys/kernel/honeybest/binprm`)
-##### Locking option – on mode or off mode
-Locking option only take effective once enablement option mode turn on (default locking option mode is turn off). Once turn on, only expect activities is allow to operate on system. Locking mode toggle can be set via command (`echo 1 > /proc/sys/kernel/honeybest/locking` or `echo 0 > /proc/sys/kernel/honeybest/locking`). This option take effectived only when enablement option is in turn on mode.
+### Condition B: High Learning Curve
 
-##### Interactive option - manual mode vs auto mode
-Interactive & auto mode only take effectively when enablement mode turn into true. The default interactive option is switch to auto mode, all activities occur in kernel are immediately tracking after enablement option turn into true. Selecting manual mode are mandatory to install libhoneybest-notify package (still in developing progress). Interactive mode toggle can be set via command (`echo 1 > /proc/sys/kernel/honeybest/interact` or `echo 0 > /proc/sys/kernel/honeybest/interact`). This option take effectived only when enablement option is in turn on mode; Locking option is in turn off mode.
+**Problem**: Security concepts like users, roles, levels, categories, labeling, and hats are difficult to understand and require specialized tools and expertise.
 
-##### Black list option - whitelist mode vs blacklist mode
-The default mode is whitelist mode, all activities pass through the list will be allow as default. The easy way to think of this mode is iptables default policy, REJECT or ACCEPT. The toggle can be set via command (`echo 1 > /proc/sys/kernel/honeybest/bl` or `echo 0 > /proc/sys/kernel/honeybest/bl`).
+**HoneyBest Solution**: HoneyBest simplifies security configuration for software developers who may not have security expertise, while still providing advanced features for those who need fine-grained control.
 
-##### Granularity option - level 1,2
-The default granularity of match/track activities is 0, which is we think of suitable to most of the user case. The higher the level number, the more time to consumpt during comparison stage. High granularity of activities tracking caused the OS environment turn to low flexibility. The toggle can be set via command (`echo [1,2] > /proc/sys/kernel/honeybest/level`).
+### Condition C: Untrusted Root
 
-### __Configure activities__
-Every single files in directory /proc/honeybest tracking different behavior. We will explain each single file corresponding on next section. In general, every file share the common column, e.g NO/FUNCTION/USER ID.
-* NO – sequence number, honeybest compare the occurrence activities begin from lower to higher number.
-* FUNCTION – functional identification, honeybest use to identify different activities. Under certain category such as ‘socket’, different activities are label as listen/bind/accept/open/setsocketopt and so on. 
-* USER ID – user identification, honeybest use to reference relationship between identity and function. This column support RE(regular expression, digits & '*' asterisk).
-* ACTION - Matching action refer to 'A'ccept or 'R'eject. Default value depend on bl option, accept actions are appended when bl toggle to 0; vice versa, reject actions are appended.
+**Problem**: Complete security policies should treat the superuser (root) as untrusted. Root should not be allowed to change other policies, only its own. Root compromise could corrupt all security policies.
 
-#### Files
-* binprm – Tracking all executable file path name, process UID belong to and most importantly, calculate file context into HASH to protect the integrity.
-* files – Tracking ordinary file behavior, such as open/read/write/delete/rename.
-* inode – Tracking inode operation, such as create/delete/read/update/setxattr/getxattr.
-* path – Tracking behavior of all type of file such as device node, hard/soft symbolic, directory, pipe, unix socket.
-* socket – Tracking TCP/UDP/ICMP socket activity, including port number.
-* task – Tracking activity between process, such as signal exchanging.
-* sb – Tracking superblock information. Activities such as mount/umount/df will stamp into this category. Highly relate to file/path categories due to system register /proc information.
-* kmod – Tracking Linux kernel modules activity. Kernel modprobe will stamp into this category.
-* ptrace - Tracking ptrace activities.
-* ipc - Tracking Linux internal process communication activities such as share memory, message queue & semaphore.
-* notify – Notification between security module and user space application. In interactive mode, detect to unexpected events are save into this file for user space program to notify user later. Dialogue pop up to acquiring security expertise allow or ignore such activities. Once the interactive mode is enable, all events go through this file could expose memory exhaust. Thurs, design a READ scheduler from user space program is vital. Context in notify file will be cleaned after each single READ operation is executed.
-##### Tuning example (`/proc/honeybest/path`)
-In general, developer usually run through the flow below: <br/>
-1. Enable the HoneyBest LSM. `echo 1 > /proc/sys/kernel/honeybest/enabled`
-2. Running the system test. The example here we focus on path file, which have high relative to symbolic file create activity. Let mimic our system test involve to creating symbolic link. `ln -s /etc/services /tmp/services`
-3. Now, disable the HoneyBest before tuning whitelist. `echo 0 > /proc/sys/kernel/honeybest/enabled`
-4. Review the activities relates to path. `cat /proc/honeybest/path | grep services`
-5. If you find out result show `23 0 0 0 0 0 /etc/services /tmp/services`, that indicate whitelist is automatically track.
-6. Another advance case here. Let say your system test involve udev daemon constantly accumulate new symbolic file with constant pattern, e.g /dev/usb0, /dev/usb1…n link to /dev/ttyUSB. We notice that multi line relate to /dev/ttyusb have attach into path file context after enable the HoneyBest LSM. Here is an approach to solve the matching issue. <br/>
-	6.1. Disable the HoneyBest LSM. <br/>
-	6.2. Dump context to new file. `cat /proc/honeybest/path > /etc/hb/path` <br/>
-	6.3. Example Figure 1 is the example context of /etc/hb/path file.  <br/>
-	6.4. Eliminate first row & first column, eliminate all duplicate line and leave only one line with regular express at increasing character, Figure 2. <br/>
-	6.5. Re-apply new activities to HoneyBest LSM. `cat /etc/hb/path > /proc/honeybest/path`<br/>
-	6.6 Enable the HoneyBest LSM. <br/>
-Developer can enable the locking mode during system test to verify the outcome. If system test failure, disable the locking mode and run again the activities. Comparing the files context will give you hint what missing activity need to inject.
-#### Figure 1
+**HoneyBest Solution**: Policy updates and changes are tightly bound to the secure boot process, specifically with hardware Root of Trust, preventing unauthorized policy modifications even if root is compromised.
 
-|NO|FUNC|UID|MODE|SUID|GUID|DEV|SOURCE PATH|TARGET PATH|
-|--|----|---|----|----|----|---|-----------|-----------|
-|0|23|0|0|0|0|0|/dev/usb0|/dev/ttyUSB0|
-|1|23|0|0|0|0|0|/dev/usb0|/dev/ttyUSB1|
-|2|23|0|0|0|0|0|/dev/usb0|/dev/ttyUSB2|
-|3|20|0|420|0|0|0|/etc/resolv.conf.dhclient-new.1115|/etc/resolv.conf|
+### Condition D: Real-Time Interaction
 
-#### Figure 2
-| | | | | | | | | |
-|--|----|---|----|----|----|---|-----------|-----------|
-|23|0|0|0|0|0|/dev/usb0|/dev/ttyUSB*|
-|23|0|0|0|0|0||/etc/resolv.conf.dhclient-new.1115|/etc/resolv.conf|
+**Problem**: Post-application rule management is reactive and difficult to understand.
 
-##### Save & Restore configuration
-Saving the HoneyBest LSM configuration are pretty simple. All you need is to dump it out into separate file and restore once the system restart (initrd or rc.local). __Redo the step 6.4 is necessary after save the context, HoneyBest LSM will not restore correctly if step 6.4 is not complete.__
-* save – Dump current setting to file, command `cat /proc/honeybest/binprm > /etc/hb/binprm`.
-* restore – Restore current setting to system, command `cat /etc/hb/binprm > /proc/honeybest/binprm`.
-* lock down – After restore, lock down HoneyBest to prevent tracking, command `echo 1 > /proc/sys/kernel/honeybest/locking`.
-* enable – Enable HoneyBest, command `echo 1 > /proc/sys/kernel/honeybest/enabled`
-* select feature set - binary hash example, command `echo 1 > /proc/sys/kernel/honeybest/binprm`
+**HoneyBest Solution**: Real-time interaction feedback mechanisms allow developers to understand system behavior as it happens. Instead of complex rules, interactive dialogs explain activities and request permission, making security decisions more intuitive. Advanced users can still access fine-grained controls.
 
-#### Examples
-##### Proprietary shared libraries protection from root & users
-In our example here, we want to protect few shared libraries list below from scp or copy out of box:
-* /usr/lib/arm-linux-gnueabihf/libtss2-sys.so.0.0.0
-* /usr/lib/arm-linux-gnueabihf/libtss2-mu.so.0.0.0
-* /usr/lib/arm-linux-gnueabihf/libcrypto.so.1.1
-* /usr/lib/arm-linux-gnueabihf/libtss2-tcti-device.so.0.0.0
+### Condition E: Bidirectional Protection
 
-You need to enabling/design secure boot process in order to prohibit kernel & initramfs from replacing. In addition, we suggesting use hardware security module(HSM) such as TPM/ArmTrustZone to involve into secure boot process. Reformat your partition with LUKs and bind LUKs's key to HSM. Here are the few steps:
-1. Recompiling kernel option with CONFIG_HONEYBEST_PROD=y.
-2. Add 'files' feature set configuration into initramfs, save it into directory /etc/honeybest/files:
+**Problem**: Some scenarios require protecting tasks from accessing resources AND protecting tasks from being accessed by unauthorized resources.
+
+**Examples**:
+- Protect proprietary libraries/programs from piracy while allowing specific programs to use them
+- Ensure only the "upgrade-firmware" command can upgrade system firmware (not "dd"), and protect the integrity of the "upgrade-firmware" command itself
+
+**HoneyBest Solution**: HoneyBest supports bidirectional protection models that restrict both task-to-resource and resource-to-task access.
+
+---
+
+## Architecture
+
+HoneyBest's core design focuses on capturing kernel activities triggered by user-space programs. Tracked activities are stored in list data structures that the security module uses to detect unexpected events.
+
+**Key Design Principles:**
+
+1. **Activity Tracking**: Kernel activities are captured and converted into structured data
+2. **Granularity Control**: The size of data structures depends on the selected granularity level—higher granularity provides more precise control but requires more storage space
+3. **Freeze/Unfreeze Model**: 
+   - **Unfreeze mode**: System runs normally, all activities are tracked and added to the model
+   - **Freeze mode**: System restricts all activities to those previously observed in the model
+4. **Interactive Refinement**: Developers can fine-tune the model using an editor or interactive mode, which prompts for permission when new activities occur
+
+**Lifecycle Workflow:**
+
+1. Product development is completed
+2. Enable unfreeze mode / Disable interaction mode
+3. Run first End-to-End System Integration Test
+4. Disable unfreeze mode / Enable interaction mode
+5. Run second End-to-End System Integration Test or manually edit the model
+6. Disable interaction mode (system is now locked down)
+
+---
+
+## Building and Installation
+
+Similar to SELinux and AppArmor, HoneyBest is integrated into the Linux Security Module framework. To build HoneyBest:
+
+### Prerequisites
+
+For Debian/Ubuntu systems, install the required packages:
+
+```bash
+apt-get install build-essential libncurses-dev bison flex libssl-dev libelf-dev bc
+```
+
+### Build Steps
+
+1. **Create the HoneyBest directory**:
+   ```bash
+   mkdir -p [KERNEL_SOURCE]/security/honeybest
+   ```
+
+2. **Clone the source code**:
+   ```bash
+   cd [KERNEL_SOURCE]/security/honeybest
+   git clone [repository-url] .
+   ```
+
+3. **Apply patches**:
+   ```bash
+   cd [KERNEL_SOURCE]/security/honeybest
+   patch -p1 < Kconfig.patch
+   patch -p1 < Makefile.patch
+   ```
+
+4. **Copy kernel configuration**:
+   ```bash
+   cat /boot/config-$(uname -r) > [KERNEL_SOURCE]/.config
+   ```
+
+5. **Configure the kernel**:
+   ```bash
+   cd [KERNEL_SOURCE]
+   make menuconfig
+   ```
+   Navigate to: **Security options** → **HoneyBest LSM** and enable it.
+
+6. **Build the kernel**:
+   ```bash
+   cd [KERNEL_SOURCE]
+   make modules bzImage
+   ```
+
+7. **Install the kernel and modules**:
+   ```bash
+   sudo make install
+   ```
+
+---
+
+## Configuration
+
+### Enablement Options
+
+HoneyBest starts in **deactivated/non-interactive mode** by default. To activate:
+
+**Option 1: GRUB parameter**
+```bash
+# Add to GRUB_CMDLINE_LINUX in /etc/default/grub
+hashlock.enabled=1
+sudo update-grub
+```
+
+**Option 2: Initrd/ramfs stage**
+```bash
+echo 1 > /proc/sys/kernel/honeybest/enabled
+```
+
+**⚠️ Security Warning**: When compiled with `CONFIG_HONEYBEST_PROD=y`, HoneyBest cannot be deactivated after activation for security reasons. GRUB/initrd image updates must be tightly integrated with secure boot verification processes.
+
+Once activated, kernel tracking activities are recorded in files under `/proc/honeybest/`. Monitor progress using standard file reading tools:
+
+```bash
+tail -f /proc/honeybest/binprm
+cat /proc/honeybest/files
+```
+
+### Feature Selection
+
+HoneyBest provides multiple feature sets for tracking different system perspectives. Enable individual features:
+
+```bash
+# Enable binary hash tracking
+echo 1 > /proc/sys/kernel/honeybest/binprm
+
+# Enable file operation tracking
+echo 1 > /proc/sys/kernel/honeybest/files
+
+# Enable socket tracking
+echo 1 > /proc/sys/kernel/honeybest/socket
+
+# Enable IPC tracking
+echo 1 > /proc/sys/kernel/honeybest/ipc
+
+# Enable inode tracking
+echo 1 > /proc/sys/kernel/honeybest/inode
+
+# Enable path tracking
+echo 1 > /proc/sys/kernel/honeybest/path
+
+# Enable task tracking
+echo 1 > /proc/sys/kernel/honeybest/tasks
+
+# Enable superblock tracking
+echo 1 > /proc/sys/kernel/honeybest/sb
+
+# Enable kernel module tracking
+echo 1 > /proc/sys/kernel/honeybest/kmod
+
+# Enable ptrace tracking
+echo 1 > /proc/sys/kernel/honeybest/ptrace
+```
+
+See the [Activity Files](#activity-files) section for details on each feature.
+
+### Locking Mode
+
+Locking mode only takes effect when the enablement option is turned on (default: off). When enabled, only expected activities (those in the whitelist) are allowed to operate.
+
+**Enable locking mode**:
+```bash
+echo 1 > /proc/sys/kernel/honeybest/locking
+```
+
+**Disable locking mode**:
+```bash
+echo 0 > /proc/sys/kernel/honeybest/locking
+```
+
+**Note**: Locking mode only works when the enablement option is active.
+
+### Interactive Mode
+
+Interactive mode allows real-time approval or denial of new activities. It only takes effect when enablement mode is active.
+
+**Modes**:
+- **Auto mode** (default): All activities are immediately tracked after enablement
+- **Manual mode**: Requires the `libhoneybest-notify` package (under development) to prompt for user approval
+
+**Enable interactive mode**:
+```bash
+echo 1 > /proc/sys/kernel/honeybest/interact
+```
+
+**Disable interactive mode**:
+```bash
+echo 0 > /proc/sys/kernel/honeybest/interact
+```
+
+**Note**: Interactive mode only works when:
+- Enablement option is active
+- Locking option is disabled
+
+### Blacklist/Whitelist Mode
+
+HoneyBest supports both whitelist and blacklist modes:
+
+- **Whitelist mode** (default): All activities that pass through the list are allowed by default (similar to iptables ACCEPT policy)
+- **Blacklist mode**: All activities that pass through the list are denied by default (similar to iptables REJECT policy)
+
+**Enable blacklist mode**:
+```bash
+echo 1 > /proc/sys/kernel/honeybest/bl
+```
+
+**Enable whitelist mode**:
+```bash
+echo 0 > /proc/sys/kernel/honeybest/bl
+```
+
+### Granularity Levels
+
+Granularity controls the precision of activity matching and tracking:
+
+- **Level 0** (default): Suitable for most use cases
+- **Level 1-2**: Higher precision, but:
+  - Increased comparison time
+  - Reduced system flexibility
+  - Higher storage requirements
+
+**Set granularity level**:
+```bash
+# Set to level 1
+echo 1 > /proc/sys/kernel/honeybest/level
+
+# Set to level 2
+echo 2 > /proc/sys/kernel/honeybest/level
+
+# Reset to default (level 0)
+echo 0 > /proc/sys/kernel/honeybest/level
+```
+
+---
+
+## Activity Configuration
+
+All files in `/proc/honeybest/` track different system behaviors. Each file shares common fields, described below.
+
+### Common Fields
+
+All activity files contain the following common columns:
+
+| Field | Description |
+|-------|-------------|
+| **NO** | Sequence number. HoneyBest compares activities starting from lower to higher numbers. |
+| **FUNCTION** | Functional identification used to identify different activities. For example, under the 'socket' category, activities are labeled as `listen`, `bind`, `accept`, `open`, `setsocketopt`, etc. |
+| **USER ID** | User identification used to reference the relationship between identity and function. Supports regular expressions (digits and `*` asterisk). |
+| **ACTION** | Matching action: `A` (Accept) or `R` (Reject). Default value depends on the blacklist/whitelist option: Accept actions are appended when blacklist is 0 (whitelist mode); Reject actions are appended when blacklist is 1 (blacklist mode). |
+
+### Activity Files
+
+| File | Description |
+|------|-------------|
+| **binprm** | Tracks executable file path names, process UIDs, and calculates file content hash (SHA-1) to protect integrity. |
+| **files** | Tracks ordinary file operations: `open`, `read`, `write`, `delete`, `rename`. |
+| **inode** | Tracks inode operations: `create`, `delete`, `read`, `update`, `setxattr`, `getxattr`. |
+| **path** | Tracks behavior of all file types: device nodes, hard/soft symbolic links, directories, pipes, Unix sockets. |
+| **socket** | Tracks TCP/UDP/ICMP socket activities, including port numbers. |
+| **task** | Tracks inter-process activities, such as signal exchange. |
+| **sb** | Tracks superblock information. Activities such as `mount`, `umount`, `df` are recorded here. Highly related to `file` and `path` categories due to system registration in `/proc`. |
+| **kmod** | Tracks Linux kernel module activities. Kernel `modprobe` operations are recorded here. |
+| **ptrace** | Tracks ptrace activities for process debugging and monitoring. |
+| **ipc** | Tracks Linux inter-process communication activities: shared memory, message queues, and semaphores. |
+| **notify** | Notification channel between the security module and user-space applications. In interactive mode, unexpected events are saved here for user-space programs to notify users. Dialog pop-ups acquire security expert approval or denial of such activities. **Important**: When interactive mode is enabled, all events passing through this file can cause memory exhaustion. Therefore, designing a READ scheduler in the user-space program is vital. Content in the notify file is cleared after each READ operation. |
+
+### Tuning Example
+
+This example demonstrates how to configure HoneyBest for path tracking, which is highly relevant to symbolic link creation activities.
+
+**Basic Workflow**:
+
+1. **Enable HoneyBest LSM**:
+   ```bash
+   echo 1 > /proc/sys/kernel/honeybest/enabled
+   ```
+
+2. **Run system tests**: 
+   ```bash
+   # Example: Create a symbolic link
+   ln -s /etc/services /tmp/services
+   ```
+
+3. **Disable HoneyBest before tuning whitelist**:
+   ```bash
+   echo 0 > /proc/sys/kernel/honeybest/enabled
+   ```
+
+4. **Review tracked activities**:
+   ```bash
+   cat /proc/honeybest/path | grep services
+   ```
+
+5. **Verify whitelist entry**: If the result shows:
+   ```
+   23 0 0 0 0 0 /etc/services /tmp/services
+   ```
+   This indicates the whitelist was automatically tracked.
+
+**Advanced Case: Pattern Matching**
+
+If your system test involves the udev daemon constantly creating new symbolic files with a pattern (e.g., `/dev/usb0`, `/dev/usb1`, ... `/dev/usbn` linking to `/dev/ttyUSB0`, `/dev/ttyUSB1`, etc.), you'll notice multiple lines related to `/dev/ttyUSB` in the path file. Use regular expressions to consolidate these entries:
+
+1. **Disable HoneyBest LSM**:
+   ```bash
+   echo 0 > /proc/sys/kernel/honeybest/enabled
+   ```
+
+2. **Dump context to a file**:
+   ```bash
+   cat /proc/honeybest/path > /etc/hb/path
+   ```
+
+3. **Review the context** (see Figure 1 below)
+
+4. **Process the file**:
+   - Remove the first row (header) and first column (sequence numbers)
+   - Eliminate all duplicate lines
+   - Use regular expressions to consolidate patterns (see Figure 2 below)
+   - Example: Replace `/dev/ttyUSB0`, `/dev/ttyUSB1`, `/dev/ttyUSB2` with `/dev/ttyUSB*`
+
+5. **Re-apply the processed activities**:
+   ```bash
+   cat /etc/hb/path > /proc/honeybest/path
+   ```
+
+6. **Enable HoneyBest LSM**:
+   ```bash
+   echo 1 > /proc/sys/kernel/honeybest/enabled
+   ```
+
+**Figure 1: Example path file content**
+
+| NO | FUNC | UID | MODE | SUID | GUID | DEV | SOURCE PATH | TARGET PATH |
+|----|------|-----|------|------|------|-----|-------------|-------------|
+| 0 | 23 | 0 | 0 | 0 | 0 | 0 | /dev/usb0 | /dev/ttyUSB0 |
+| 1 | 23 | 0 | 0 | 0 | 0 | 0 | /dev/usb0 | /dev/ttyUSB1 |
+| 2 | 23 | 0 | 0 | 0 | 0 | 0 | /dev/usb0 | /dev/ttyUSB2 |
+| 3 | 20 | 0 | 420 | 0 | 0 | 0 | /etc/resolv.conf.dhclient-new.1115 | /etc/resolv.conf |
+
+**Figure 2: Processed path file with regular expressions**
+
+| FUNC | UID | MODE | SUID | GUID | DEV | SOURCE PATH | TARGET PATH |
+|------|-----|------|------|------|-----|-------------|-------------|
+| 23 | 0 | 0 | 0 | 0 | 0 | /dev/usb0 | /dev/ttyUSB* |
+| 20 | 0 | 420 | 0 | 0 | 0 | /etc/resolv.conf.dhclient-new.* | /etc/resolv.conf |
+
+**Verification**: Enable locking mode during system tests to verify the outcome. If system tests fail, disable locking mode and re-run the activities. Comparing file contexts will reveal which missing activities need to be added.
+
+### Save and Restore
+
+Saving and restoring HoneyBest LSM configuration is straightforward:
+
+**Save configuration**:
+```bash
+# Save binary hash configuration
+cat /proc/honeybest/binprm > /etc/hb/binprm
+
+# Save file operations configuration
+cat /proc/honeybest/files > /etc/hb/files
+
+# Save path configuration
+cat /proc/honeybest/path > /etc/hb/path
+# ... repeat for other feature sets
+```
+
+**⚠️ Important**: After saving, you must process the files (remove headers, eliminate duplicates, apply regular expressions) as described in step 6.4 of the [Tuning Example](#tuning-example). HoneyBest LSM will not restore correctly if this step is not completed.
+
+**Restore configuration**:
+```bash
+# Restore binary hash configuration
+cat /etc/hb/binprm > /proc/honeybest/binprm
+
+# Restore file operations configuration
+cat /etc/hb/files > /proc/honeybest/files
+
+# ... repeat for other feature sets
+```
+
+**Complete setup workflow**:
+```bash
+# 1. Restore configurations
+cat /etc/hb/binprm > /proc/honeybest/binprm
+cat /etc/hb/files > /proc/honeybest/files
+# ... restore other feature sets
+
+# 2. Enable feature sets
+echo 1 > /proc/sys/kernel/honeybest/binprm
+echo 1 > /proc/sys/kernel/honeybest/files
+# ... enable other feature sets
+
+# 3. Lock down HoneyBest (prevents further tracking)
+echo 1 > /proc/sys/kernel/honeybest/locking
+
+# 4. Enable HoneyBest
+echo 1 > /proc/sys/kernel/honeybest/enabled
+```
+
+**Automation**: Add restore commands to `initrd` scripts or `/etc/rc.local` to automatically restore configuration on system boot.
+
+---
+
+## Use Cases
+
+### Proprietary Shared Library Protection
+
+This example demonstrates how to protect proprietary shared libraries from being copied or extracted from the system, even by root users.
+
+**Protected Libraries**:
+- `/usr/lib/arm-linux-gnueabihf/libtss2-sys.so.0.0.0`
+- `/usr/lib/arm-linux-gnueabihf/libtss2-mu.so.0.0.0`
+- `/usr/lib/arm-linux-gnueabihf/libcrypto.so.1.1`
+- `/usr/lib/arm-linux-gnueabihf/libtss2-tcti-device.so.0.0.0`
+
+**Prerequisites**:
+
+1. **Secure Boot**: Enable and configure secure boot to prevent kernel and initramfs replacement
+2. **Hardware Security Module (HSM)**: Use TPM or Arm TrustZone integrated into the secure boot process
+3. **LUKS Encryption**: Reformat partitions with LUKS and bind LUKS keys to the HSM
+
+**Configuration Steps**:
+
+1. **Recompile kernel with production option**:
+   ```bash
+   # In kernel configuration
+   CONFIG_HONEYBEST_PROD=y
+   ```
+
+2. **Add 'files' feature set configuration** to initramfs:
+   Save configuration to `/etc/honeybest/files` in initramfs:
+   
 <img src="images/honeybest blacklist files shared libraries protection.JPG" width="1000" height="150" />
-3. Add 'binprm' feature set configuration into initramfs, save it into directory /etc/honeybest/binprm:
+
+3. **Add 'binprm' feature set configuration** to initramfs:
+   Save configuration to `/etc/honeybest/binprm` in initramfs:
+   
 <img src="images/honeybest blacklist binprm shared libraries protection.JPG" width="1000" height="150" />
-4. Add 'sb' feature set configuration into initramfs, save it into directory /etc/honeybest/sb:
+
+4. **Add 'sb' feature set configuration** to initramfs:
+   Save configuration to `/etc/honeybest/sb` in initramfs:
+   
 <img src="images/honeybest blacklist sb shared libraries protection.JPG" width="700" height="20" />
-5. Add initramfs script (init-top) to run before chroot into LUKs filesystem:
+
+5. **Add initramfs script** (`init-top`) to run before chroot into LUKS filesystem:
+   
 <img src="images/honeybest blacklist setup shared libraries protection.JPG" width="700" height="500" />
 
+This configuration ensures that:
+- The libraries cannot be copied via `scp`, `cp`, or other file operations
+- Only authorized processes can load and use the libraries
+- Superblock operations are restricted to prevent filesystem-level access
+- All protections are active before the root filesystem is mounted
 
+---
 
+## License
 
+This software is licensed under the terms of the GNU General Public License version 2, as published by the Free Software Foundation. See the [LICENSE](LICENSE) file for details.
 
+---
+
+## Contributing
+
+Please read [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for details on our code of conduct.
+
+---
+
+## Support
+
+For issues, questions, or contributions, please refer to the project repository or contact the maintainers.
