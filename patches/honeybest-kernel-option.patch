@@ -1,10 +1,10 @@
 diff --git a/include/linux/lsm_hooks.h b/include/linux/lsm_hooks.h
-index ec3a6bab29de..2f181c766124 100644
+index 000000000000..111111111111 100644
 --- a/include/linux/lsm_hooks.h
 +++ b/include/linux/lsm_hooks.h
-@@ -1887,4 +1887,10 @@ extern void __init yama_add_hooks(void);
- static inline void __init yama_add_hooks(void) { }
- #endif
+@@ -192,4 +192,10 @@ static inline struct xattr *lsm_get_xattr_slot(struct xattr *xattrs,
+ 	return &xattrs[(*xattr_count)++];
+ }
  
 +#ifdef CONFIG_SECURITY_HONEYBEST
 +extern void __init honeybest_add_hooks(void);
@@ -14,47 +14,48 @@ index ec3a6bab29de..2f181c766124 100644
 +
  #endif /* ! __LINUX_LSM_HOOKS_H */
 diff --git a/security/Kconfig b/security/Kconfig
-index a3ebb6ee5bd5..ab9d161fc97b 100644
+index 000000000000..111111111111 100644
 --- a/security/Kconfig
 +++ b/security/Kconfig
-@@ -133,6 +133,8 @@ source security/smack/Kconfig
- source security/tomoyo/Kconfig
- source security/apparmor/Kconfig
- source security/yama/Kconfig
-+source security/honeybest/Kconfig
-+
- 
- source security/integrity/Kconfig
- 
+@@ -225,6 +225,7 @@ source "security/tomoyo/Kconfig"
+ source "security/apparmor/Kconfig"
+ source "security/loadpin/Kconfig"
+ source "security/yama/Kconfig"
++source "security/honeybest/Kconfig"
+ source "security/safesetid/Kconfig"
+ source "security/lockdown/Kconfig"
+ source "security/landlock/Kconfig"
 diff --git a/security/Makefile b/security/Makefile
-index c9bfbc84ff50..496696b318a1 100644
+index 000000000000..111111111111 100644
 --- a/security/Makefile
 +++ b/security/Makefile
-@@ -8,6 +8,7 @@ subdir-$(CONFIG_SECURITY_SMACK)		+= smack
- subdir-$(CONFIG_SECURITY_TOMOYO)        += tomoyo
- subdir-$(CONFIG_SECURITY_APPARMOR)	+= apparmor
- subdir-$(CONFIG_SECURITY_YAMA)		+= yama
-+subdir-$(CONFIG_SECURITY_HONEYBEST)	+= honeybest
- 
- # always enable default capabilities
- obj-y					+= commoncap.o
-@@ -23,6 +24,7 @@ obj-$(CONFIG_SECURITY_TOMOYO)		+= tomoyo/
+@@ -20,6 +20,7 @@ obj-$(CONFIG_SECURITY_TOMOYO)		+= tomoyo/
  obj-$(CONFIG_SECURITY_APPARMOR)		+= apparmor/
  obj-$(CONFIG_SECURITY_YAMA)		+= yama/
- obj-$(CONFIG_CGROUP_DEVICE)		+= device_cgroup.o
-+obj-$(CONFIG_SECURITY_HONEYBEST)	+= honeybest/
- 
- # Object integrity file lists
- subdir-$(CONFIG_INTEGRITY)		+= integrity
+ obj-$(CONFIG_SECURITY_HONEYBEST)	+= honeybest/
+ obj-$(CONFIG_SECURITY_LOADPIN)		+= loadpin/
+ obj-$(CONFIG_SECURITY_SAFESETID)       += safesetid/
+ obj-$(CONFIG_SECURITY_LOCKDOWN_LSM)	+= lockdown/
 diff --git a/security/security.c b/security/security.c
-index 0dde287db5c5..d0801450d592 100644
+index 000000000000..111111111111 100644
 --- a/security/security.c
 +++ b/security/security.c
-@@ -60,6 +60,7 @@ int __init security_init(void)
- 	 */
- 	capability_add_hooks();
- 	yama_add_hooks();
-+	honeybest_add_hooks();
+@@ -20,6 +20,9 @@
+ #include <linux/kernel_read_file.h>
+ #include <linux/lsm_hooks.h>
++#ifdef CONFIG_SECURITY_HONEYBEST
++extern void __init honeybest_add_hooks(void);
++#endif
+ #include <linux/mman.h>
+ #include <linux/mount.h>
+ #include <linux/personality.h>
+@@ -543,6 +546,9 @@ int __init security_init(void)
+ 	/* Load LSMs in specified order. */
+ 	ordered_lsm_init();
  
- 	/*
- 	 * Load all the remaining security modules.
++#ifdef CONFIG_SECURITY_HONEYBEST
++	honeybest_add_hooks();
++#endif
++
+ 	return 0;
+ }
